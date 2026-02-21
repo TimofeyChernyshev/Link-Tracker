@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +22,7 @@ func TestLoad_Success(t *testing.T) {
 	content := []byte("TELEGRAM_TOKEN=test_token_12345\n")
 	err = os.WriteFile(".env", content, 0644)
 	require.NoError(t, err)
+	_ = godotenv.Load()
 
 	cfg, err := Load()
 
@@ -47,7 +49,7 @@ func TestLoad_EnvFileNotFound(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, cfg)
-	assert.ErrorContains(t, err, "open .env: The system cannot find the file specified")
+	assert.ErrorContains(t, err, "token not found")
 }
 
 func TestLoad_TokenNotSet(t *testing.T) {
@@ -65,6 +67,7 @@ func TestLoad_TokenNotSet(t *testing.T) {
 	require.NoError(t, err)
 
 	os.Unsetenv("TELEGRAM_TOKEN")
+	_ = godotenv.Load()
 
 	cfg, err := Load()
 
@@ -86,6 +89,7 @@ func TestLoad_EmptyToken(t *testing.T) {
 	content := []byte("TELEGRAM_TOKEN=\n")
 	err = os.WriteFile(".env", content, 0644)
 	require.NoError(t, err)
+	_ = godotenv.Load()
 
 	cfg, err := Load()
 
