@@ -10,6 +10,7 @@ import (
 type Command interface {
 	Execute(msg *domain.Message) (*domain.Response, error)
 	Name() string
+	Description() string
 }
 
 type CommandDispatcher struct {

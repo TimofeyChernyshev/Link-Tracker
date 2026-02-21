@@ -34,6 +34,20 @@ func (m *MockCommand) EXPECT() *MockCommandMockRecorder {
 	return m.recorder
 }
 
+// Description mocks base method.
+func (m *MockCommand) Description() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Description")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Description indicates an expected call of Description.
+func (mr *MockCommandMockRecorder) Description() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Description", reflect.TypeOf((*MockCommand)(nil).Description))
+}
+
 // Execute mocks base method.
 func (m *MockCommand) Execute(msg *domain.Message) (*domain.Response, error) {
 	m.ctrl.T.Helper()
