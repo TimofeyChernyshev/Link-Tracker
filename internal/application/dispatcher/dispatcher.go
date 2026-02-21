@@ -44,3 +44,14 @@ func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, er
 	slog.Debug("handler not found", "inputed command", cmdName)
 	return cd.unknownCommand.Execute(msg)
 }
+
+func (cd *CommandDispatcher) GetCommands() []domain.BotCommand {
+	botCommands := []domain.BotCommand{}
+	for _, cmd := range cd.commands {
+		botCommands = append(botCommands, domain.BotCommand{
+			Name: cmd.Name(), Description: cmd.Description(),
+		})
+	}
+
+	return botCommands
+}

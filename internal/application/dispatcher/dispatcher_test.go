@@ -5,6 +5,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
 )
 
@@ -108,4 +109,32 @@ func TestCommandDispatcher_Dispatch_NonCommand(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Nil(t, resp)
+}
+
+func TestGetCommands(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	unknownCmd := NewMockCommand(ctrl)
+	dispatcher := NewCommandDispatcher(unknownCmd)
+
+	cmd1 := NewMockCommand(ctrl)
+	cmd1.EXPECT().Name().Return("/test1").Times(2)
+	cmd1.EXPECT().Description().Return("test1 description")
+
+	cmd2 := NewMockCommand(ctrl)
+	cmd2.EXPECT().Name().Return("/test2").Times(2)
+	cmd2.EXPECT().Description().Return("test2 description")
+
+	dispatcher.Register(cmd1)
+	dispatcher.Register(cmd2)
+
+	expected := []domain.BotCommand{
+		{Name: "/test1", Description: "test1 description"},
+		{Name: "/test2", Description: "test2 description"},
+	}
+
+	got := dispatcher.GetCommands()
+
+	require.ElementsMatch(t, expected, got)
 }
