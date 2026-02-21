@@ -1,0 +1,127 @@
+package bot
+
+import (
+	"context"
+	"log/slog"
+	"sync"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
+)
+
+const workers = 8
+
+type BotClient struct {
+	api        TelegramAPI
+	dispatcher CommandDispatcher
+
+	stopChan chan struct{}
+	wg       sync.WaitGroup
+
+	jobs chan tgbotapi.Update
+}
+
+func NewBotClient(tgApi TelegramAPI, d CommandDispatcher) *BotClient {
+	return &BotClient{
+		api:        tgApi,
+		dispatcher: d,
+	}
+}
+
+func (b *BotClient) Start() error {
+	b.stopChan = make(chan struct{})
+	b.jobs = make(chan tgbotapi.Update, 100)
+
+	for range workers {
+		b.wg.Add(1)
+		go b.worker()
+	}
+
+	slog.Info("Authorized on account", "account", b.api.Self().UserName)
+
+	u := tgbotapi.NewUpdate(0)
+	updates := b.api.GetUpdatesChan(u)
+
+	for {
+		select {
+		case <-b.stopChan:
+			close(b.jobs)
+			slog.Info("stopping update channel")
+			return nil
+		case update, ok := <-updates:
+			if !ok {
+				close(b.jobs)
+				slog.Info("updates channel closed")
+				return nil
+			}
+
+			if update.Message != nil {
+				b.jobs <- update
+			}
+		}
+	}
+}
+
+func (b *BotClient) worker() {
+	defer b.wg.Done()
+
+	for upd := range b.jobs {
+		b.handleUpdate(upd)
+	}
+}
+
+func (b *BotClient) handleUpdate(update tgbotapi.Update) {
+	msg := &domain.Message{
+		Text:      update.Message.Text,
+		ChatID:    update.Message.Chat.ID,
+		Username:  update.Message.From.UserName,
+		MessageID: update.Message.MessageID,
+	}
+
+	slog.Debug("got message", "message text", msg.Text, "chatID", msg.ChatID, "user", msg.Username)
+
+	response, err := b.dispatcher.Dispatch(msg)
+	if err != nil {
+		slog.Error("error ocurs while trying to dispatch message", "error", err, "message", msg.Text)
+		return
+	}
+
+	if response != nil {
+		slog.Debug("got response", "response text", response.Text, "chatID", response.ChatID)
+		b.sendMessage(response)
+	}
+}
+
+func (b *BotClient) sendMessage(response *domain.Response) {
+	msg := tgbotapi.NewMessage(response.ChatID, response.Text)
+
+	_, err := b.api.Send(msg)
+	if err != nil {
+		slog.Error("Error sending message", "err", err)
+	}
+
+	slog.Debug("message sent to chat", "chatID", msg.ChatID)
+}
+
+// Stop реализует graceful shutdown
+func (b *BotClient) Stop(ctx context.Context) error {
+	close(b.stopChan)
+
+	b.api.StopReceivingUpdates()
+
+	done := make(chan struct{})
+
+	go func() {
+		b.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		slog.Info("all handlers finished")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return nil
+}
