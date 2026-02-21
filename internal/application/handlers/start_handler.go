@@ -26,3 +26,7 @@ func (sh *StartHandler) Execute(msg *domain.Message) (*domain.Response, error) {
 func (sh *StartHandler) Name() string {
 	return "/start"
 }
+
+func (sh *StartHandler) Description() string {
+	return "Выводит стартовое сообщение"
+}

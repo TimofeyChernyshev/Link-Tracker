@@ -30,3 +30,7 @@ func (hh *HelpHandler) Execute(msg *domain.Message) (*domain.Response, error) {
 func (hh *HelpHandler) Name() string {
 	return "/help"
 }
+
+func (hh *HelpHandler) Description() string {
+	return "Выводит помощь"
+}

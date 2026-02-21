@@ -26,3 +26,7 @@ func (uh *UnknownHandler) Execute(msg *domain.Message) (*domain.Response, error)
 func (uh *UnknownHandler) Name() string {
 	return ""
 }
+
+func (uh *UnknownHandler) Description() string {
+	return ""
+}
