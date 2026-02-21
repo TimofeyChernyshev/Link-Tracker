@@ -78,6 +78,20 @@ func (mr *MockTelegramAPIMockRecorder) Send(c interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockTelegramAPI)(nil).Send), c)
 }
 
+// SetCommands mocks base method.
+func (m *MockTelegramAPI) SetCommands(cmds []domain.BotCommand) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetCommands", cmds)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetCommands indicates an expected call of SetCommands.
+func (mr *MockTelegramAPIMockRecorder) SetCommands(cmds interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCommands", reflect.TypeOf((*MockTelegramAPI)(nil).SetCommands), cmds)
+}
+
 // StopReceivingUpdates mocks base method.
 func (m *MockTelegramAPI) StopReceivingUpdates() {
 	m.ctrl.T.Helper()
@@ -126,4 +140,18 @@ func (m *MockCommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response,
 func (mr *MockCommandDispatcherMockRecorder) Dispatch(msg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dispatch", reflect.TypeOf((*MockCommandDispatcher)(nil).Dispatch), msg)
+}
+
+// GetCommands mocks base method.
+func (m *MockCommandDispatcher) GetCommands() []domain.BotCommand {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommands")
+	ret0, _ := ret[0].([]domain.BotCommand)
+	return ret0
+}
+
+// GetCommands indicates an expected call of GetCommands.
+func (mr *MockCommandDispatcherMockRecorder) GetCommands() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommands", reflect.TypeOf((*MockCommandDispatcher)(nil).GetCommands))
 }

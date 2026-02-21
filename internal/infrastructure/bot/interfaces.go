@@ -11,9 +11,11 @@ type TelegramAPI interface {
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
 	StopReceivingUpdates()
 	Self() tgbotapi.User
+	SetCommands(cmds []domain.BotCommand) error
 }
 
 // CommandDispatcher интерфейс для обработки команд
 type CommandDispatcher interface {
 	Dispatch(msg *domain.Message) (*domain.Response, error)
+	GetCommands() []domain.BotCommand
 }
