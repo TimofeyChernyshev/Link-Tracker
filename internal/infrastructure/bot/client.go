@@ -22,6 +22,9 @@ type BotClient struct {
 }
 
 func NewBotClient(tgApi TelegramAPI, d CommandDispatcher) *BotClient {
+	cmds := d.GetCommands()
+	tgApi.SetCommands(cmds)
+
 	return &BotClient{
 		api:        tgApi,
 		dispatcher: d,
