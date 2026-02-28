@@ -18,6 +18,7 @@ func TestHelpHandler_Execute(t *testing.T) {
 			contains []string
 			chatID   int64
 		}
+		done bool
 	}{
 		{
 			name: "help request",
@@ -63,7 +64,8 @@ func TestHelpHandler_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := handler.Execute(tt.msg)
+			resp, done, err := handler.Execute(tt.msg)
+			assert.Equal(t, true, done)
 
 			require.NoError(t, err)
 			require.NotNil(t, resp)

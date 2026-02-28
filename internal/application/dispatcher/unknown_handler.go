@@ -12,7 +12,7 @@ func NewUnknownHandler() *UnknownHandler {
 	return &UnknownHandler{}
 }
 
-func (uh *UnknownHandler) Execute(msg *domain.Message) (*domain.Response, error) {
+func (uh *UnknownHandler) Execute(msg *domain.Message) (*domain.Response, bool, error) {
 	slog.Warn("unknown command", "chatID", msg.ChatID)
 
 	text := "Введена неизвестная команда\nИспользуйте /help, чтобы посмотреть доступные команды"
@@ -20,7 +20,7 @@ func (uh *UnknownHandler) Execute(msg *domain.Message) (*domain.Response, error)
 	return &domain.Response{
 		Text:   text,
 		ChatID: msg.ChatID,
-	}, nil
+	}, true, nil
 }
 
 func (uh *UnknownHandler) Name() string {
