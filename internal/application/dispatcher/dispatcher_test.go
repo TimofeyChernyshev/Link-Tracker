@@ -9,7 +9,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
 )
 
-func TestCommandDispatcher_Register(t *testing.T) {
+func TestRegister(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -17,20 +17,17 @@ func TestCommandDispatcher_Register(t *testing.T) {
 	dispatcher := NewCommandDispatcher(unknownCmd)
 
 	cmd1 := NewMockCommand(ctrl)
-	cmd1.EXPECT().Name().Return("/start").Times(1)
-
 	cmd2 := NewMockCommand(ctrl)
-	cmd2.EXPECT().Name().Return("/help").Times(1)
 
-	dispatcher.Register(cmd1)
-	dispatcher.Register(cmd2)
+	dispatcher.Register("/start", func() Command { return cmd1 })
+	dispatcher.Register("/help", func() Command { return cmd2 })
 
-	assert.Len(t, dispatcher.commands, 2)
-	assert.Equal(t, cmd1, dispatcher.commands["/start"])
-	assert.Equal(t, cmd2, dispatcher.commands["/help"])
+	assert.Len(t, dispatcher.factories, 2)
+	assert.Equal(t, cmd1, dispatcher.factories["/start"]())
+	assert.Equal(t, cmd2, dispatcher.factories["/help"]())
 }
 
-func TestCommandDispatcher_Dispatch_KnownCommand(t *testing.T) {
+func TestDispatch_KnownCommand(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -38,7 +35,6 @@ func TestCommandDispatcher_Dispatch_KnownCommand(t *testing.T) {
 	dispatcher := NewCommandDispatcher(unknownCmd)
 
 	mockCmd := NewMockCommand(ctrl)
-	mockCmd.EXPECT().Name().Return("/test").Times(2)
 
 	expectedResponse := &domain.Response{
 		Text:   "test response",
@@ -52,9 +48,12 @@ func TestCommandDispatcher_Dispatch_KnownCommand(t *testing.T) {
 		MessageID: 1,
 	}
 
-	mockCmd.EXPECT().Execute(msg).Return(expectedResponse, nil).Times(1)
+	mockCmd.EXPECT().Name().Return("/test").AnyTimes()
+	mockCmd.EXPECT().Execute(msg).Return(expectedResponse, true, nil)
 
-	dispatcher.Register(mockCmd)
+	dispatcher.Register("/test", func() Command {
+		return mockCmd
+	})
 
 	resp, err := dispatcher.Dispatch(msg)
 
@@ -63,7 +62,7 @@ func TestCommandDispatcher_Dispatch_KnownCommand(t *testing.T) {
 	assert.Equal(t, expectedResponse, resp)
 }
 
-func TestCommandDispatcher_Dispatch_UnknownCommand(t *testing.T) {
+func TestDispatch_UnknownCommand(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -82,7 +81,7 @@ func TestCommandDispatcher_Dispatch_UnknownCommand(t *testing.T) {
 		MessageID: 1,
 	}
 
-	unknownCmd.EXPECT().Execute(msg).Return(expectedResponse, nil).Times(1)
+	unknownCmd.EXPECT().Execute(msg).Return(expectedResponse, true, nil).Times(1)
 
 	resp, err := dispatcher.Dispatch(msg)
 
@@ -91,7 +90,7 @@ func TestCommandDispatcher_Dispatch_UnknownCommand(t *testing.T) {
 	assert.Equal(t, expectedResponse, resp)
 }
 
-func TestCommandDispatcher_Dispatch_NonCommand(t *testing.T) {
+func TestDispatch_NonCommand(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -111,6 +110,37 @@ func TestCommandDispatcher_Dispatch_NonCommand(t *testing.T) {
 	assert.Nil(t, resp)
 }
 
+func TestDispatch_Conversation(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockCmd := NewMockCommand(ctrl)
+	mockCmd.EXPECT().Name().Return("/track").AnyTimes()
+
+	msg1 := &domain.Message{Text: "/track", ChatID: 1}
+	msg2 := &domain.Message{Text: "next", ChatID: 1}
+
+	resp1 := &domain.Response{Text: "step1"}
+	resp2 := &domain.Response{Text: "done"}
+
+	gomock.InOrder(
+		mockCmd.EXPECT().Execute(msg1).Return(resp1, false, nil),
+		mockCmd.EXPECT().Execute(msg2).Return(resp2, true, nil),
+	)
+
+	d := NewCommandDispatcher(nil)
+
+	d.Register("/track", func() Command {
+		return mockCmd
+	})
+
+	r1, _ := d.Dispatch(msg1)
+	r2, _ := d.Dispatch(msg2)
+
+	assert.Equal(t, resp1, r1)
+	assert.Equal(t, resp2, r2)
+}
+
 func TestGetCommands(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -119,15 +149,15 @@ func TestGetCommands(t *testing.T) {
 	dispatcher := NewCommandDispatcher(unknownCmd)
 
 	cmd1 := NewMockCommand(ctrl)
-	cmd1.EXPECT().Name().Return("/test1").Times(2)
+	cmd1.EXPECT().Name().Return("/test1")
 	cmd1.EXPECT().Description().Return("test1 description")
 
 	cmd2 := NewMockCommand(ctrl)
-	cmd2.EXPECT().Name().Return("/test2").Times(2)
+	cmd2.EXPECT().Name().Return("/test2")
 	cmd2.EXPECT().Description().Return("test2 description")
 
-	dispatcher.Register(cmd1)
-	dispatcher.Register(cmd2)
+	dispatcher.Register("/test1", func() Command { return cmd1 })
+	dispatcher.Register("/test2", func() Command { return cmd2 })
 
 	expected := []domain.BotCommand{
 		{Name: "/test1", Description: "test1 description"},
