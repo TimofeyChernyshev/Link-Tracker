@@ -91,16 +91,17 @@ func (b *BotClient) handleUpdate(update tgbotapi.Update) {
 
 	if response != nil {
 		slog.Debug("got response", "response text", response.Text, "chatID", response.ChatID)
-		b.sendMessage(response)
+		b.SendMessage(response)
 	}
 }
 
-func (b *BotClient) sendMessage(response *domain.Response) {
+func (b *BotClient) SendMessage(response *domain.Response) {
 	msg := tgbotapi.NewMessage(response.ChatID, response.Text)
 
 	_, err := b.api.Send(msg)
 	if err != nil {
 		slog.Error("Error sending message", "err", err)
+		return
 	}
 
 	slog.Debug("message sent to chat", "chatID", msg.ChatID)
