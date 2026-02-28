@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-func TestHelpHandler_Execute(t *testing.T) {
-	handler := NewHelpHandler()
+func TestStartHandler_Execute(t *testing.T) {
+	handler := NewStartHandler()
 
 	tests := []struct {
 		name     string
@@ -18,12 +18,11 @@ func TestHelpHandler_Execute(t *testing.T) {
 			contains []string
 			chatID   int64
 		}
-		done bool
 	}{
 		{
-			name: "help request",
+			name: "start request",
 			msg: &domain.Message{
-				Text:      "/help",
+				Text:      "/start",
 				ChatID:    12345,
 				Username:  "user",
 				MessageID: 1,
@@ -33,31 +32,31 @@ func TestHelpHandler_Execute(t *testing.T) {
 				chatID   int64
 			}{
 				contains: []string{
-					"Доступные команды",
-					"/start",
+					"Добро пожаловать",
 					"/help",
+					"user",
 				},
 				chatID: 12345,
 			},
 		},
 		{
-			name: "help request with argument",
+			name: "start request with argument",
 			msg: &domain.Message{
-				Text:      "/help something",
-				ChatID:    67890,
+				Text:      "/start 123",
+				ChatID:    12345,
 				Username:  "user",
-				MessageID: 2,
+				MessageID: 1,
 			},
 			expected: struct {
 				contains []string
 				chatID   int64
 			}{
 				contains: []string{
-					"Доступные команды",
-					"/start",
+					"Добро пожаловать",
 					"/help",
+					"user",
 				},
-				chatID: 67890,
+				chatID: 12345,
 			},
 		},
 	}
