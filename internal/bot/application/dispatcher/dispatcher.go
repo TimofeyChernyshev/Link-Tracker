@@ -35,30 +35,38 @@ func (cd *CommandDispatcher) Register(name string, cmd func() Command) {
 }
 
 func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, error) {
-	if convRaw, ok := cd.conversations.Load(msg.ChatID); ok {
-		conv := convRaw.(Command)
-
-		resp, done, err := conv.Execute(msg)
-		if done {
-			cd.conversations.Delete(msg.ChatID)
-		}
-
-		return resp, err
-	}
-
-	if !strings.HasPrefix(msg.Text, "/") {
-		slog.Debug("got a non-command message")
-		return nil, nil
-	}
-
 	parts := strings.Fields(msg.Text)
 	cmdName := parts[0]
 
 	factory, exists := cd.factories[cmdName]
-	if !exists {
-		slog.Debug("handler not found", "inputed command", cmdName)
-		resp, _, err := cd.unknownCommand.Execute(msg)
-		return resp, err
+	isCommand := strings.HasPrefix(msg.Text, "/")
+	if !exists || !isCommand {
+		if convRaw, ok := cd.conversations.Load(msg.ChatID); ok {
+			conv := convRaw.(Command)
+
+			if cmdName == "/cancel" {
+				cd.conversations.Delete(msg.ChatID)
+				return &domain.Response{Text: "команда отменена", ChatID: msg.ChatID}, nil
+			}
+
+			resp, done, err := conv.Execute(msg)
+			if done {
+				cd.conversations.Delete(msg.ChatID)
+			}
+
+			return resp, err
+		}
+
+		if !isCommand {
+			slog.Debug("got a non-command message")
+			return nil, nil
+		}
+
+		if !exists {
+			slog.Debug("handler not found", "inputed command", cmdName)
+			resp, _, err := cd.unknownCommand.Execute(msg)
+			return resp, err
+		}
 	}
 	cmd := factory()
 
