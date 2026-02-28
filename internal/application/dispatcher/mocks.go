@@ -49,12 +49,13 @@ func (mr *MockCommandMockRecorder) Description() *gomock.Call {
 }
 
 // Execute mocks base method.
-func (m *MockCommand) Execute(msg *domain.Message) (*domain.Response, error) {
+func (m *MockCommand) Execute(msg *domain.Message) (*domain.Response, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", msg)
 	ret0, _ := ret[0].(*domain.Response)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Execute indicates an expected call of Execute.
