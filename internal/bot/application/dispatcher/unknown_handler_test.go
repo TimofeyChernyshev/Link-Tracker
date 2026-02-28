@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-func TestStartHandler_Execute(t *testing.T) {
-	handler := NewStartHandler()
+func TestUnknownHandler_Execute(t *testing.T) {
+	handler := NewUnknownHandler()
 
 	tests := []struct {
 		name     string
@@ -20,9 +20,9 @@ func TestStartHandler_Execute(t *testing.T) {
 		}
 	}{
 		{
-			name: "start request",
+			name: "unknown command",
 			msg: &domain.Message{
-				Text:      "/start",
+				Text:      "/cmd",
 				ChatID:    12345,
 				Username:  "user",
 				MessageID: 1,
@@ -32,17 +32,16 @@ func TestStartHandler_Execute(t *testing.T) {
 				chatID   int64
 			}{
 				contains: []string{
-					"Добро пожаловать",
+					"неизвестная команда",
 					"/help",
-					"user",
 				},
 				chatID: 12345,
 			},
 		},
 		{
-			name: "start request with argument",
+			name: "unknown command with argument",
 			msg: &domain.Message{
-				Text:      "/start 123",
+				Text:      "/cmd 123",
 				ChatID:    12345,
 				Username:  "user",
 				MessageID: 1,
@@ -52,9 +51,8 @@ func TestStartHandler_Execute(t *testing.T) {
 				chatID   int64
 			}{
 				contains: []string{
-					"Добро пожаловать",
+					"неизвестная команда",
 					"/help",
-					"user",
 				},
 				chatID: 12345,
 			},

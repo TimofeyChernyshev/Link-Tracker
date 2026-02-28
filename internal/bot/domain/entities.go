@@ -18,3 +18,9 @@ type BotCommand struct {
 	Name        string
 	Description string
 }
+
+// Link - ссылка с тегами, котора отслеживается
+type Link struct {
+	URL  string
+	Tags []string
+}

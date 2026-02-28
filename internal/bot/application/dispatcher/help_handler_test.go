@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-func TestUnknownHandler_Execute(t *testing.T) {
-	handler := NewUnknownHandler()
+func TestHelpHandler_Execute(t *testing.T) {
+	handler := NewHelpHandler()
 
 	tests := []struct {
 		name     string
@@ -18,11 +18,12 @@ func TestUnknownHandler_Execute(t *testing.T) {
 			contains []string
 			chatID   int64
 		}
+		done bool
 	}{
 		{
-			name: "unknown command",
+			name: "help request",
 			msg: &domain.Message{
-				Text:      "/cmd",
+				Text:      "/help",
 				ChatID:    12345,
 				Username:  "user",
 				MessageID: 1,
@@ -32,29 +33,31 @@ func TestUnknownHandler_Execute(t *testing.T) {
 				chatID   int64
 			}{
 				contains: []string{
-					"неизвестная команда",
+					"Доступные команды",
+					"/start",
 					"/help",
 				},
 				chatID: 12345,
 			},
 		},
 		{
-			name: "unknown command with argument",
+			name: "help request with argument",
 			msg: &domain.Message{
-				Text:      "/cmd 123",
-				ChatID:    12345,
+				Text:      "/help something",
+				ChatID:    67890,
 				Username:  "user",
-				MessageID: 1,
+				MessageID: 2,
 			},
 			expected: struct {
 				contains []string
 				chatID   int64
 			}{
 				contains: []string{
-					"неизвестная команда",
+					"Доступные команды",
+					"/start",
 					"/help",
 				},
-				chatID: 12345,
+				chatID: 67890,
 			},
 		},
 	}

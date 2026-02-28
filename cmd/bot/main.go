@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/dispatcher"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/bot"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/dispatcher"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
 )
 
 const shutdownTimeout = 30 * time.Second
@@ -30,8 +30,10 @@ func main() {
 
 	// Добавление команд в диспетчер
 	d := dispatcher.NewCommandDispatcher(dispatcher.NewUnknownHandler())
-	d.Register(dispatcher.NewStartHandler())
-	d.Register(dispatcher.NewHelpHandler())
+	start := dispatcher.NewStartHandler()
+	d.Register(start.Name(), func() dispatcher.Command { return start })
+	help := dispatcher.NewHelpHandler()
+	d.Register(help.Name(), func() dispatcher.Command { return help })
 
 	bot, err := bot.NewClient(cfg.TelegramToken, d)
 	if err != nil {
