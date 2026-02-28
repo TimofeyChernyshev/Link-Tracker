@@ -12,7 +12,7 @@ func NewStartHandler() *StartHandler {
 	return &StartHandler{}
 }
 
-func (sh *StartHandler) Execute(msg *domain.Message) (*domain.Response, error) {
+func (sh *StartHandler) Execute(msg *domain.Message) (*domain.Response, bool, error) {
 	slog.Info("start requested", "chatID", msg.ChatID)
 
 	text := "Добро пожаловать, " + msg.Username + "!\nИспользуйте /help, чтобы посмотреть доступные команды"
@@ -20,7 +20,7 @@ func (sh *StartHandler) Execute(msg *domain.Message) (*domain.Response, error) {
 	return &domain.Response{
 		Text:   text,
 		ChatID: msg.ChatID,
-	}, nil
+	}, true, nil
 }
 
 func (sh *StartHandler) Name() string {
