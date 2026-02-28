@@ -117,28 +117,56 @@ func TestDispatch_Conversation(t *testing.T) {
 	mockCmd := NewMockCommand(ctrl)
 	mockCmd.EXPECT().Name().Return("/track").AnyTimes()
 
+	mockCmd2 := NewMockCommand(ctrl)
+	mockCmd2.EXPECT().Name().Return("/cmd").AnyTimes()
+
 	msg1 := &domain.Message{Text: "/track", ChatID: 1}
 	msg2 := &domain.Message{Text: "next", ChatID: 1}
 
-	resp1 := &domain.Response{Text: "step1"}
-	resp2 := &domain.Response{Text: "done"}
-
-	gomock.InOrder(
-		mockCmd.EXPECT().Execute(msg1).Return(resp1, false, nil),
-		mockCmd.EXPECT().Execute(msg2).Return(resp2, true, nil),
-	)
+	resp1 := &domain.Response{Text: "step1", ChatID: 1}
+	resp2 := &domain.Response{Text: "done", ChatID: 1}
 
 	d := NewCommandDispatcher(nil)
 
 	d.Register("/track", func() Command {
 		return mockCmd
 	})
+	d.Register("/cmd", func() Command {
+		return mockCmd2
+	})
+
+	// Проверка что выполнятся последовательно
+	mockCmd.EXPECT().Execute(msg1).Return(resp1, false, nil)
+	mockCmd.EXPECT().Execute(msg2).Return(resp2, true, nil)
 
 	r1, _ := d.Dispatch(msg1)
 	r2, _ := d.Dispatch(msg2)
 
-	assert.Equal(t, resp1, r1)
-	assert.Equal(t, resp2, r2)
+	require.Equal(t, resp1, r1)
+	require.Equal(t, resp2, r2)
+
+	// /cancel
+	mockCmd.EXPECT().Execute(msg1).Return(resp1, false, nil).Times(2)
+	msgCancel := &domain.Message{Text: "/cancel", ChatID: 1}
+	r3, _ := d.Dispatch(msg1)
+	r4, _ := d.Dispatch(msgCancel)
+	r5, _ := d.Dispatch(msg1)
+
+	require.Equal(t, resp1, r3)
+	require.Equal(t, &domain.Response{Text: "команда отменена", ChatID: 1}, r4)
+	require.Equal(t, resp1, r5)
+
+	// Запуск существующей команды во время conversation
+	mockCmd.EXPECT().Execute(msg1).Return(resp1, false, nil).Times(2)
+	msgAnotherCommand := &domain.Message{Text: "/cmd", ChatID: 1}
+	mockCmd2.EXPECT().Execute(msgAnotherCommand).Return(&domain.Response{Text: "command complete", ChatID: 1}, true, nil)
+	r6, _ := d.Dispatch(msg1)
+	r7, _ := d.Dispatch(msgAnotherCommand)
+	r8, _ := d.Dispatch(msg1)
+
+	require.Equal(t, resp1, r6)
+	require.Equal(t, &domain.Response{Text: "command complete", ChatID: 1}, r7)
+	require.Equal(t, resp1, r8)
 }
 
 func TestGetCommands(t *testing.T) {
