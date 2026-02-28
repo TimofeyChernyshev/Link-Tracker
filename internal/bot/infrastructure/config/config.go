@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	TelegramToken string
+	BotHTTPPort   string
 }
 
 func Load() (*Config, error) {
@@ -17,5 +18,11 @@ func Load() (*Config, error) {
 		return nil, errors.New("token not found")
 	}
 
-	return &Config{TelegramToken: token}, nil
+	port := os.Getenv("BOT_HTTP_PORT")
+	if port == "" {
+		slog.Error("BOT_HTTP_PORT is not set in .env file")
+		return nil, errors.New("bot port not found")
+	}
+
+	return &Config{TelegramToken: token, BotHTTPPort: port}, nil
 }
