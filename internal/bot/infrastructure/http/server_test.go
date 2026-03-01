@@ -1,6 +1,7 @@
 package bot_server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -51,5 +52,9 @@ func TestUpdates_BadRequest(t *testing.T) {
 
 	s.srv.Handler.ServeHTTP(w, req)
 
+	var bodyDecoded ApiErrorResponse
+	_ = json.NewDecoder(w.Body).Decode(&bodyDecoded)
+
 	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Equal(t, ApiErrorResponse{Description: "invalid json", Code: http.StatusText(400)}, bodyDecoded)
 }
