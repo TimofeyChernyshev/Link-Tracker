@@ -12,6 +12,21 @@ type Sender interface {
 	SendMessage(response *domain.Response)
 }
 
+type LinkUpdate struct {
+	Id          int64   `json:"id"`
+	Url         string  `json:"url"`
+	Description string  `json:"description"`
+	TgChatIds   []int64 `json:"tgChatIds"`
+}
+
+type ApiErrorResponse struct {
+	Description      string   `json:"description"`
+	Code             string   `json:"code"`
+	ExceptionName    string   `json:"exceptionName,omitempty"`
+	ExceptionMessage string   `json:"exceptionMessage,omitempty"`
+	Stacktrace       []string `json:"stacktrace,omitempty"`
+}
+
 type Server struct {
 	srv *http.Server
 }
@@ -21,13 +36,13 @@ func NewServer(bot Sender, port string) *Server {
 
 	mux.HandleFunc("/updates", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			writeError(w, http.StatusMethodNotAllowed, "method not POST")
 			return
 		}
 
-		var upd domain.LinkUpdate
+		var upd LinkUpdate
 		if err := json.NewDecoder(r.Body).Decode(&upd); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
 
@@ -47,6 +62,16 @@ func NewServer(bot Sender, port string) *Server {
 			Handler: mux,
 		},
 	}
+}
+
+func writeError(w http.ResponseWriter, code int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+
+	_ = json.NewEncoder(w).Encode(ApiErrorResponse{
+		Description: msg,
+		Code:        http.StatusText(code),
+	})
 }
 
 func (s *Server) Start() error {
