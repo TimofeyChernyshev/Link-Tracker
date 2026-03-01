@@ -3,6 +3,7 @@ package bot_server
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
@@ -36,12 +37,14 @@ func NewServer(bot Sender, port string) *Server {
 
 	mux.HandleFunc("/updates", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
+			slog.Error("wrong method", "method", r.Method)
 			writeError(w, http.StatusMethodNotAllowed, "method not POST")
 			return
 		}
 
 		var upd LinkUpdate
 		if err := json.NewDecoder(r.Body).Decode(&upd); err != nil {
+			slog.Error("cannot parse request", "error", err)
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
