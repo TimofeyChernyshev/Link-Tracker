@@ -86,6 +86,7 @@ func (b *BotClient) handleUpdate(update tgbotapi.Update) {
 	response, err := b.dispatcher.Dispatch(msg)
 	if err != nil {
 		slog.Error("error ocurs while trying to dispatch message", "error", err, "message", msg.Text)
+		b.SendMessage(&domain.Response{Text: err.Error(), ChatID: msg.ChatID})
 		return
 	}
 
