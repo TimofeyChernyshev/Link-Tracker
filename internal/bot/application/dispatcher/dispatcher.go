@@ -9,13 +9,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-type Command interface {
-	Name() string
-	Description() string
-
-	Execute(msg *domain.Message) (resp *domain.Response, done bool, err error)
-}
-
 type CommandDispatcher struct {
 	factories      map[string]func() Command
 	unknownCommand Command
