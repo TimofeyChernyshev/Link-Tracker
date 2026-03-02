@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,7 +14,9 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/dispatcher"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/handlers"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
+	bot_server "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/http"
 	telegram "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/telegram_api"
 )
 
@@ -23,17 +27,25 @@ func main() {
 	setLogger()
 
 	// Загрузка конфига
-	_ = godotenv.Load()
+	_ = godotenv.Load(".env.bot")
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 
+	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL)
+
 	// Добавление команд в диспетчер
-	dispatcher := dispatcher.NewCommandDispatcher(handlers.NewUnknownHandler())
-	dispatcher.Register(handlers.NewStartHandler())
-	dispatcher.Register(handlers.NewHelpHandler())
+	d := dispatcher.NewCommandDispatcher(handlers.NewUnknownHandler())
+	start := handlers.NewStartHandler(scrapperClient)
+	d.Register(start.Name(), func() dispatcher.Command { return start })
+	help := handlers.NewHelpHandler()
+	d.Register(help.Name(), func() dispatcher.Command { return help })
+	d.Register("/track", func() dispatcher.Command { return handlers.NewTrackHandler(scrapperClient) })
+	d.Register("/untrack", func() dispatcher.Command { return handlers.NewUntrackHandler(scrapperClient) })
+	list := handlers.NewListHandler(scrapperClient)
+	d.Register(list.Name(), func() dispatcher.Command { return list })
 
 	api, err := telegram.NewRealTelegramAPI(cfg.TelegramToken)
 	if err != nil {
@@ -41,14 +53,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	bot := bot.NewBotClient(api, dispatcher)
+	bot := bot.NewBotClient(api, d)
 
-	// Канал сигналов с размером 1
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	server := bot_server.NewServer(bot, cfg.BotPort)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	// Канал ошибок
-	errChan := make(chan error, 1)
+	errChan := make(chan error, 2)
 
 	// Запуск бота в горутине
 	go func() {
@@ -58,24 +71,30 @@ func main() {
 		}
 	}()
 
+	go func() {
+		slog.Info("http server for bot starting", "port", cfg.BotPort)
+		err := server.Start()
+		if !errors.Is(err, http.ErrServerClosed) {
+			errChan <- err
+		}
+	}()
+
 	// Ожидание сигнала о завершении или ошибку
 	select {
-	case sig := <-sigChan:
-		slog.Info("Received signal", "signal", sig)
+	case <-ctx.Done():
+		slog.Info("shutdown signal received")
 	case err := <-errChan:
-		slog.Error("failed to start bot", "error", err)
-		os.Exit(1)
+		slog.Error("runtime error", "error", err)
 	}
-
-	// Остановка получения сигналов и закрытие канала
-	signal.Stop(sigChan)
-	close(sigChan)
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
 
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		slog.Error("error during shutdown server", "error", err)
+	}
 	if err := bot.Stop(shutdownCtx); err != nil {
-		slog.Error("error during shutdown", "error", err)
+		slog.Error("error during shutdown bot", "error", err)
 	}
 
 	slog.Info("bot stoped")
