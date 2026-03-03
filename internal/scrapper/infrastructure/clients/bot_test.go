@@ -1,0 +1,62 @@
+package clients
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+)
+
+func TestBotClient_SendUpdate_OK(t *testing.T) {
+	var received LinkUpdate
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/updates", r.URL.Path)
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		err := json.NewDecoder(r.Body).Decode(&received)
+		require.NoError(t, err)
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	c := NewBotClient(ts.URL)
+
+	upd := domain.LinkUpdate{
+		Id:          1,
+		Url:         "https://github.com/a/b",
+		Description: "updated",
+		TgChatIds:   []int64{1, 2},
+	}
+
+	err := c.SendUpdate(context.Background(), upd)
+	require.NoError(t, err)
+
+	require.Equal(t, int64(1), received.Id)
+	require.Equal(t, upd.Url, received.Url)
+	require.Equal(t, upd.Description, received.Description)
+	require.Equal(t, upd.TgChatIds, received.TgChatIds)
+}
+
+func TestBotClient_SendUpdate_Error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+
+		_ = json.NewEncoder(w).Encode(ApiErrorResponse{
+			Code:        "BadRequest",
+			Description: "invalid body",
+		})
+	}))
+	defer ts.Close()
+
+	c := NewBotClient(ts.URL)
+
+	err := c.SendUpdate(context.Background(), domain.LinkUpdate{})
+	require.Error(t, err)
+}
