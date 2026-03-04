@@ -5,34 +5,17 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-type Sender interface {
-	SendMessage(response *domain.Response)
-}
-
-type LinkUpdate struct {
-	Id          int64   `json:"id"`
-	Url         string  `json:"url"`
-	Description string  `json:"description"`
-	TgChatIds   []int64 `json:"tgChatIds"`
-}
-
-type ApiErrorResponse struct {
-	Description      string   `json:"description"`
-	Code             string   `json:"code"`
-	ExceptionName    string   `json:"exceptionName,omitempty"`
-	ExceptionMessage string   `json:"exceptionMessage,omitempty"`
-	Stacktrace       []string `json:"stacktrace,omitempty"`
+type Service interface {
+	SendUpdates(chatIds []int64, desc string)
 }
 
 type Server struct {
 	srv *http.Server
 }
 
-func NewServer(bot Sender, port string) *Server {
+func NewServer(service Service, port string) *Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/updates", func(w http.ResponseWriter, r *http.Request) {
@@ -49,12 +32,7 @@ func NewServer(bot Sender, port string) *Server {
 			return
 		}
 
-		for _, chatID := range upd.TgChatIds {
-			bot.SendMessage(&domain.Response{
-				ChatID: chatID,
-				Text:   upd.Description,
-			})
-		}
+		service.SendUpdates(upd.TgChatIds, upd.Description)
 
 		w.WriteHeader(http.StatusOK)
 	})

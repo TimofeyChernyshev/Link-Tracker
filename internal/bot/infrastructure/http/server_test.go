@@ -9,13 +9,12 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
 func TestUpdates_OK(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	sender := NewMockSender(ctrl)
+	sender := NewMockService(ctrl)
 
 	s := NewServer(sender, "0")
 
@@ -25,8 +24,8 @@ func TestUpdates_OK(t *testing.T) {
 		"description": "updated",
 		"tgChatIds": [10, 20]
 	}`
-	sender.EXPECT().SendMessage(&domain.Response{Text: "updated", ChatID: 10})
-	sender.EXPECT().SendMessage(&domain.Response{Text: "updated", ChatID: 20})
+
+	sender.EXPECT().SendUpdates([]int64{10, 20}, "updated")
 
 	req := httptest.NewRequest(http.MethodPost, "/updates", strings.NewReader(reqBody))
 	w := httptest.NewRecorder()
@@ -39,7 +38,7 @@ func TestUpdates_OK(t *testing.T) {
 func TestUpdates_BadRequest(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	sender := NewMockSender(ctrl)
+	sender := NewMockService(ctrl)
 
 	s := NewServer(sender, "0")
 
