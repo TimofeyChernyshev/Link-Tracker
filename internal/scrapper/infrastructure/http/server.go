@@ -7,29 +7,27 @@ import (
 	"net/http"
 	"strconv"
 
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	domain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-// Storage - контракт хранилища ссылок
-type Storage interface {
+type Service interface {
 	RegisterChat(chatId int64) error
 	DeleteChat(chatId int64) error
-	ChatExists(chatId int64) bool
 	AddLink(chatId int64, url string, tags []string) (domain.Link, error)
 	RemoveLink(chatId int64, url string) (domain.Link, error)
-	GetLinks(chatId int64) []domain.Link
+	GetLinks(chatId int64) ([]domain.Link, error)
 }
 
 type Server struct {
 	srv     *http.Server
-	storage Storage
+	service Service
 }
 
-func NewServer(port string, storage Storage) *Server {
+func NewServer(port string, service Service) *Server {
 	mux := http.NewServeMux()
 
 	server := &Server{
-		storage: storage,
+		service: service,
 	}
 
 	mux.HandleFunc("/tg-chat/{id}", server.updateChat)
@@ -62,7 +60,7 @@ func (s *Server) updateChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) updateChatPost(w http.ResponseWriter, id int64) {
-	err := s.storage.RegisterChat(id)
+	err := s.service.RegisterChat(id)
 	if err != nil {
 		slog.Error("cannot register chat", "id", id, "error", err)
 		writeError(w, http.StatusConflict, err.Error())
@@ -72,7 +70,7 @@ func (s *Server) updateChatPost(w http.ResponseWriter, id int64) {
 }
 
 func (s *Server) updateChatDelete(w http.ResponseWriter, id int64) {
-	err := s.storage.DeleteChat(id)
+	err := s.service.DeleteChat(id)
 	if err != nil {
 		slog.Error("cannot delete chat", "id", id, "error", err)
 		writeError(w, http.StatusConflict, err.Error())
@@ -91,13 +89,6 @@ func (s *Server) links(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists := s.storage.ChatExists(id)
-	if !exists {
-		slog.Error("chat doesn't exist", "id", id)
-		writeError(w, http.StatusNotFound, "chat doesn't exist")
-		return
-	}
-
 	switch r.Method {
 	case http.MethodGet:
 		s.linksGet(w, id)
@@ -113,7 +104,12 @@ func (s *Server) links(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) linksGet(w http.ResponseWriter, id int64) {
-	links := s.storage.GetLinks(id)
+	links, err := s.service.GetLinks(id)
+	if err != nil {
+		slog.Error("get links error", "error", err)
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
 
 	response := ListLinksResponse{Size: int32(len(links))}
 	for _, l := range links {
@@ -133,7 +129,7 @@ func (s *Server) linksPost(w http.ResponseWriter, r *http.Request, id int64) {
 		return
 	}
 
-	link, err := s.storage.AddLink(id, addableLink.Link, addableLink.Tags)
+	link, err := s.service.AddLink(id, addableLink.Link, addableLink.Tags)
 	if err != nil {
 		slog.Error("add link error", "error", err)
 		writeError(w, http.StatusConflict, err.Error())
@@ -154,7 +150,7 @@ func (s *Server) linksDelete(w http.ResponseWriter, r *http.Request, id int64) {
 		return
 	}
 
-	link, err := s.storage.RemoveLink(id, removableLink.Link)
+	link, err := s.service.RemoveLink(id, removableLink.Link)
 	if err != nil {
 		slog.Error("remove link error", "error", err)
 		writeError(w, http.StatusBadRequest, err.Error())

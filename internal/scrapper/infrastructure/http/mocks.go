@@ -11,31 +11,31 @@ import (
 	domain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-// MockStorage is a mock of Storage interface.
-type MockStorage struct {
+// MockService is a mock of Service interface.
+type MockService struct {
 	ctrl     *gomock.Controller
-	recorder *MockStorageMockRecorder
+	recorder *MockServiceMockRecorder
 }
 
-// MockStorageMockRecorder is the mock recorder for MockStorage.
-type MockStorageMockRecorder struct {
-	mock *MockStorage
+// MockServiceMockRecorder is the mock recorder for MockService.
+type MockServiceMockRecorder struct {
+	mock *MockService
 }
 
-// NewMockStorage creates a new mock instance.
-func NewMockStorage(ctrl *gomock.Controller) *MockStorage {
-	mock := &MockStorage{ctrl: ctrl}
-	mock.recorder = &MockStorageMockRecorder{mock}
+// NewMockService creates a new mock instance.
+func NewMockService(ctrl *gomock.Controller) *MockService {
+	mock := &MockService{ctrl: ctrl}
+	mock.recorder = &MockServiceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
+func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
 // AddLink mocks base method.
-func (m *MockStorage) AddLink(chatId int64, url string, tags []string) (domain.Link, error) {
+func (m *MockService) AddLink(chatId int64, url string, tags []string) (domain.Link, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddLink", chatId, url, tags)
 	ret0, _ := ret[0].(domain.Link)
@@ -44,27 +44,13 @@ func (m *MockStorage) AddLink(chatId int64, url string, tags []string) (domain.L
 }
 
 // AddLink indicates an expected call of AddLink.
-func (mr *MockStorageMockRecorder) AddLink(chatId, url, tags interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) AddLink(chatId, url, tags interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockStorage)(nil).AddLink), chatId, url, tags)
-}
-
-// ChatExists mocks base method.
-func (m *MockStorage) ChatExists(chatId int64) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChatExists", chatId)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ChatExists indicates an expected call of ChatExists.
-func (mr *MockStorageMockRecorder) ChatExists(chatId interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChatExists", reflect.TypeOf((*MockStorage)(nil).ChatExists), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockService)(nil).AddLink), chatId, url, tags)
 }
 
 // DeleteChat mocks base method.
-func (m *MockStorage) DeleteChat(chatId int64) error {
+func (m *MockService) DeleteChat(chatId int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteChat", chatId)
 	ret0, _ := ret[0].(error)
@@ -72,27 +58,28 @@ func (m *MockStorage) DeleteChat(chatId int64) error {
 }
 
 // DeleteChat indicates an expected call of DeleteChat.
-func (mr *MockStorageMockRecorder) DeleteChat(chatId interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) DeleteChat(chatId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockStorage)(nil).DeleteChat), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockService)(nil).DeleteChat), chatId)
 }
 
 // GetLinks mocks base method.
-func (m *MockStorage) GetLinks(chatId int64) []domain.Link {
+func (m *MockService) GetLinks(chatId int64) ([]domain.Link, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLinks", chatId)
 	ret0, _ := ret[0].([]domain.Link)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetLinks indicates an expected call of GetLinks.
-func (mr *MockStorageMockRecorder) GetLinks(chatId interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) GetLinks(chatId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockStorage)(nil).GetLinks), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockService)(nil).GetLinks), chatId)
 }
 
 // RegisterChat mocks base method.
-func (m *MockStorage) RegisterChat(chatId int64) error {
+func (m *MockService) RegisterChat(chatId int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterChat", chatId)
 	ret0, _ := ret[0].(error)
@@ -100,13 +87,13 @@ func (m *MockStorage) RegisterChat(chatId int64) error {
 }
 
 // RegisterChat indicates an expected call of RegisterChat.
-func (mr *MockStorageMockRecorder) RegisterChat(chatId interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) RegisterChat(chatId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterChat", reflect.TypeOf((*MockStorage)(nil).RegisterChat), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterChat", reflect.TypeOf((*MockService)(nil).RegisterChat), chatId)
 }
 
 // RemoveLink mocks base method.
-func (m *MockStorage) RemoveLink(chatId int64, url string) (domain.Link, error) {
+func (m *MockService) RemoveLink(chatId int64, url string) (domain.Link, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveLink", chatId, url)
 	ret0, _ := ret[0].(domain.Link)
@@ -115,7 +102,7 @@ func (m *MockStorage) RemoveLink(chatId int64, url string) (domain.Link, error) 
 }
 
 // RemoveLink indicates an expected call of RemoveLink.
-func (mr *MockStorageMockRecorder) RemoveLink(chatId, url interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) RemoveLink(chatId, url interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLink", reflect.TypeOf((*MockStorage)(nil).RemoveLink), chatId, url)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLink", reflect.TypeOf((*MockService)(nil).RemoveLink), chatId, url)
 }
