@@ -12,14 +12,11 @@ import (
 
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/dispatcher"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/service"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
-<<<<<<< HEAD
-=======
 	bot_server "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/http"
-	telegram "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/telegram_api"
->>>>>>> 3b9d67a (feat: update main.go to match changes)
 )
 
 const shutdownTimeout = 30 * time.Second
@@ -39,41 +36,27 @@ func main() {
 	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL)
 
 	// Добавление команд в диспетчер
-<<<<<<< HEAD
 	d := dispatcher.NewCommandDispatcher(dispatcher.NewUnknownHandler())
-	start := dispatcher.NewStartHandler()
+	start := dispatcher.NewStartHandler(scrapperClient)
 	d.Register(start.Name(), func() dispatcher.Command { return start })
 	help := dispatcher.NewHelpHandler()
 	d.Register(help.Name(), func() dispatcher.Command { return help })
-=======
-	d := dispatcher.NewCommandDispatcher(handlers.NewUnknownHandler())
-	start := handlers.NewStartHandler(scrapperClient)
-	d.Register(start.Name(), func() dispatcher.Command { return start })
-	help := handlers.NewHelpHandler()
-	d.Register(help.Name(), func() dispatcher.Command { return help })
-	d.Register("/track", func() dispatcher.Command { return handlers.NewTrackHandler(scrapperClient) })
-	d.Register("/untrack", func() dispatcher.Command { return handlers.NewUntrackHandler(scrapperClient) })
-	list := handlers.NewListHandler(scrapperClient)
+	d.Register("/track", func() dispatcher.Command { return dispatcher.NewTrackHandler(scrapperClient) })
+	d.Register("/untrack", func() dispatcher.Command { return dispatcher.NewUntrackHandler(scrapperClient) })
+	list := dispatcher.NewListHandler(scrapperClient)
 	d.Register(list.Name(), func() dispatcher.Command { return list })
->>>>>>> 3b9d67a (feat: update main.go to match changes)
 
 	bot, err := bot.NewClient(cfg.TelegramToken, d)
 	if err != nil {
 		slog.Error("cannot start bot", "error", err)
 	}
 
-<<<<<<< HEAD
-	// Канал сигналов с размером 1
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-=======
-	bot := bot.NewBotClient(api, d)
+	service := service.New(bot)
 
-	server := bot_server.NewServer(bot, cfg.BotPort)
+	server := bot_server.NewServer(service, cfg.BotPort)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
->>>>>>> 3b9d67a (feat: update main.go to match changes)
 
 	// Канал ошибок
 	errChan := make(chan error, 2)
@@ -96,33 +79,20 @@ func main() {
 
 	// Ожидание сигнала о завершении или ошибку
 	select {
-<<<<<<< HEAD
-	case sig := <-sigChan:
-		slog.Info("Received signal", "signal", sig)
-	case err = <-errChan:
-		slog.Error("failed to start bot", "error", err)
-		os.Exit(1)
-=======
 	case <-ctx.Done():
 		slog.Info("shutdown signal received")
 	case err := <-errChan:
 		slog.Error("runtime error", "error", err)
->>>>>>> 3b9d67a (feat: update main.go to match changes)
 	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
 
-<<<<<<< HEAD
-	if err = bot.Stop(shutdownCtx); err != nil {
-		slog.Error("error during shutdown", "error", err)
-=======
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("error during shutdown server", "error", err)
 	}
 	if err := bot.Stop(shutdownCtx); err != nil {
 		slog.Error("error during shutdown bot", "error", err)
->>>>>>> 3b9d67a (feat: update main.go to match changes)
 	}
 
 	slog.Info("bot stoped")

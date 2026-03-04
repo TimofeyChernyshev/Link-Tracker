@@ -8,40 +8,39 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	domain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-// MockSender is a mock of Sender interface.
-type MockSender struct {
+// MockService is a mock of Service interface.
+type MockService struct {
 	ctrl     *gomock.Controller
-	recorder *MockSenderMockRecorder
+	recorder *MockServiceMockRecorder
 }
 
-// MockSenderMockRecorder is the mock recorder for MockSender.
-type MockSenderMockRecorder struct {
-	mock *MockSender
+// MockServiceMockRecorder is the mock recorder for MockService.
+type MockServiceMockRecorder struct {
+	mock *MockService
 }
 
-// NewMockSender creates a new mock instance.
-func NewMockSender(ctrl *gomock.Controller) *MockSender {
-	mock := &MockSender{ctrl: ctrl}
-	mock.recorder = &MockSenderMockRecorder{mock}
+// NewMockService creates a new mock instance.
+func NewMockService(ctrl *gomock.Controller) *MockService {
+	mock := &MockService{ctrl: ctrl}
+	mock.recorder = &MockServiceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSender) EXPECT() *MockSenderMockRecorder {
+func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
-// SendMessage mocks base method.
-func (m *MockSender) SendMessage(response *domain.Response) {
+// SendUpdates mocks base method.
+func (m *MockService) SendUpdates(chatIds []int64, desc string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SendMessage", response)
+	m.ctrl.Call(m, "SendUpdates", chatIds, desc)
 }
 
-// SendMessage indicates an expected call of SendMessage.
-func (mr *MockSenderMockRecorder) SendMessage(response interface{}) *gomock.Call {
+// SendUpdates indicates an expected call of SendUpdates.
+func (mr *MockServiceMockRecorder) SendUpdates(chatIds, desc interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMessage", reflect.TypeOf((*MockSender)(nil).SendMessage), response)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendUpdates", reflect.TypeOf((*MockService)(nil).SendUpdates), chatIds, desc)
 }
