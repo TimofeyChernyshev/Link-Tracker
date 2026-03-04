@@ -10,8 +10,8 @@ type Link struct {
 }
 
 type LinkUpdate struct {
-	Id          int64
-	Url         string
+	ID          int64
+	URL         string
 	Description string
-	TgChatIds   []int64
+	ChatIds     []int64
 }

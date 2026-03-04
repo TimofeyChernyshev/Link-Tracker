@@ -29,19 +29,19 @@ func TestBotClient_SendUpdate_OK(t *testing.T) {
 	c := NewBotClient(ts.URL)
 
 	upd := domain.LinkUpdate{
-		Id:          1,
-		Url:         "https://github.com/a/b",
-		Description: "updated",
-		TgChatIds:   []int64{1, 2},
+		ID:          1,
+		URL:         "https://github.com/a/b",
+		Description: "update",
+		ChatIds:     []int64{10, 20},
 	}
 
 	err := c.SendUpdate(context.Background(), upd)
 	require.NoError(t, err)
 
 	require.Equal(t, int64(1), received.Id)
-	require.Equal(t, upd.Url, received.Url)
+	require.Equal(t, upd.URL, received.Url)
 	require.Equal(t, upd.Description, received.Description)
-	require.Equal(t, upd.TgChatIds, received.TgChatIds)
+	require.Equal(t, upd.ChatIds, received.TgChatIds)
 }
 
 func TestBotClient_SendUpdate_Error(t *testing.T) {
