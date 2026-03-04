@@ -26,10 +26,10 @@ func NewBotClient(baseURL string) *BotClient {
 
 func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error {
 	updAPI := LinkUpdate{
-		Id:          upd.Id,
-		Url:         upd.Url,
+		Id:          upd.ID,
+		Url:         upd.URL,
 		Description: upd.Description,
-		TgChatIds:   upd.TgChatIds,
+		TgChatIds:   upd.ChatIds,
 	}
 
 	body, err := json.Marshal(updAPI)
