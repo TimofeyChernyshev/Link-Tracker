@@ -16,15 +16,15 @@ type ServerSuite struct {
 	suite.Suite
 
 	ctrl    *gomock.Controller
-	storage *MockStorage
+	service *MockService
 	server  *Server
 }
 
 func (s *ServerSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-	s.storage = NewMockStorage(s.ctrl)
+	s.service = NewMockService(s.ctrl)
 
-	s.server = NewServer("0", s.storage)
+	s.server = NewServer("0", s.service)
 }
 
 func (s *ServerSuite) TearDownTest() {
@@ -36,7 +36,7 @@ func TestServerSuite(t *testing.T) {
 }
 
 func (s *ServerSuite) TestUpdateChat_Register() {
-	s.storage.EXPECT().RegisterChat(int64(1)).Return(nil)
+	s.service.EXPECT().RegisterChat(int64(1)).Return(nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/tg-chat/1", nil)
 	rec := httptest.NewRecorder()
@@ -56,7 +56,7 @@ func (s *ServerSuite) TestUpdateChat_WrongID() {
 }
 
 func (s *ServerSuite) TestUpdateChat_RegisterReturnError() {
-	s.storage.EXPECT().RegisterChat(int64(2)).Return(errors.New("some error"))
+	s.service.EXPECT().RegisterChat(int64(2)).Return(errors.New("some error"))
 
 	req := httptest.NewRequest(http.MethodPost, "/tg-chat/2", nil)
 	rec := httptest.NewRecorder()
@@ -67,7 +67,7 @@ func (s *ServerSuite) TestUpdateChat_RegisterReturnError() {
 }
 
 func (s *ServerSuite) TestUpdateChat_Delete() {
-	s.storage.EXPECT().DeleteChat(int64(2)).Return(nil)
+	s.service.EXPECT().DeleteChat(int64(2)).Return(nil)
 
 	req := httptest.NewRequest(http.MethodDelete, "/tg-chat/2", nil)
 	rec := httptest.NewRecorder()
@@ -87,8 +87,7 @@ func (s *ServerSuite) TestUpdateChat_AnotherMethod() {
 }
 
 func (s *ServerSuite) TestLinks_Get() {
-	s.storage.EXPECT().ChatExists(int64(2)).Return(true)
-	s.storage.EXPECT().GetLinks(int64(2)).Return(nil)
+	s.service.EXPECT().GetLinks(int64(2)).Return(nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/links", nil)
 	req.Header["Tg-Chat-Id"] = []string{"2"}
@@ -100,8 +99,7 @@ func (s *ServerSuite) TestLinks_Get() {
 }
 
 func (s *ServerSuite) TestLinks_Post() {
-	s.storage.EXPECT().ChatExists(int64(2)).Return(true)
-	s.storage.EXPECT().AddLink(int64(2), "https://123", []string{"123"}).Return(domain.Link{ID: 0, URL: "https://123", Tags: []string{"123"}}, nil)
+	s.service.EXPECT().AddLink(int64(2), "https://123", []string{"123"}).Return(domain.Link{ID: 0, URL: "https://123", Tags: []string{"123"}}, nil)
 
 	body := `{"link":"https://123","tags":["123"]}`
 	req := httptest.NewRequest(http.MethodPost, "/links", strings.NewReader(body))
@@ -114,8 +112,7 @@ func (s *ServerSuite) TestLinks_Post() {
 }
 
 func (s *ServerSuite) TestLinks_Delete() {
-	s.storage.EXPECT().ChatExists(int64(2)).Return(true)
-	s.storage.EXPECT().RemoveLink(int64(2), "https://123").Return(domain.Link{ID: 0, URL: "https://123", Tags: []string{"123"}}, nil)
+	s.service.EXPECT().RemoveLink(int64(2), "https://123").Return(domain.Link{ID: 0, URL: "https://123", Tags: []string{"123"}}, nil)
 
 	body := `{"link":"https://123"}`
 	req := httptest.NewRequest(http.MethodDelete, "/links", strings.NewReader(body))
@@ -139,7 +136,6 @@ func (s *ServerSuite) TestLinks_BadBody() {
 }
 
 func (s *ServerSuite) TestLinks_BadJson() {
-	s.storage.EXPECT().ChatExists(int64(2)).Return(true)
 	body := `{"link": "}`
 	req := httptest.NewRequest(http.MethodDelete, "/links", strings.NewReader(body))
 	req.Header.Set("Tg-Chat-Id", "2")
