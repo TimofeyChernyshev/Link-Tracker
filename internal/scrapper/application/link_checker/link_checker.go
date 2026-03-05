@@ -29,7 +29,7 @@ func (lc *LinkChecker) CheckUpdates(ctx context.Context) {
 		for _, client := range lc.clinets {
 			changed, desc, err := client.Check(ctx, link)
 			if err != nil {
-				slog.Warn("error during checking client", "client", client, "error", err)
+				slog.Warn("error during checking client", "client", client, "link", link, "error", err)
 				continue
 			}
 			if !changed {
