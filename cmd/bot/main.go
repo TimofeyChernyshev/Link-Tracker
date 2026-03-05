@@ -45,8 +45,7 @@ func main() {
 	d.Register(help.Name(), func() dispatcher.Command { return help })
 	d.Register("/track", func() dispatcher.Command { return handlers.NewTrackHandler(scrapperClient) })
 	d.Register("/untrack", func() dispatcher.Command { return handlers.NewUntrackHandler(scrapperClient) })
-	list := handlers.NewListHandler(scrapperClient)
-	d.Register(list.Name(), func() dispatcher.Command { return list })
+	d.Register("/list", func() dispatcher.Command { return handlers.NewListHandler(scrapperClient) })
 
 	api, err := telegram.NewRealTelegramAPI(cfg.TelegramToken)
 	if err != nil {
