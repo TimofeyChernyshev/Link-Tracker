@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log/slog"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
@@ -19,7 +20,10 @@ func New(storage Storage) *Service {
 }
 
 func (s *Service) AddLink(chatID int64, url string, tags []string) (domain.Link, error) {
+	slog.Debug("adding link", "chatID", chatID, "url", url, "tags", tags)
+
 	if !s.storage.ChatExists(chatID) {
+		slog.Warn("cannot add link", "chatID", chatID, "error", errChatInstRegistered)
 		return domain.Link{}, errChatInstRegistered
 	}
 
@@ -27,7 +31,10 @@ func (s *Service) AddLink(chatID int64, url string, tags []string) (domain.Link,
 }
 
 func (s *Service) RemoveLink(chatID int64, url string) (domain.Link, error) {
+	slog.Debug("removing link", "chatID", chatID, "url", url)
+
 	if !s.storage.ChatExists(chatID) {
+		slog.Warn("cannot remove link", "chatID", chatID, "error", errChatInstRegistered)
 		return domain.Link{}, errChatInstRegistered
 	}
 
@@ -35,7 +42,10 @@ func (s *Service) RemoveLink(chatID int64, url string) (domain.Link, error) {
 }
 
 func (s *Service) GetLinks(chatID int64) ([]domain.Link, error) {
+	slog.Debug("getting links", "chatID", chatID)
+
 	if !s.storage.ChatExists(chatID) {
+		slog.Warn("cannot get links", "chatID", chatID, "error", errChatInstRegistered)
 		return nil, errChatInstRegistered
 	}
 
@@ -45,7 +55,10 @@ func (s *Service) GetLinks(chatID int64) ([]domain.Link, error) {
 }
 
 func (s *Service) RegisterChat(chatID int64) error {
+	slog.Debug("registering chat", "chatID", chatID)
+
 	if s.storage.ChatExists(chatID) {
+		slog.Warn("cannot register chat", "chatID", chatID, "error", errors.New("chat already registered"))
 		return errors.New("chat already registered")
 	}
 
@@ -55,7 +68,10 @@ func (s *Service) RegisterChat(chatID int64) error {
 }
 
 func (s *Service) DeleteChat(chatID int64) error {
+	slog.Debug("deleting chat", "chatID", chatID)
+
 	if !s.storage.ChatExists(chatID) {
+		slog.Warn("cannot delete chat", "chatID", chatID, "error", errChatInstRegistered)
 		return errChatInstRegistered
 	}
 
