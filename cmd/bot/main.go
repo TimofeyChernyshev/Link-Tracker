@@ -43,8 +43,7 @@ func main() {
 	d.Register(help.Name(), func() dispatcher.Command { return help })
 	d.Register("/track", func() dispatcher.Command { return dispatcher.NewTrackHandler(scrapperClient) })
 	d.Register("/untrack", func() dispatcher.Command { return dispatcher.NewUntrackHandler(scrapperClient) })
-	list := dispatcher.NewListHandler(scrapperClient)
-	d.Register(list.Name(), func() dispatcher.Command { return list })
+	d.Register("/list", func() dispatcher.Command { return dispatcher.NewListHandler(scrapperClient) })
 
 	bot, err := bot.NewClient(cfg.TelegramToken, d)
 	if err != nil {
