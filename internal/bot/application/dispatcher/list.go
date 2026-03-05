@@ -52,6 +52,13 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 	case 1:
 		filteredLinks := tagFilter(lh.links, msg.Text)
 
+		if len(filteredLinks) == 0 {
+			return &domain.Response{
+				ChatID: msg.ChatID,
+				Text:   "Список отслеживаемых ссылок пуст",
+			}, true, nil
+		}
+
 		return &domain.Response{
 			ChatID: msg.ChatID,
 			Text:   strings.Join(filteredLinks, "\n"),

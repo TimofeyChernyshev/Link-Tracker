@@ -161,6 +161,36 @@ func (s *ListHandlerSuite) TestExecute_EmptyList() {
 	s.Equal("Список отслеживаемых ссылок пуст", resp.Text)
 }
 
+func (s *ListHandlerSuite) TestExecute_EmptyListAfterFilter() {
+	expectedLinks := []domain.Link{
+		{URL: "https://github.com/1", Tags: []string{"work"}},
+		{URL: "https://github.com/2", Tags: []string{"personal"}},
+	}
+
+	s.linkService.EXPECT().
+		GetLinks(gomock.Any(), int64(12345)).
+		Return(expectedLinks, nil)
+
+	resp, done, err := s.handler.Execute(s.msg)
+	s.NoError(err)
+	s.False(done)
+
+	filterMsg := &domain.Message{
+		Text:      "123",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 2,
+	}
+
+	resp, done, err = s.handler.Execute(filterMsg)
+
+	s.NoError(err)
+	s.True(done)
+	s.NotNil(resp)
+	s.Equal(int64(12345), resp.ChatID)
+	s.Equal("Список отслеживаемых ссылок пуст", resp.Text)
+}
+
 func (s *ListHandlerSuite) TestExecute_ServiceError() {
 	expectedErr := errors.New("service unavailable")
 
