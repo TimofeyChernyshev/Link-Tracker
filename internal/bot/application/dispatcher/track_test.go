@@ -78,6 +78,27 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithTags() {
 	s.Contains(resp.Text, "Ссылка добавлена")
 }
 
+func (s *TrackHandlerSuite) TestExecute_NotLink() {
+	resp, done, err := s.handler.Execute(s.msg)
+	s.NoError(err)
+	s.False(done)
+	s.NotNil(resp)
+	s.Equal(int64(12345), resp.ChatID)
+
+	linkMsg := &domain.Message{
+		Text:      "123",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 2,
+	}
+
+	resp, done, err = s.handler.Execute(linkMsg)
+	s.NoError(err)
+	s.True(done)
+	s.NotNil(resp)
+	s.Contains(resp.Text, "Некорректный формат ссылки")
+}
+
 func (s *TrackHandlerSuite) TestExecute_SuccessWithoutTags() {
 	resp, done, err := s.handler.Execute(s.msg)
 	s.NoError(err)
