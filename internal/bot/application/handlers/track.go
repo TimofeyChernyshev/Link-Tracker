@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"log/slog"
+	"net/url"
 	"strings"
 	"time"
 
@@ -31,6 +32,14 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 			Text:   "Введите ссылку для отслеживания",
 		}, false, nil
 	case 1:
+		_, err := url.ParseRequestURI(msg.Text)
+		if err != nil {
+			return &domain.Response{
+				ChatID: msg.ChatID,
+				Text:   "Некорректный формат ссылки",
+			}, true, nil
+		}
+
 		th.url = msg.Text
 		th.step = 2
 		return &domain.Response{
