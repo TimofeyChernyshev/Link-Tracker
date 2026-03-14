@@ -102,7 +102,7 @@ func (c *GithubClient) fetchRepository(ctx context.Context, apiURL string) (*rep
 	}
 
 	var repo repoResp
-	if err := json.NewDecoder(resp.Body).Decode(&repo); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&repo); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 

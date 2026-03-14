@@ -156,7 +156,7 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, apiURL string, 
 	}
 
 	var qResp QuestionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&qResp); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&qResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
