@@ -164,7 +164,7 @@ func (s *BotClientSuite) TestStop_Timeout() {
 
 	err := s.client.Stop(ctx)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Equal(context.DeadlineExceeded, err)
 
 	close(handlerBlock)
@@ -186,7 +186,7 @@ func (s *BotClientSuite) TestStop_WaitsSenders() {
 	}()
 
 	<-stopDone
-	s.NoError(stopErr)
+	s.Require().NoError(stopErr)
 	s.Eventually(func() bool {
 		select {
 		case _, ok := <-s.client.outgoing:

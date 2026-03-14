@@ -58,7 +58,7 @@ func TestCommandDispatcher_Dispatch_KnownCommand(t *testing.T) {
 
 	resp, err := dispatcher.Dispatch(msg)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, expectedResponse, resp)
 }
@@ -86,7 +86,7 @@ func TestCommandDispatcher_Dispatch_UnknownCommand(t *testing.T) {
 
 	resp, err := dispatcher.Dispatch(msg)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, expectedResponse, resp)
 }
@@ -107,7 +107,7 @@ func TestCommandDispatcher_Dispatch_NonCommand(t *testing.T) {
 
 	resp, err := dispatcher.Dispatch(msg)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, resp)
 }
 

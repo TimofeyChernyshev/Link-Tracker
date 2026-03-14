@@ -26,7 +26,7 @@ func TestLoad_Success(t *testing.T) {
 
 	cfg, err := Load()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, "test_token_12345", cfg.TelegramToken)
 }
@@ -47,7 +47,7 @@ func TestLoad_EnvFileNotFound(t *testing.T) {
 
 	cfg, err := Load()
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.ErrorContains(t, err, "token not found")
 }
@@ -71,7 +71,7 @@ func TestLoad_TokenNotSet(t *testing.T) {
 
 	cfg, err := Load()
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.Equal(t, "token not found", err.Error())
 }
@@ -93,7 +93,7 @@ func TestLoad_EmptyToken(t *testing.T) {
 
 	cfg, err := Load()
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.Equal(t, "token not found", err.Error())
 }

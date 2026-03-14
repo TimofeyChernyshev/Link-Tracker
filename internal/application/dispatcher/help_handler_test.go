@@ -65,7 +65,7 @@ func TestHelpHandler_Execute(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := handler.Execute(tt.msg)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, resp)
 			assert.Equal(t, tt.expected.chatID, resp.ChatID)
 
