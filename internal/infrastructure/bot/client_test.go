@@ -165,7 +165,7 @@ func (s *BotClientSuite) TestStop_Timeout() {
 	err := s.client.Stop(ctx)
 
 	s.Require().Error(err)
-	s.ErrorContains(err, context.DeadlineExceeded.Error())
+	s.Require().ErrorContains(err, context.DeadlineExceeded.Error())
 
 	close(handlerBlock)
 	close(s.client.jobs)
