@@ -35,15 +35,7 @@ func main() {
 
 	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL)
 
-	// Добавление команд в диспетчер
-	d := dispatcher.NewCommandDispatcher(dispatcher.NewUnknownHandler())
-	start := dispatcher.NewStartHandler(scrapperClient)
-	d.Register(start.Name(), func() dispatcher.Command { return start })
-	help := dispatcher.NewHelpHandler()
-	d.Register(help.Name(), func() dispatcher.Command { return help })
-	d.Register("/track", func() dispatcher.Command { return dispatcher.NewTrackHandler(scrapperClient) })
-	d.Register("/untrack", func() dispatcher.Command { return dispatcher.NewUntrackHandler(scrapperClient) })
-	d.Register("/list", func() dispatcher.Command { return dispatcher.NewListHandler(scrapperClient) })
+	d := setupDispatcher(scrapperClient)
 
 	bot, err := bot.NewClient(cfg.TelegramToken, d)
 	if err != nil {
@@ -70,15 +62,7 @@ func main() {
 
 	go func() {
 		slog.Info("http server for bot starting", "port", cfg.BotPort)
-		err := server.Start()
-		if !errors.Is(err, http.ErrServerClosed) {
-			errChan <- err
-		}
-	}()
-
-	go func() {
-		slog.Info("http server for bot starting", "port", cfg.BotPort)
-		err := server.Start()
+		err = server.Start()
 		if !errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
@@ -88,17 +72,17 @@ func main() {
 	select {
 	case <-ctx.Done():
 		slog.Info("shutdown signal received")
-	case err := <-errChan:
+	case err = <-errChan:
 		slog.Error("runtime error", "error", err)
 	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
 
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err = server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("error during shutdown server", "error", err)
 	}
-	if err := bot.Stop(shutdownCtx); err != nil {
+	if err = bot.Stop(shutdownCtx); err != nil {
 		slog.Error("error during shutdown bot", "error", err)
 	}
 
@@ -111,4 +95,17 @@ func setLogger() {
 	})
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
+}
+
+func setupDispatcher(scrapperClient *clients.ScrapperClient) *dispatcher.CommandDispatcher {
+	d := dispatcher.NewCommandDispatcher(dispatcher.NewUnknownHandler())
+	start := dispatcher.NewStartHandler(scrapperClient)
+	d.Register(start.Name(), func() dispatcher.Command { return start })
+	help := dispatcher.NewHelpHandler()
+	d.Register(help.Name(), func() dispatcher.Command { return help })
+	d.Register("/track", func() dispatcher.Command { return dispatcher.NewTrackHandler(scrapperClient) })
+	d.Register("/untrack", func() dispatcher.Command { return dispatcher.NewUntrackHandler(scrapperClient) })
+	d.Register("/list", func() dispatcher.Command { return dispatcher.NewListHandler(scrapperClient) })
+
+	return d
 }
