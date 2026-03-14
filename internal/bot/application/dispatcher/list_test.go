@@ -53,7 +53,7 @@ func (s *ListHandlerSuite) TestExecute_SuccessWithFilter() {
 
 	resp, done, err := s.handler.Execute(s.msg)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.False(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
@@ -68,7 +68,7 @@ func (s *ListHandlerSuite) TestExecute_SuccessWithFilter() {
 
 	resp, done, err = s.handler.Execute(filterMsg)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
@@ -92,7 +92,8 @@ func (s *ListHandlerSuite) TestExecute_FilterNoMatches() {
 		Times(1)
 
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	filterMsg := &domain.Message{
@@ -104,11 +105,11 @@ func (s *ListHandlerSuite) TestExecute_FilterNoMatches() {
 
 	resp, done, err = s.handler.Execute(filterMsg)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
-	s.Equal("", resp.Text)
+	s.Equal("Список отслеживаемых ссылок пуст", resp.Text)
 }
 
 func (s *ListHandlerSuite) TestExecute_AllLinks() {
@@ -123,7 +124,8 @@ func (s *ListHandlerSuite) TestExecute_AllLinks() {
 		Times(1)
 
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	filterMsg := &domain.Message{
@@ -135,7 +137,7 @@ func (s *ListHandlerSuite) TestExecute_AllLinks() {
 
 	resp, done, err = s.handler.Execute(filterMsg)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 
@@ -154,7 +156,7 @@ func (s *ListHandlerSuite) TestExecute_EmptyList() {
 
 	resp, done, err := s.handler.Execute(s.msg)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
@@ -172,7 +174,8 @@ func (s *ListHandlerSuite) TestExecute_EmptyListAfterFilter() {
 		Return(expectedLinks, nil)
 
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	filterMsg := &domain.Message{
@@ -184,7 +187,7 @@ func (s *ListHandlerSuite) TestExecute_EmptyListAfterFilter() {
 
 	resp, done, err = s.handler.Execute(filterMsg)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
@@ -201,7 +204,7 @@ func (s *ListHandlerSuite) TestExecute_ServiceError() {
 
 	resp, done, err := s.handler.Execute(s.msg)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Equal(expectedErr, err)
 	s.True(done)
 	s.Nil(resp)
@@ -218,7 +221,7 @@ func (s *ListHandlerSuite) TestExecute_Timeout() {
 
 	resp, done, err := s.handler.Execute(s.msg)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Equal(context.DeadlineExceeded, err)
 	s.True(done)
 	s.Nil(resp)

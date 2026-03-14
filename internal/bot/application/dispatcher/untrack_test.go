@@ -40,9 +40,9 @@ func TestUntrackHandlerSuite(t *testing.T) {
 
 func (s *UntrackHandlerSuite) TestExecute_Success() {
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.False(done)
-	s.NotNil(resp)
+	s.Require().NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
 	s.Contains(resp.Text, "Введите ссылку")
 
@@ -58,17 +58,17 @@ func (s *UntrackHandlerSuite) TestExecute_Success() {
 		Return(nil)
 
 	resp, done, err = s.handler.Execute(linkMsg)
-
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
-	s.NotNil(resp)
+	s.Require().NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
 	s.Contains(resp.Text, "Ссылка больше не отслеживается")
 }
 
 func (s *UntrackHandlerSuite) TestExecute_Timeout() {
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	linkMsg := &domain.Message{
@@ -86,16 +86,16 @@ func (s *UntrackHandlerSuite) TestExecute_Timeout() {
 		})
 
 	resp, done, err = s.handler.Execute(linkMsg)
-
-	s.Error(err)
+	s.Require().Error(err)
+	s.Nil(resp)
 	s.Equal(context.DeadlineExceeded, err)
 	s.True(done)
-	s.Nil(resp)
 }
 
 func (s *UntrackHandlerSuite) TestExecute_EmptyInput() {
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	emptyMsg := &domain.Message{
@@ -110,17 +110,17 @@ func (s *UntrackHandlerSuite) TestExecute_EmptyInput() {
 		Return(nil)
 
 	resp, done, err = s.handler.Execute(emptyMsg)
-
-	s.NoError(err)
-	s.True(done)
+	s.Require().NoError(err)
 	s.NotNil(resp)
+	s.True(done)
 }
 
 func (s *UntrackHandlerSuite) TestExecute_ValidationError() {
 	expectedErr := errors.New("invalid url format")
 
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	linkMsg := &domain.Message{
@@ -135,8 +135,7 @@ func (s *UntrackHandlerSuite) TestExecute_ValidationError() {
 		Return(expectedErr)
 
 	resp, done, err = s.handler.Execute(linkMsg)
-
-	s.Error(err)
+	s.Require().Error(err)
 	s.Equal(expectedErr, err)
 	s.True(done)
 	s.Nil(resp)

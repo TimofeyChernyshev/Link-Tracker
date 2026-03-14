@@ -40,7 +40,7 @@ func TestTrackHandlerSuite(t *testing.T) {
 
 func (s *TrackHandlerSuite) TestExecute_SuccessWithTags() {
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.False(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
@@ -53,7 +53,7 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithTags() {
 		MessageID: 2,
 	}
 	resp, done, err = s.handler.Execute(linkMsg)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.False(done)
 	s.NotNil(resp)
 	s.Contains(resp.Text, "Введите теги")
@@ -71,7 +71,7 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithTags() {
 
 	resp, done, err = s.handler.Execute(tagsMsg)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
@@ -80,7 +80,7 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithTags() {
 
 func (s *TrackHandlerSuite) TestExecute_NotLink() {
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.False(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
@@ -93,7 +93,7 @@ func (s *TrackHandlerSuite) TestExecute_NotLink() {
 	}
 
 	resp, done, err = s.handler.Execute(linkMsg)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 	s.Contains(resp.Text, "Некорректный формат ссылки")
@@ -101,7 +101,8 @@ func (s *TrackHandlerSuite) TestExecute_NotLink() {
 
 func (s *TrackHandlerSuite) TestExecute_SuccessWithoutTags() {
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	linkMsg := &domain.Message{
@@ -111,7 +112,8 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithoutTags() {
 		MessageID: 2,
 	}
 	resp, done, err = s.handler.Execute(linkMsg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	tagsMsg := &domain.Message{
@@ -127,7 +129,7 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithoutTags() {
 
 	resp, done, err = s.handler.Execute(tagsMsg)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 	s.Contains(resp.Text, "Ссылка добавлена")
@@ -137,7 +139,8 @@ func (s *TrackHandlerSuite) TestExecute_AddLinkError() {
 	expectedErr := errors.New("service unavailable")
 
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	linkMsg := &domain.Message{
@@ -147,7 +150,8 @@ func (s *TrackHandlerSuite) TestExecute_AddLinkError() {
 		MessageID: 2,
 	}
 	resp, done, err = s.handler.Execute(linkMsg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	tagsMsg := &domain.Message{
@@ -163,7 +167,7 @@ func (s *TrackHandlerSuite) TestExecute_AddLinkError() {
 
 	resp, done, err = s.handler.Execute(tagsMsg)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Equal(expectedErr, err)
 	s.True(done)
 	s.Nil(resp)
@@ -171,7 +175,8 @@ func (s *TrackHandlerSuite) TestExecute_AddLinkError() {
 
 func (s *TrackHandlerSuite) TestExecute_Timeout() {
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	linkMsg := &domain.Message{
@@ -181,7 +186,8 @@ func (s *TrackHandlerSuite) TestExecute_Timeout() {
 		MessageID: 2,
 	}
 	resp, done, err = s.handler.Execute(linkMsg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	tagsMsg := &domain.Message{
@@ -200,7 +206,7 @@ func (s *TrackHandlerSuite) TestExecute_Timeout() {
 
 	resp, done, err = s.handler.Execute(tagsMsg)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Equal(context.DeadlineExceeded, err)
 	s.True(done)
 	s.Nil(resp)
@@ -208,7 +214,8 @@ func (s *TrackHandlerSuite) TestExecute_Timeout() {
 
 func (s *TrackHandlerSuite) TestExecute_EmptyTags() {
 	resp, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	linkMsg := &domain.Message{
@@ -218,7 +225,8 @@ func (s *TrackHandlerSuite) TestExecute_EmptyTags() {
 		MessageID: 2,
 	}
 	resp, done, err = s.handler.Execute(linkMsg)
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.False(done)
 
 	tagsMsg := &domain.Message{
@@ -234,15 +242,15 @@ func (s *TrackHandlerSuite) TestExecute_EmptyTags() {
 		Times(1)
 
 	resp, done, err = s.handler.Execute(tagsMsg)
-
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.NotNil(resp)
 	s.True(done)
 	s.NotNil(resp)
 }
 
 func (s *TrackHandlerSuite) TestExecute_TagsWithSpaces() {
 	_, done, err := s.handler.Execute(s.msg)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.False(done)
 
 	linkMsg := &domain.Message{
@@ -253,7 +261,7 @@ func (s *TrackHandlerSuite) TestExecute_TagsWithSpaces() {
 	}
 
 	_, done, err = s.handler.Execute(linkMsg)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.False(done)
 
 	tagsMsg := &domain.Message{
@@ -268,8 +276,7 @@ func (s *TrackHandlerSuite) TestExecute_TagsWithSpaces() {
 		Return(nil)
 
 	_, done, err = s.handler.Execute(tagsMsg)
-
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.True(done)
 }
 
