@@ -243,10 +243,12 @@ func (s *ScrapperClientSuite) TestConcurrent() {
 
 	s.startServer(handler)
 
-	var wg sync.WaitGroup
-	wg.Add(10)
+	wgCount := 10
 
-	for i := 0; i < 10; i++ {
+	var wg sync.WaitGroup
+	wg.Add(wgCount)
+
+	for i := range wgCount {
 		go func(id int) {
 			defer wg.Done()
 			err := s.client.RegisterChat(s.ctx, int64(id))
@@ -258,7 +260,7 @@ func (s *ScrapperClientSuite) TestConcurrent() {
 
 	wg.Wait()
 
-	s.Equal(int32(10), atomic.LoadInt32(&requestCount))
+	s.Equal(int32(wgCount), atomic.LoadInt32(&requestCount))
 	s.Equal(int32(0), atomic.LoadInt32(&errorCount))
 }
 
