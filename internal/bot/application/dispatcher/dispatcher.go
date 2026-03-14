@@ -30,14 +30,14 @@ func (cd *CommandDispatcher) Register(name string, cmd func() Command) {
 
 func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, error) {
 	if convRaw, ok := cd.conversations.Load(msg.ChatID); ok {
-		conv := convRaw.(Command)
+		if conv, ok := convRaw.(Command); ok {
+			resp, done, err := conv.Execute(msg)
+			if done {
+				cd.conversations.Delete(msg.ChatID)
+			}
 
-		resp, done, err := conv.Execute(msg)
-		if done {
-			cd.conversations.Delete(msg.ChatID)
+			return resp, err
 		}
-
-		return resp, err
 	}
 
 	if !strings.HasPrefix(msg.Text, "/") {
@@ -52,19 +52,19 @@ func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, er
 	isCommand := strings.HasPrefix(msg.Text, "/")
 	if !exists || !isCommand {
 		if convRaw, ok := cd.conversations.Load(msg.ChatID); ok {
-			conv := convRaw.(Command)
+			if conv, ok := convRaw.(Command); ok {
+				if cmdName == "/cancel" {
+					cd.conversations.Delete(msg.ChatID)
+					return &domain.Response{Text: "команда отменена", ChatID: msg.ChatID}, nil
+				}
 
-			if cmdName == "/cancel" {
-				cd.conversations.Delete(msg.ChatID)
-				return &domain.Response{Text: "команда отменена", ChatID: msg.ChatID}, nil
+				resp, done, err := conv.Execute(msg)
+				if done {
+					cd.conversations.Delete(msg.ChatID)
+				}
+
+				return resp, err
 			}
-
-			resp, done, err := conv.Execute(msg)
-			if done {
-				cd.conversations.Delete(msg.ChatID)
-			}
-
-			return resp, err
 		}
 
 		if !isCommand {
