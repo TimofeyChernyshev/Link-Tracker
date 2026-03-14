@@ -97,7 +97,7 @@ func TestStartHandler_Execute(t *testing.T) {
 			linkService.EXPECT().RegisterChat(gomock.Any(), tt.msg.ChatID).Return(tt.linkServiceErr).Times(1)
 
 			resp, done, err := handler.Execute(tt.msg)
-			assert.Equal(t, true, done)
+			assert.True(t, done)
 
 			require.ErrorIs(t, err, tt.linkServiceErr)
 			if err != nil {
