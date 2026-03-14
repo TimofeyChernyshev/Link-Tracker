@@ -120,7 +120,10 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 		slog.Error("cannot send request or get response", "error", err)
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		slog.Error("failed to close response body", "error", err)
+	}()
 
 	if resp.StatusCode >= 300 {
 		var apiErr ApiErrorResponse

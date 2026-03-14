@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -82,7 +83,10 @@ func (c *GithubClient) fetchRepository(ctx context.Context, apiURL string) (*rep
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		slog.Error("failed to close response body", "error", err)
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		switch resp.StatusCode {

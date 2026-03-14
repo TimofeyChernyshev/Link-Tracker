@@ -51,7 +51,10 @@ func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 		slog.Error("cannot send request", "request", req, "error", err)
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		slog.Error("failed to close response body", "error", err)
+	}()
 
 	if resp.StatusCode >= 300 {
 		var apiErr ApiErrorResponse
