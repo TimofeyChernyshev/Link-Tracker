@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"errors"
 	"log/slog"
 	"strings"
 
@@ -29,7 +30,7 @@ func (cd *CommandDispatcher) Register(cmd Command) {
 func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, error) {
 	if !strings.HasPrefix(msg.Text, "/") {
 		slog.Debug("got a non-command message")
-		return nil, nil
+		return nil, errors.New("message is not a command")
 	}
 
 	parts := strings.Fields(msg.Text)
