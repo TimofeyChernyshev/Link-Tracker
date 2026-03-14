@@ -13,7 +13,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/handlers"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/config"
-	telegram "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/telegram_api"
 )
 
 const shutdownTimeout = 30 * time.Second
@@ -31,17 +30,14 @@ func main() {
 	}
 
 	// Добавление команд в диспетчер
-	dispatcher := dispatcher.NewCommandDispatcher(handlers.NewUnknownHandler())
-	dispatcher.Register(handlers.NewStartHandler())
-	dispatcher.Register(handlers.NewHelpHandler())
+	d := dispatcher.NewCommandDispatcher(handlers.NewUnknownHandler())
+	d.Register(handlers.NewStartHandler())
+	d.Register(handlers.NewHelpHandler())
 
-	api, err := telegram.NewRealTelegramAPI(cfg.TelegramToken)
+	bot, err := bot.NewBotClient(cfg.TelegramToken, d)
 	if err != nil {
 		slog.Error("cannot start bot", "error", err)
-		os.Exit(1)
 	}
-
-	bot := bot.NewBotClient(api, dispatcher)
 
 	// Канал сигналов с размером 1
 	sigChan := make(chan os.Signal, 1)

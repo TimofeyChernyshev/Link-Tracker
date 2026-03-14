@@ -12,7 +12,7 @@ import (
 const workers = 8
 
 type BotClient struct {
-	api        TelegramAPI
+	api        *tgbotapi.BotAPI
 	dispatcher CommandDispatcher
 
 	stopChan chan struct{}
@@ -21,14 +21,29 @@ type BotClient struct {
 	jobs chan tgbotapi.Update
 }
 
-func NewBotClient(tgApi TelegramAPI, d CommandDispatcher) *BotClient {
+func NewBotClient(token string, d CommandDispatcher) (*BotClient, error) {
+	api, err := tgbotapi.NewBotAPI(token)
+	if err != nil {
+		return nil, err
+	}
+
 	cmds := d.GetCommands()
-	tgApi.SetCommands(cmds)
+
+	tgCommands := make([]tgbotapi.BotCommand, 0, len(cmds))
+	for _, c := range cmds {
+		tgCommands = append(tgCommands, tgbotapi.BotCommand{Command: c.Name, Description: c.Description})
+	}
+
+	setCmdCfg := tgbotapi.NewSetMyCommands(tgCommands...)
+	_, err = api.Request(setCmdCfg)
+	if err != nil {
+		slog.Warn("failed to set commands menu", "error", err)
+	}
 
 	return &BotClient{
-		api:        tgApi,
+		api:        api,
 		dispatcher: d,
-	}
+	}, nil
 }
 
 func (b *BotClient) Start() error {
@@ -40,7 +55,7 @@ func (b *BotClient) Start() error {
 		go b.worker()
 	}
 
-	slog.Info("Authorized on account", "account", b.api.Self().UserName)
+	slog.Info("Authorized on account", "account", b.api.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	updates := b.api.GetUpdatesChan(u)
@@ -86,21 +101,23 @@ func (b *BotClient) handleUpdate(update tgbotapi.Update) {
 	response, err := b.dispatcher.Dispatch(msg)
 	if err != nil {
 		slog.Error("error ocurs while trying to dispatch message", "error", err, "message", msg.Text)
+		b.SendMessage(&domain.Response{Text: err.Error(), ChatID: msg.ChatID})
 		return
 	}
 
 	if response != nil {
 		slog.Debug("got response", "response text", response.Text, "chatID", response.ChatID)
-		b.sendMessage(response)
+		b.SendMessage(response)
 	}
 }
 
-func (b *BotClient) sendMessage(response *domain.Response) {
+func (b *BotClient) SendMessage(response *domain.Response) {
 	msg := tgbotapi.NewMessage(response.ChatID, response.Text)
 
 	_, err := b.api.Send(msg)
 	if err != nil {
 		slog.Error("Error sending message", "err", err)
+		return
 	}
 
 	slog.Debug("message sent to chat", "chatID", msg.ChatID)
