@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -29,12 +30,20 @@ func (cd *CommandDispatcher) Register(name string, cmd func() Command) {
 }
 
 func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, error) {
-	var convRaw any
-	var ok bool
-	var conv Command
+	parts := strings.Fields(msg.Text)
+	cmdName := parts[0]
 
-	if convRaw, ok = cd.conversations.Load(msg.ChatID); ok {
-		if conv, ok = convRaw.(Command); ok {
+	factory, exists := cd.factories[cmdName]
+	isCommand := strings.HasPrefix(msg.Text, "/")
+	if !exists || !isCommand {
+		if convRaw, ok := cd.conversations.Load(msg.ChatID); ok {
+			conv := convRaw.(Command)
+
+			if cmdName == "/cancel" {
+				cd.conversations.Delete(msg.ChatID)
+				return &domain.Response{Text: "команда отменена", ChatID: msg.ChatID}, nil
+			}
+
 			resp, done, err := conv.Execute(msg)
 			if done {
 				cd.conversations.Delete(msg.ChatID)
@@ -42,44 +51,16 @@ func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, er
 
 			return resp, err
 		}
-	}
-
-	if !strings.HasPrefix(msg.Text, "/") {
-		slog.Debug("got a non-command message")
-		return nil, errors.New("message is not a command")
-	}
-
-	parts := strings.Fields(msg.Text)
-	cmdName := parts[0]
-
-	factory, exists := cd.factories[cmdName]
-	isCommand := strings.HasPrefix(msg.Text, "/")
-	if !exists || !isCommand {
-		if convRaw, ok = cd.conversations.Load(msg.ChatID); ok {
-			if conv, ok = convRaw.(Command); ok {
-				if cmdName == "/cancel" {
-					cd.conversations.Delete(msg.ChatID)
-					return &domain.Response{Text: "команда отменена", ChatID: msg.ChatID}, nil
-				}
-
-				resp, done, err := conv.Execute(msg)
-				if done {
-					cd.conversations.Delete(msg.ChatID)
-				}
-
-				return resp, err
-			}
-		}
 
 		if !isCommand {
 			slog.Debug("got a non-command message")
-			return nil, nil
+			return nil, errors.New("message is not a command")
 		}
 
 		if !exists {
 			slog.Debug("handler not found", "inputed command", cmdName)
 			resp, _, err := cd.unknownCommand.Execute(msg)
-			return resp, err
+			return resp, fmt.Errorf("execute unknown command for %q: %w", msg.Text, err)
 		}
 	}
 	cmd := factory()
