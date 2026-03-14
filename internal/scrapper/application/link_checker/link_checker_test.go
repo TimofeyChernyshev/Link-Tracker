@@ -79,19 +79,19 @@ func (s *LinkCheckerSuite) TestCheckUpdates_SingleLink_WithChanges() {
 	s.mockClient2.EXPECT().Check(s.ctx, link).Return(true, description, nil)
 
 	s.mockStorage.EXPECT().UpdateTimestamp(link.URL, gomock.Any()).Do(
-		func(url string, ts time.Time) {
+		func(ts time.Time) {
 			assert.WithinDuration(s.T(), time.Now(), ts, time.Second)
 		},
 	)
 
-	chatIds := []int64{123, 456}
-	s.mockStorage.EXPECT().GetSubscribers(link.URL).Return(chatIds)
+	chatIDs := []int64{123, 456}
+	s.mockStorage.EXPECT().GetSubscribers(link.URL).Return(chatIDs)
 
 	expectedUpdate := domain.LinkUpdate{
 		ID:          link.ID,
 		URL:         link.URL,
 		Description: description,
-		ChatIds:     chatIds,
+		ChatIDs:     chatIDs,
 	}
 	s.mockNotifier.EXPECT().SendUpdate(s.ctx, expectedUpdate).Return(nil)
 

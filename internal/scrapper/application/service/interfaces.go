@@ -4,10 +4,10 @@ import "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker
 
 // Storage - контракт хранилища ссылок
 type Storage interface {
-	RegisterChat(chatId int64)
-	DeleteChat(chatId int64)
-	ChatExists(chatId int64) bool
-	AddLink(chatId int64, url string, tags []string) (domain.Link, error)
-	RemoveLink(chatId int64, url string) (domain.Link, error)
+	RegisterChat(chatID int64)
+	DeleteChat(chatID int64)
+	ChatExists(chatID int64) bool
+	AddLink(chatID int64, URL string, tags []string) (domain.Link, error)
+	RemoveLink(chatID int64, URL string) (domain.Link, error)
 	GetLinks(chatId int64) []domain.Link
 }

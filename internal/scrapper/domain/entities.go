@@ -13,5 +13,5 @@ type LinkUpdate struct {
 	ID          int64
 	URL         string
 	Description string
-	ChatIds     []int64
+	ChatIDs     []int64
 }

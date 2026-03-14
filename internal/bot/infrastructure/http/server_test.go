@@ -51,9 +51,9 @@ func TestUpdates_BadRequest(t *testing.T) {
 
 	s.srv.Handler.ServeHTTP(w, req)
 
-	var bodyDecoded ApiErrorResponse
+	var bodyDecoded APIErrorResponse
 	_ = json.NewDecoder(w.Body).Decode(&bodyDecoded)
 
 	require.Equal(t, http.StatusBadRequest, w.Code)
-	require.Equal(t, ApiErrorResponse{Description: "invalid json", Code: http.StatusText(400)}, bodyDecoded)
+	require.Equal(t, APIErrorResponse{Description: "invalid json", Code: http.StatusText(400)}, bodyDecoded)
 }

@@ -38,13 +38,13 @@ func (lc *LinkChecker) CheckUpdates(ctx context.Context) {
 
 			lc.storage.UpdateTimestamp(link.URL, time.Now())
 
-			chatIds := lc.storage.GetSubscribers(link.URL)
+			chatIDs := lc.storage.GetSubscribers(link.URL)
 
 			_ = lc.notifier.SendUpdate(ctx, domain.LinkUpdate{
 				ID:          link.ID,
 				URL:         link.URL,
 				Description: desc,
-				ChatIds:     chatIds,
+				ChatIDs:     chatIDs,
 			})
 		}
 	}

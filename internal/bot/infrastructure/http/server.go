@@ -8,7 +8,7 @@ import (
 )
 
 type Service interface {
-	SendUpdates(chatIds []int64, desc string)
+	SendUpdates(chatIDs []int64, desc string)
 }
 
 type Server struct {
@@ -32,7 +32,7 @@ func NewServer(service Service, port string) *Server {
 			return
 		}
 
-		service.SendUpdates(upd.TgChatIds, upd.Description)
+		service.SendUpdates(upd.TgChatIDs, upd.Description)
 
 		w.WriteHeader(http.StatusOK)
 	})
@@ -49,7 +49,7 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
-	_ = json.NewEncoder(w).Encode(ApiErrorResponse{
+	_ = json.NewEncoder(w).Encode(APIErrorResponse{
 		Description: msg,
 		Code:        http.StatusText(code),
 	})

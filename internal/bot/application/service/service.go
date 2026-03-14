@@ -14,10 +14,10 @@ func New(bot Bot) *Service {
 	return &Service{bot: bot}
 }
 
-func (s *Service) SendUpdates(chatIds []int64, desc string) {
-	slog.Debug("got update", "description", desc, "chatIds", chatIds)
+func (s *Service) SendUpdates(chatIDs []int64, desc string) {
+	slog.Debug("got update", "description", desc, "chatIds", chatIDs)
 
-	for _, chatID := range chatIds {
+	for _, chatID := range chatIDs {
 		s.bot.SendMessage(&domain.Response{
 			ChatID: chatID,
 			Text:   desc,

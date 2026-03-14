@@ -28,10 +28,10 @@ func NewBotClient(baseURL string) *BotClient {
 
 func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error {
 	updAPI := LinkUpdate{
-		Id:          upd.ID,
-		Url:         upd.URL,
+		ID:          upd.ID,
+		URL:         upd.URL,
 		Description: upd.Description,
-		TgChatIds:   upd.ChatIds,
+		TgChatIDs:   upd.ChatIDs,
 	}
 
 	body, err := json.Marshal(updAPI)
@@ -59,7 +59,7 @@ func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 	}()
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
-		var apiErr ApiErrorResponse
+		var apiErr APIErrorResponse
 		_ = json.NewDecoder(resp.Body).Decode(&apiErr)
 
 		slog.Error("got not OK status code", "statusCode", resp.StatusCode, "description", apiErr.Description)
