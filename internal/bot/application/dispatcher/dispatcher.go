@@ -59,8 +59,8 @@ func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, er
 
 		if !exists {
 			slog.Debug("handler not found", "inputed command", cmdName)
-			resp, _, err := cd.unknownCommand.Execute(msg)
-			return resp, fmt.Errorf("execute unknown command for %q: %w", msg.Text, err)
+			resp, _, _ := cd.unknownCommand.Execute(msg)
+			return resp, fmt.Errorf("unknown command '%q'", msg.Text)
 		}
 	}
 	cmd := factory()
