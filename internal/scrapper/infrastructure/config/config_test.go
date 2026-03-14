@@ -26,7 +26,7 @@ func TestLoad_Success(t *testing.T) {
 
 	cfg, err := Load()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, "8081", cfg.ScrapperPort)
 	assert.Equal(t, "http://localhost:8080", cfg.BotBaseURL)
@@ -48,7 +48,7 @@ func TestLoad_EnvFileNotFound(t *testing.T) {
 
 	cfg, err := Load()
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, cfg)
 	assert.ErrorContains(t, err, "port not found")
 }

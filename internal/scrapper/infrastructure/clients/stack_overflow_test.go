@@ -89,7 +89,7 @@ func (s *SOClientSuite) TestExtractQuestionID() {
 			if tt.wantErr {
 				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 				s.Equal(tt.expected, result)
 			}
 		})

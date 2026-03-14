@@ -46,7 +46,7 @@ func TestService_AddLink_ChatNotExists(t *testing.T) {
 	link, err := svc.AddLink(1, "url", nil)
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, errChatInstRegistered)
+	require.ErrorIs(t, err, errChatInstRegistered)
 	assert.Equal(t, domain.Link{}, link)
 }
 
@@ -116,7 +116,7 @@ func TestService_GetLinks_ChatNotExists(t *testing.T) {
 	links, err := svc.GetLinks(1)
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, errChatInstRegistered)
+	require.ErrorIs(t, err, errChatInstRegistered)
 	assert.Nil(t, links)
 }
 

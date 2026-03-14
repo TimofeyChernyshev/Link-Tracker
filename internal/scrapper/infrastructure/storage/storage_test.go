@@ -46,7 +46,7 @@ func TestAddLink(t *testing.T) {
 
 			url := fmt.Sprintf("url-%d", i)
 			_, err := s.AddLink(chatID, url, []string{"tag"})
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}()
 	}
 

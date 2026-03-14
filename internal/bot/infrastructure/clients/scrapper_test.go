@@ -58,7 +58,7 @@ func (s *ScrapperClientSuite) TestAddLink_Success() {
 
 	s.startServer(handler)
 	err := s.client.AddLink(s.ctx, 12345, "https://github.com/test", []string{"tag1", "tag2"})
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *ScrapperClientSuite) TestAddLink_Error() {
@@ -118,7 +118,7 @@ func (s *ScrapperClientSuite) TestGetLinks_Success() {
 	s.startServer(handler)
 	links, err := s.client.GetLinks(s.ctx, 12345)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(expectedLinks, links)
 }
 
@@ -136,7 +136,7 @@ func (s *ScrapperClientSuite) TestGetLinks_Empty() {
 	s.startServer(handler)
 	links, err := s.client.GetLinks(s.ctx, 12345)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Empty(links)
 }
 
