@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -48,7 +49,8 @@ func (s *Scheduler) Start() {
 	s.scheduler.Start()
 }
 
-func (s *Scheduler) Stop() {
+func (s *Scheduler) Stop() error {
 	s.cancel()
-	s.scheduler.Shutdown()
+	err := s.scheduler.Shutdown()
+	return fmt.Errorf("stoping scheduler: %w", err)
 }

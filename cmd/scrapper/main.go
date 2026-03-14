@@ -64,7 +64,7 @@ func main() {
 
 	go func() {
 		slog.Info("starting scrapper server", "port", cfg.ScrapperPort)
-		if err := server.Start(); err != nil {
+		if err = server.Start(); err != nil {
 			errChan <- err
 		}
 	}()
@@ -78,12 +78,14 @@ func main() {
 
 	slog.Info("shutting down scrapper")
 
-	sched.Stop()
+	if err = sched.Stop(); err != nil {
+		slog.Error("scheduler stop error", "error", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err = server.Shutdown(ctx); err != nil {
 		slog.Error("server stop error", "error", err)
 	}
 
