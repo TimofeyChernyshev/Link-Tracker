@@ -74,7 +74,7 @@ func (c *ScrapperClient) GetLinks(ctx context.Context, chatID int64) ([]domain.L
 
 	links := []domain.Link{}
 	for _, l := range respBody.Links {
-		links = append(links, domain.Link{URL: l.Url, Tags: l.Tags})
+		links = append(links, domain.Link{URL: l.URL, Tags: l.Tags})
 	}
 
 	return links, nil
@@ -129,7 +129,7 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 	}()
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
-		var apiErr ApiErrorResponse
+		var apiErr APIErrorResponse
 		_ = json.NewDecoder(resp.Body).Decode(&apiErr)
 
 		slog.Error("got not OK status code", "statusCode", resp.StatusCode)

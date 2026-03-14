@@ -9,5 +9,5 @@ type Storage interface {
 	ChatExists(chatID int64) bool
 	AddLink(chatID int64, URL string, tags []string) (domain.Link, error)
 	RemoveLink(chatID int64, URL string) (domain.Link, error)
-	GetLinks(chatId int64) []domain.Link
+	GetLinks(chatID int64) []domain.Link
 }

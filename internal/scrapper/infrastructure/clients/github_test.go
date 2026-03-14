@@ -266,7 +266,7 @@ func (s *GithubClientSuite) TestCheck_InvalidJSON() {
 }
 
 func (s *GithubClientSuite) TestCheck_ContextTimeout() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 	}))
 	defer s.server.Close()

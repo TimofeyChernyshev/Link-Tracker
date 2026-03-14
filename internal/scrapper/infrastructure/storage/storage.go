@@ -56,51 +56,51 @@ func (s *Storage) ChatExists(chatID int64) bool {
 	return ok
 }
 
-func (s *Storage) AddLink(chatID int64, URL string, tags []string) (domain.Link, error) {
+func (s *Storage) AddLink(chatID int64, url string, tags []string) (domain.Link, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	link, exists := s.links[URL]
+	link, exists := s.links[url]
 	if !exists {
 		link = &domain.Link{
-			URL:       URL,
+			URL:       url,
 			Tags:      tags,
 			UpdatedAt: time.Now(),
 		}
 
-		s.links[URL] = link
+		s.links[url] = link
 	}
 
-	if _, ok := s.subs[URL]; !ok {
-		s.subs[URL] = make(map[int64]struct{})
+	if _, ok := s.subs[url]; !ok {
+		s.subs[url] = make(map[int64]struct{})
 	}
 
-	if _, ok := s.subs[URL][chatID]; ok {
-		slog.Warn("link already tracked", "chatID", chatID, "url", URL)
+	if _, ok := s.subs[url][chatID]; ok {
+		slog.Warn("link already tracked", "chatID", chatID, "url", url)
 		return domain.Link{}, errors.New("link already tracked")
 	}
 
-	s.subs[URL][chatID] = struct{}{}
+	s.subs[url][chatID] = struct{}{}
 
 	return *link, nil
 }
 
-func (s *Storage) RemoveLink(chatID int64, URL string) (domain.Link, error) {
+func (s *Storage) RemoveLink(chatID int64, url string) (domain.Link, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	set, ok := s.subs[URL]
+	set, ok := s.subs[url]
 	if !ok {
 		return domain.Link{}, errors.New("link not found")
 	}
 
 	delete(set, chatID)
 
-	link := s.links[URL]
+	link := s.links[url]
 
 	if len(set) == 0 {
-		delete(s.subs, URL)
-		delete(s.links, URL)
+		delete(s.subs, url)
+		delete(s.links, url)
 	}
 
 	return *link, nil
@@ -133,11 +133,11 @@ func (s *Storage) GetAllLinks() []domain.Link {
 	return res
 }
 
-func (s *Storage) GetSubscribers(URL string) []int64 {
+func (s *Storage) GetSubscribers(url string) []int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	set := s.subs[URL]
+	set := s.subs[url]
 
 	res := make([]int64, 0, len(set))
 	for id := range set {
@@ -146,11 +146,11 @@ func (s *Storage) GetSubscribers(URL string) []int64 {
 	return res
 }
 
-func (s *Storage) UpdateTimestamp(URL string, t time.Time) {
+func (s *Storage) UpdateTimestamp(url string, t time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if l, ok := s.links[URL]; ok {
+	if l, ok := s.links[url]; ok {
 		l.UpdatedAt = t
 	}
 }

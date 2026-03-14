@@ -50,8 +50,8 @@ func (s *ScrapperClientSuite) TestAddLink_Success() {
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(LinkResponse{
-			Id:   1,
-			Url:  "https://github.com/test",
+			ID:   1,
+			URL:  "https://github.com/test",
 			Tags: []string{"tag1", "tag2"},
 		})
 	})
@@ -62,7 +62,7 @@ func (s *ScrapperClientSuite) TestAddLink_Success() {
 }
 
 func (s *ScrapperClientSuite) TestAddLink_Error() {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		s.errorResponse(w, http.StatusBadRequest, "INVALID_LINK", "Invalid link format")
 	})
 
@@ -85,8 +85,8 @@ func (s *ScrapperClientSuite) TestRemoveLink_Success() {
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(LinkResponse{
-			Id:   1,
-			Url:  "https://github.com/test",
+			ID:   1,
+			URL:  "https://github.com/test",
 			Tags: []string{},
 		})
 	})
@@ -108,8 +108,8 @@ func (s *ScrapperClientSuite) TestGetLinks_Success() {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(ListLinksResponse{
 			Links: []LinkResponse{
-				{Id: 1, Url: "https://github.com/1", Tags: []string{"tag1"}},
-				{Id: 2, Url: "https://github.com/2", Tags: []string{"tag2", "tag3"}},
+				{ID: 1, URL: "https://github.com/1", Tags: []string{"tag1"}},
+				{ID: 2, URL: "https://github.com/2", Tags: []string{"tag2", "tag3"}},
 			},
 			Size: 2,
 		})
@@ -155,7 +155,7 @@ func (s *ScrapperClientSuite) TestRegisterChat_Success() {
 }
 
 func (s *ScrapperClientSuite) TestRegisterChat_AlreadyExists() {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		s.errorResponse(w, http.StatusConflict, "CHAT_ALREADY_EXISTS", "Chat already exists")
 	})
 
@@ -180,7 +180,7 @@ func (s *ScrapperClientSuite) TestDeleteChat_Success() {
 }
 
 func (s *ScrapperClientSuite) TestDeleteChat_NotFound() {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		s.errorResponse(w, http.StatusNotFound, "CHAT_NOT_FOUND", "Chat not found")
 	})
 
@@ -192,7 +192,7 @@ func (s *ScrapperClientSuite) TestDeleteChat_NotFound() {
 }
 
 func (s *ScrapperClientSuite) TestTimeout() {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	})
@@ -205,7 +205,7 @@ func (s *ScrapperClientSuite) TestTimeout() {
 }
 
 func (s *ScrapperClientSuite) TestContextCancel() {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	})
@@ -220,7 +220,7 @@ func (s *ScrapperClientSuite) TestContextCancel() {
 }
 
 func (s *ScrapperClientSuite) TestInvalidJSON() {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("invalid json"))
 	})
@@ -236,7 +236,7 @@ func (s *ScrapperClientSuite) TestConcurrent() {
 	var requestCount int32
 	var errorCount int32
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&requestCount, 1)
 		w.WriteHeader(http.StatusOK)
 	})
@@ -283,7 +283,7 @@ func (s *ScrapperClientSuite) assertCommonHeaders(r *http.Request, expectedMetho
 // errorResponse создает JSON ответ с ошибкой
 func (s *ScrapperClientSuite) errorResponse(w http.ResponseWriter, statusCode int, code, description string) {
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(ApiErrorResponse{
+	json.NewEncoder(w).Encode(APIErrorResponse{
 		Code:        code,
 		Description: description,
 	})
