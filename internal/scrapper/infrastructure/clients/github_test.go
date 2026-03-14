@@ -108,9 +108,9 @@ func (s *GithubClientSuite) TestExtractRepoPath() {
 
 func (s *GithubClientSuite) TestCheck_WithChanges() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.Equal(s.T(), "application/vnd.github.v3+json", r.Header.Get("Accept"))
-		s.Equal(s.T(), "test-bot/1.0", r.Header.Get("User-Agent"))
-		s.Equal(s.T(), "/repos/owner/repo", r.URL.Path)
+		s.Equal("application/vnd.github.v3+json", r.Header.Get("Accept"))
+		s.Equal("test-bot/1.0", r.Header.Get("User-Agent"))
+		s.Equal("/repos/owner/repo", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
