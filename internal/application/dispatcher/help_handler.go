@@ -1,4 +1,4 @@
-package handlers
+package dispatcher
 
 import (
 	"log/slog"

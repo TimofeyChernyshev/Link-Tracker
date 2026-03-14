@@ -10,7 +10,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/dispatcher"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/handlers"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/config"
 )
@@ -30,9 +29,9 @@ func main() {
 	}
 
 	// Добавление команд в диспетчер
-	d := dispatcher.NewCommandDispatcher(handlers.NewUnknownHandler())
-	d.Register(handlers.NewStartHandler())
-	d.Register(handlers.NewHelpHandler())
+	d := dispatcher.NewCommandDispatcher(dispatcher.NewUnknownHandler())
+	d.Register(dispatcher.NewStartHandler())
+	d.Register(dispatcher.NewHelpHandler())
 
 	bot, err := bot.NewBotClient(cfg.TelegramToken, d)
 	if err != nil {
