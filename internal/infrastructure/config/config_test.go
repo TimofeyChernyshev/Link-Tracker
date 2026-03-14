@@ -15,9 +15,8 @@ func TestLoad_Success(t *testing.T) {
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	t.Chdir(tempDir)
+	defer t.Chdir(originalDir)
 
 	content := []byte("TELEGRAM_TOKEN=test_token_12345\n")
 	err = os.WriteFile(".env", content, 0644)
@@ -37,9 +36,8 @@ func TestLoad_EnvFileNotFound(t *testing.T) {
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	t.Chdir(tempDir)
+	defer t.Chdir(originalDir)
 
 	os.Remove(".env")
 
@@ -58,9 +56,8 @@ func TestLoad_TokenNotSet(t *testing.T) {
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	t.Chdir(tempDir)
+	defer t.Chdir(originalDir)
 
 	content := []byte("SOME_OTHER_VAR=value\nANOTHER_VAR=123\n")
 	err = os.WriteFile(".env", content, 0644)
@@ -82,9 +79,8 @@ func TestLoad_EmptyToken(t *testing.T) {
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	t.Chdir(tempDir)
+	defer t.Chdir(originalDir)
 
 	content := []byte("TELEGRAM_TOKEN=\n")
 	err = os.WriteFile(".env", content, 0644)
