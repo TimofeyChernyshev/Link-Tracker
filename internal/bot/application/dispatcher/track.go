@@ -11,14 +11,16 @@ import (
 )
 
 type TrackHandler struct {
+	timeout time.Duration
+
 	linkService LinkService
 
 	step int
 	url  string
 }
 
-func NewTrackHandler(l LinkService) *TrackHandler {
-	return &TrackHandler{linkService: l}
+func NewTrackHandler(l LinkService, t time.Duration) *TrackHandler {
+	return &TrackHandler{linkService: l, timeout: t}
 }
 
 func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, error) {
@@ -50,7 +52,7 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 		tags := parseTags(msg.Text)
 		slog.Debug("parsed tags", "tags", tags)
 
-		context, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		context, cancel := context.WithTimeout(context.Background(), th.timeout)
 		defer cancel()
 
 		err := th.linkService.AddLink(context, msg.ChatID, th.url, tags)

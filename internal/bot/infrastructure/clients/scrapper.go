@@ -14,7 +14,10 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-const HeaderChatID = "Tg-Chat-Id"
+const (
+	HeaderChatID    = "Tg-Chat-Id"
+	ScrapperTimeout = 5 * time.Second
+)
 
 type ScrapperClient struct {
 	baseURL string
@@ -25,7 +28,7 @@ func NewScrapperClient(baseURL string) *ScrapperClient {
 	return &ScrapperClient{
 		baseURL: baseURL,
 		http: &http.Client{
-			Timeout: 5 * time.Second,
+			Timeout: ScrapperTimeout,
 		},
 	}
 }

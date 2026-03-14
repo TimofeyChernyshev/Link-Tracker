@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,8 @@ func TestStartHandler_Execute(t *testing.T) {
 
 	linkService := NewMockLinkService(ctrl)
 
-	handler := NewStartHandler(linkService)
+	timeout := time.Second
+	handler := NewStartHandler(linkService, timeout)
 
 	tests := []struct {
 		name     string

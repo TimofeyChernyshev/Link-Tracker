@@ -10,10 +10,11 @@ import (
 
 type StartHandler struct {
 	linkService LinkService
+	timeout     time.Duration
 }
 
-func NewStartHandler(l LinkService) *StartHandler {
-	return &StartHandler{linkService: l}
+func NewStartHandler(l LinkService, t time.Duration) *StartHandler {
+	return &StartHandler{linkService: l, timeout: t}
 }
 
 func (sh *StartHandler) Execute(msg *domain.Message) (*domain.Response, bool, error) {
@@ -21,7 +22,7 @@ func (sh *StartHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 
 	text := "Добро пожаловать, " + msg.Username + "!\nИспользуйте /help, чтобы посмотреть доступные команды"
 
-	context, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	context, cancel := context.WithTimeout(context.Background(), sh.timeout)
 	defer cancel()
 
 	err := sh.linkService.RegisterChat(context, msg.ChatID)

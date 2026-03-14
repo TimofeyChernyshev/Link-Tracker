@@ -9,13 +9,15 @@ import (
 )
 
 type UntrackHandler struct {
+	timeout time.Duration
+
 	linkService LinkService
 
 	step int
 }
 
-func NewUntrackHandler(l LinkService) *UntrackHandler {
-	return &UntrackHandler{linkService: l}
+func NewUntrackHandler(l LinkService, t time.Duration) *UntrackHandler {
+	return &UntrackHandler{linkService: l, timeout: t}
 }
 
 func (uh *UntrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, error) {
@@ -29,7 +31,7 @@ func (uh *UntrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, 
 			Text:   "Введите ссылку, которую нужно перестать отслеживать",
 		}, false, nil
 	case 1:
-		context, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		context, cancel := context.WithTimeout(context.Background(), uh.timeout)
 		defer cancel()
 
 		err := uh.linkService.RemoveLink(context, msg.ChatID, msg.Text)

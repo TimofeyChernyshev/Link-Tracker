@@ -11,14 +11,16 @@ import (
 )
 
 type ListHandler struct {
+	timeout time.Duration
+
 	step  int
 	links []domain.Link
 
 	linkService LinkService
 }
 
-func NewListHandler(l LinkService) *ListHandler {
-	return &ListHandler{linkService: l}
+func NewListHandler(l LinkService, t time.Duration) *ListHandler {
+	return &ListHandler{linkService: l, timeout: t}
 }
 
 func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, error) {
@@ -28,7 +30,7 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 	case 0:
 		lh.step = 1
 
-		context, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		context, cancel := context.WithTimeout(context.Background(), lh.timeout)
 		defer cancel()
 
 		links, err := lh.linkService.GetLinks(context, msg.ChatID)

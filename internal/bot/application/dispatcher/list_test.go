@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
@@ -22,7 +23,9 @@ type ListHandlerSuite struct {
 func (s *ListHandlerSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.linkService = NewMockLinkService(s.ctrl)
-	s.handler = NewListHandler(s.linkService)
+
+	timeout := time.Second
+	s.handler = NewListHandler(s.linkService, timeout)
 	s.msg = &domain.Message{
 		Text:      "/list",
 		ChatID:    12345,

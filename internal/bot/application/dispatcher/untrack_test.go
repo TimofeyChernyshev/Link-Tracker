@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
@@ -21,7 +22,9 @@ type UntrackHandlerSuite struct {
 func (s *UntrackHandlerSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.linkService = NewMockLinkService(s.ctrl)
-	s.handler = NewUntrackHandler(s.linkService)
+
+	timeout := time.Second
+	s.handler = NewUntrackHandler(s.linkService, timeout)
 	s.msg = &domain.Message{
 		Text:      "/untrack",
 		ChatID:    12345,

@@ -12,6 +12,8 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
+const BotTimeout = 5 * time.Second
+
 type BotClient struct {
 	baseURL string
 	http    *http.Client
@@ -20,7 +22,7 @@ type BotClient struct {
 func NewBotClient(baseURL string) *BotClient {
 	return &BotClient{
 		baseURL: baseURL,
-		http:    &http.Client{Timeout: 5 * time.Second},
+		http:    &http.Client{Timeout: BotTimeout},
 	}
 }
 

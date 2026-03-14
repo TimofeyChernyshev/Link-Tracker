@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
@@ -21,7 +22,9 @@ type TrackHandlerSuite struct {
 func (s *TrackHandlerSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.linkService = NewMockLinkService(s.ctrl)
-	s.handler = NewTrackHandler(s.linkService)
+
+	timeout := time.Second
+	s.handler = NewTrackHandler(s.linkService, timeout)
 	s.msg = &domain.Message{
 		Text:      "/track",
 		ChatID:    12345,

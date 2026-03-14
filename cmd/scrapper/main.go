@@ -18,7 +18,10 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/storage"
 )
 
-const shutdownTimeout = 30 * time.Second
+const (
+	shutdownTimeout = 30 * time.Second
+	checkInterval   = 5 * time.Minute
+)
 
 func main() {
 	setLogger()
@@ -47,7 +50,6 @@ func main() {
 	linkChecker := linkchecker.New(httpClients, botNotifier, memStorage)
 
 	// Планировщик
-	checkInterval := 5 * time.Minute
 	sched, err := scheduler.New(time.Duration(checkInterval), linkChecker)
 
 	s := service.New(memStorage)

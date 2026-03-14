@@ -13,6 +13,8 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
+const GitHubTimeout = 5 * time.Second
+
 type GithubClient struct {
 	http      *http.Client
 	baseURL   string
@@ -21,7 +23,7 @@ type GithubClient struct {
 
 func NewGithubClient(userAgent string) *GithubClient {
 	return &GithubClient{
-		http:      &http.Client{Timeout: 5 * time.Second},
+		http:      &http.Client{Timeout: GitHubTimeout},
 		baseURL:   "https://api.github.com/repos",
 		userAgent: userAgent,
 	}

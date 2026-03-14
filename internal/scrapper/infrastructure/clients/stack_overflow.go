@@ -14,6 +14,8 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
+const StackOverflowTimeout = 5 * time.Second
+
 type StackOverflowClient struct {
 	httpClient *http.Client
 	baseURL    string
@@ -32,7 +34,7 @@ type QuestionResponse struct {
 func NewStackOverflowClient(userAgent string) *StackOverflowClient {
 	return &StackOverflowClient{
 		httpClient: &http.Client{
-			Timeout: 5 * time.Second,
+			Timeout: StackOverflowTimeout,
 		},
 		baseURL:   "https://api.stackexchange.com/2.3/questions",
 		userAgent: userAgent,

@@ -19,7 +19,11 @@ import (
 	bot_server "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/http"
 )
 
-const shutdownTimeout = 30 * time.Second
+const (
+	shutdownTimeout = 30 * time.Second
+	goroutines      = 2
+	handlerTimeout  = 5 * time.Second
+)
 
 func main() {
 	// Создание логера
@@ -50,7 +54,7 @@ func main() {
 	defer stop()
 
 	// Канал ошибок
-	errChan := make(chan error, 2)
+	errChan := make(chan error, goroutines)
 
 	// Запуск бота в горутине
 	go func() {
@@ -99,13 +103,13 @@ func setLogger() {
 
 func setupDispatcher(scrapperClient *clients.ScrapperClient) *dispatcher.CommandDispatcher {
 	d := dispatcher.NewCommandDispatcher(dispatcher.NewUnknownHandler())
-	start := dispatcher.NewStartHandler(scrapperClient)
+	start := dispatcher.NewStartHandler(scrapperClient, handlerTimeout)
 	d.Register(start.Name(), func() dispatcher.Command { return start })
 	help := dispatcher.NewHelpHandler()
 	d.Register(help.Name(), func() dispatcher.Command { return help })
-	d.Register("/track", func() dispatcher.Command { return dispatcher.NewTrackHandler(scrapperClient) })
-	d.Register("/untrack", func() dispatcher.Command { return dispatcher.NewUntrackHandler(scrapperClient) })
-	d.Register("/list", func() dispatcher.Command { return dispatcher.NewListHandler(scrapperClient) })
+	d.Register("/track", func() dispatcher.Command { return dispatcher.NewTrackHandler(scrapperClient, handlerTimeout) })
+	d.Register("/untrack", func() dispatcher.Command { return dispatcher.NewUntrackHandler(scrapperClient, handlerTimeout) })
+	d.Register("/list", func() dispatcher.Command { return dispatcher.NewListHandler(scrapperClient, handlerTimeout) })
 
 	return d
 }
