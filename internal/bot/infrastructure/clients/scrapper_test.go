@@ -33,31 +33,6 @@ func (s *ScrapperClientSuite) TearDownTest() {
 	}
 }
 
-// startServer создает тестовый сервер с заданным обработчиком
-func (s *ScrapperClientSuite) startServer(handler http.HandlerFunc) {
-	s.server = httptest.NewServer(handler)
-	s.client = NewScrapperClient(s.server.URL)
-}
-
-// assertCommonHeaders проверяет базовые заголовки запроса
-func (s *ScrapperClientSuite) assertCommonHeaders(r *http.Request, expectedMethod, expectedPath string, expectedChatID int64) {
-	s.Equal(expectedMethod, r.Method)
-	s.Equal(expectedPath, r.URL.Path)
-
-	if expectedChatID != 0 {
-		s.Equal(strconv.FormatInt(expectedChatID, 10), r.Header.Get(HeaderChatID))
-	}
-}
-
-// errorResponse создает JSON ответ с ошибкой
-func (s *ScrapperClientSuite) errorResponse(w http.ResponseWriter, statusCode int, code, description string) {
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(ApiErrorResponse{
-		Code:        code,
-		Description: description,
-	})
-}
-
 func TestScrapperClientSuite(t *testing.T) {
 	suite.Run(t, new(ScrapperClientSuite))
 }
@@ -285,4 +260,29 @@ func (s *ScrapperClientSuite) TestConcurrent() {
 
 	s.Equal(int32(10), atomic.LoadInt32(&requestCount))
 	s.Equal(int32(0), atomic.LoadInt32(&errorCount))
+}
+
+// startServer создает тестовый сервер с заданным обработчиком
+func (s *ScrapperClientSuite) startServer(handler http.HandlerFunc) {
+	s.server = httptest.NewServer(handler)
+	s.client = NewScrapperClient(s.server.URL)
+}
+
+// assertCommonHeaders проверяет базовые заголовки запроса
+func (s *ScrapperClientSuite) assertCommonHeaders(r *http.Request, expectedMethod, expectedPath string, expectedChatID int64) {
+	s.Equal(expectedMethod, r.Method)
+	s.Equal(expectedPath, r.URL.Path)
+
+	if expectedChatID != 0 {
+		s.Equal(strconv.FormatInt(expectedChatID, 10), r.Header.Get(HeaderChatID))
+	}
+}
+
+// errorResponse создает JSON ответ с ошибкой
+func (s *ScrapperClientSuite) errorResponse(w http.ResponseWriter, statusCode int, code, description string) {
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(ApiErrorResponse{
+		Code:        code,
+		Description: description,
+	})
 }

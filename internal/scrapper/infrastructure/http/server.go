@@ -37,6 +37,14 @@ func NewServer(port string, service Service) *Server {
 	return server
 }
 
+func (s *Server) Start() error {
+	return s.srv.ListenAndServe()
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.srv.Shutdown(ctx)
+}
+
 // updateChat - хендлер для ручки /tg-chat/{id}
 func (s *Server) updateChat(w http.ResponseWriter, r *http.Request) {
 	idString := r.PathValue("id")
@@ -183,12 +191,4 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 		Description: msg,
 		Code:        http.StatusText(code),
 	})
-}
-
-func (s *Server) Start() error {
-	return s.srv.ListenAndServe()
-}
-
-func (s *Server) Shutdown(ctx context.Context) error {
-	return s.srv.Shutdown(ctx)
 }
