@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,10 @@ import (
 )
 
 const StackOverflowTimeout = 5 * time.Second
+
+var (
+	errQuestionNotFound = errors.New("question not found")
+)
 
 type StackOverflowClient struct {
 	httpClient *http.Client
@@ -56,7 +61,7 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) (bool
 	}
 
 	if len(question.Items) == 0 {
-		return false, "", fmt.Errorf("question not found")
+		return false, "", errQuestionNotFound
 	}
 
 	lastActivity := time.Unix(question.Items[0].LastActivityDate, 0)
@@ -91,7 +96,7 @@ func (c *StackOverflowClient) extractQuestionID(rawURL string) (int64, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("question ID not found in URL")
+	return 0, errors.New("question ID not found in URL")
 }
 
 func (c *StackOverflowClient) extractSite(rawURL string) string {
@@ -148,11 +153,11 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, apiURL string, 
 	if resp.StatusCode != http.StatusOK {
 		switch resp.StatusCode {
 		case http.StatusNotFound:
-			return nil, fmt.Errorf("question not found")
+			return nil, errQuestionNotFound
 		case http.StatusTooManyRequests:
-			return nil, fmt.Errorf("API rate limit exceeded")
+			return nil, errors.New("API rate limit exceeded")
 		case http.StatusBadRequest:
-			return nil, fmt.Errorf("invalid request parameters")
+			return nil, errors.New("invalid request parameters")
 		default:
 			return nil, fmt.Errorf("StackExchange API returned status %d", resp.StatusCode)
 		}
@@ -164,7 +169,7 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, apiURL string, 
 	}
 
 	if len(qResp.Items) == 0 {
-		return nil, fmt.Errorf("question not found")
+		return nil, errQuestionNotFound
 	}
 
 	return &qResp, nil

@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -67,7 +68,7 @@ func (c *GithubClient) extractRepoPath(rawURL string) (string, error) {
 
 	//nolint:mnd // 2 - минимальное число частей URL (owner/repo)
 	if len(parts) < 2 {
-		return "", fmt.Errorf("URL must contain owner and repo name")
+		return "", errors.New("URL must contain owner and repo name")
 	}
 
 	return strings.Join(parts[:2], "/"), nil
@@ -94,11 +95,11 @@ func (c *GithubClient) fetchRepository(ctx context.Context, apiURL string) (*rep
 	if resp.StatusCode != http.StatusOK {
 		switch resp.StatusCode {
 		case http.StatusNotFound:
-			return nil, fmt.Errorf("repository not found")
+			return nil, errors.New("repository not found")
 		case http.StatusForbidden:
-			return nil, fmt.Errorf("API rate limit exceeded")
+			return nil, errors.New("API rate limit exceeded")
 		case http.StatusUnauthorized:
-			return nil, fmt.Errorf("invalid or missing token")
+			return nil, errors.New("invalid or missing token")
 		default:
 			return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
 		}
