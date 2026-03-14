@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 
@@ -32,7 +33,7 @@ type Client struct {
 func NewClient(token string, d CommandDispatcher) (*Client, error) {
 	api, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot create bot apiL %w", err)
 	}
 
 	cmds := d.GetCommands()
@@ -121,7 +122,7 @@ func (c *Client) Stop(ctx context.Context) error {
 	case <-workerDone:
 		slog.Info("all handlers finished")
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("wait for workers: %w", ctx.Err())
 	}
 
 	close(c.outgoing)
@@ -136,7 +137,7 @@ func (c *Client) Stop(ctx context.Context) error {
 	case <-senderDone:
 		slog.Info("all senders finished")
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("wait for senders: %w", ctx.Err())
 	}
 
 	return nil
