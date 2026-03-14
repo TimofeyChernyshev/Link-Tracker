@@ -10,15 +10,18 @@ import (
 )
 
 const workers = 8
+const senders = 4
 
 type BotClient struct {
 	api        *tgbotapi.BotAPI
 	dispatcher CommandDispatcher
 
 	stopChan chan struct{}
-	wg       sync.WaitGroup
+	workerWg sync.WaitGroup
+	senderWg sync.WaitGroup
 
-	jobs chan tgbotapi.Update
+	jobs     chan tgbotapi.Update
+	outgoing chan *domain.Response
 }
 
 func NewBotClient(token string, d CommandDispatcher) (*BotClient, error) {
@@ -49,10 +52,16 @@ func NewBotClient(token string, d CommandDispatcher) (*BotClient, error) {
 func (b *BotClient) Start() error {
 	b.stopChan = make(chan struct{})
 	b.jobs = make(chan tgbotapi.Update, 100)
+	b.outgoing = make(chan *domain.Response, 100)
 
 	for range workers {
-		b.wg.Add(1)
+		b.workerWg.Add(1)
 		go b.worker()
+	}
+
+	for range senders {
+		b.senderWg.Add(1)
+		go b.sender()
 	}
 
 	slog.Info("Authorized on account", "account", b.api.Self.UserName)
@@ -81,10 +90,36 @@ func (b *BotClient) Start() error {
 }
 
 func (b *BotClient) worker() {
-	defer b.wg.Done()
+	defer b.workerWg.Done()
 
 	for upd := range b.jobs {
 		b.handleUpdate(upd)
+	}
+}
+
+func (b *BotClient) sender() {
+	defer b.senderWg.Done()
+
+	for resp := range b.outgoing {
+		msg := tgbotapi.NewMessage(resp.ChatID, resp.Text)
+
+		_, err := b.api.Send(msg)
+		if err != nil {
+			slog.Warn("Error sending message", "err", err)
+		}
+
+		slog.Debug("message sent to chat", "chatID", msg.ChatID)
+	}
+}
+
+// SendMessage отправляет в канал сообщений для отправки сообщения из внешнего источника
+func (b *BotClient) SendMessage(resp *domain.Response) {
+	select {
+	case <-b.stopChan:
+		slog.Info("stopping send channel")
+	case b.outgoing <- resp:
+	default:
+		slog.Warn("outgoing queue full")
 	}
 }
 
@@ -111,34 +146,36 @@ func (b *BotClient) handleUpdate(update tgbotapi.Update) {
 	}
 }
 
-func (b *BotClient) SendMessage(response *domain.Response) {
-	msg := tgbotapi.NewMessage(response.ChatID, response.Text)
-
-	_, err := b.api.Send(msg)
-	if err != nil {
-		slog.Error("Error sending message", "err", err)
-		return
-	}
-
-	slog.Debug("message sent to chat", "chatID", msg.ChatID)
-}
-
 // Stop реализует graceful shutdown
 func (b *BotClient) Stop(ctx context.Context) error {
 	close(b.stopChan)
 
 	b.api.StopReceivingUpdates()
 
-	done := make(chan struct{})
-
+	workerDone := make(chan struct{})
 	go func() {
-		b.wg.Wait()
-		close(done)
+		b.workerWg.Wait()
+		close(workerDone)
 	}()
 
 	select {
-	case <-done:
+	case <-workerDone:
 		slog.Info("all handlers finished")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	close(b.outgoing)
+
+	senderDone := make(chan struct{})
+	go func() {
+		b.senderWg.Wait()
+		close(senderDone)
+	}()
+
+	select {
+	case <-senderDone:
+		slog.Info("all senders finished")
 	case <-ctx.Done():
 		return ctx.Err()
 	}
