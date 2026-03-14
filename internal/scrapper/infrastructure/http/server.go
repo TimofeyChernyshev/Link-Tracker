@@ -118,7 +118,11 @@ func (s *Server) linksGet(w http.ResponseWriter, id int64) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		slog.Error("cannot encode response", "response", response, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to encode response")
+	}
 }
 
 func (s *Server) linksPost(w http.ResponseWriter, r *http.Request, id int64) {
@@ -139,7 +143,11 @@ func (s *Server) linksPost(w http.ResponseWriter, r *http.Request, id int64) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	response := LinkResponse{Id: link.ID, Url: link.URL, Tags: link.Tags}
-	json.NewEncoder(w).Encode(response)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		slog.Error("cannot encode response", "response", response, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to encode response")
+	}
 }
 
 func (s *Server) linksDelete(w http.ResponseWriter, r *http.Request, id int64) {
@@ -160,7 +168,11 @@ func (s *Server) linksDelete(w http.ResponseWriter, r *http.Request, id int64) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	response := LinkResponse{Id: link.ID, Url: link.URL, Tags: link.Tags}
-	json.NewEncoder(w).Encode(response)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		slog.Error("cannot encode response", "response", response, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to encode response")
+	}
 }
 
 func writeError(w http.ResponseWriter, code int, msg string) {
