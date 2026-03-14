@@ -15,9 +15,9 @@ func TestLoad_Success(t *testing.T) {
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.Chdir(tempDir)
+	t.Chdir(tempDir)
 	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	defer t.Chdir(originalDir)
 
 	content := []byte("PORT=8081\nBOT_BASE_URL=http://localhost:8080\n")
 	err = os.WriteFile(".env", content, 0644)
@@ -38,9 +38,9 @@ func TestLoad_EnvFileNotFound(t *testing.T) {
 	originalDir, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.Chdir(tempDir)
+	t.Chdir(tempDir)
 	require.NoError(t, err)
-	defer os.Chdir(originalDir)
+	defer t.Chdir(originalDir)
 
 	os.Remove(".env")
 

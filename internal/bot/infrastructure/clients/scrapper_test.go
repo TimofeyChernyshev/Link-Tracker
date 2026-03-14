@@ -69,7 +69,7 @@ func (s *ScrapperClientSuite) TestAddLink_Error() {
 	s.startServer(handler)
 	err := s.client.AddLink(s.ctx, 12345, "invalid", []string{"tag1"})
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Contains(err.Error(), "INVALID_LINK")
 	s.Contains(err.Error(), "Invalid link format")
 }
@@ -162,7 +162,7 @@ func (s *ScrapperClientSuite) TestRegisterChat_AlreadyExists() {
 	s.startServer(handler)
 	err := s.client.RegisterChat(s.ctx, 12345)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Contains(err.Error(), "CHAT_ALREADY_EXISTS")
 }
 
@@ -187,7 +187,7 @@ func (s *ScrapperClientSuite) TestDeleteChat_NotFound() {
 	s.startServer(handler)
 	err := s.client.DeleteChat(s.ctx, 12345)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Contains(err.Error(), "CHAT_NOT_FOUND")
 }
 
@@ -201,7 +201,7 @@ func (s *ScrapperClientSuite) TestTimeout() {
 	s.client.http.Timeout = 50 * time.Millisecond
 
 	err := s.client.RegisterChat(s.ctx, 12345)
-	s.Error(err)
+	s.Require().Error(err)
 }
 
 func (s *ScrapperClientSuite) TestContextCancel() {
@@ -216,7 +216,7 @@ func (s *ScrapperClientSuite) TestContextCancel() {
 	cancel()
 
 	err := s.client.RegisterChat(ctx, 12345)
-	s.Error(err)
+	s.Require().Error(err)
 }
 
 func (s *ScrapperClientSuite) TestInvalidJSON() {
@@ -228,7 +228,7 @@ func (s *ScrapperClientSuite) TestInvalidJSON() {
 	s.startServer(handler)
 	_, err := s.client.GetLinks(s.ctx, 12345)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Contains(err.Error(), "invalid character")
 }
 

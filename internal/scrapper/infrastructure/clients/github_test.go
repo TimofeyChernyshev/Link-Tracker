@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
@@ -95,13 +94,13 @@ func (s *GithubClientSuite) TestExtractRepoPath() {
 			result, err := s.client.extractRepoPath(tt.url)
 
 			if tt.wantErr {
-				assert.Error(s.T(), err)
+				s.Require().Error(err)
 				if tt.errMsg != "" {
-					assert.Contains(s.T(), err.Error(), tt.errMsg)
+					s.Require().Contains(err.Error(), tt.errMsg)
 				}
 			} else {
-				assert.NoError(s.T(), err)
-				assert.Equal(s.T(), tt.expected, result)
+				s.Require().NoError(err)
+				s.Equal(tt.expected, result)
 			}
 		})
 	}
@@ -109,9 +108,9 @@ func (s *GithubClientSuite) TestExtractRepoPath() {
 
 func (s *GithubClientSuite) TestCheck_WithChanges() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(s.T(), "application/vnd.github.v3+json", r.Header.Get("Accept"))
-		assert.Equal(s.T(), "test-bot/1.0", r.Header.Get("User-Agent"))
-		assert.Equal(s.T(), "/repos/owner/repo", r.URL.Path)
+		s.Equal(s.T(), "application/vnd.github.v3+json", r.Header.Get("Accept"))
+		s.Equal(s.T(), "test-bot/1.0", r.Header.Get("User-Agent"))
+		s.Equal(s.T(), "/repos/owner/repo", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -131,9 +130,9 @@ func (s *GithubClientSuite) TestCheck_WithChanges() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.NoError(s.T(), err)
-	assert.True(s.T(), changed)
-	assert.Contains(s.T(), desc, "Repository owner/repo was updated")
+	s.Require().NoError(err)
+	s.True(changed)
+	s.Contains(desc, "Repository owner/repo was updated")
 }
 
 func (s *GithubClientSuite) TestCheck_NoChanges() {
@@ -158,9 +157,9 @@ func (s *GithubClientSuite) TestCheck_NoChanges() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.NoError(s.T(), err)
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().NoError(err)
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *GithubClientSuite) TestCheck_NotFound() {
@@ -177,10 +176,10 @@ func (s *GithubClientSuite) TestCheck_NotFound() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "not found")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "not found")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *GithubClientSuite) TestCheck_RateLimit() {
@@ -197,10 +196,10 @@ func (s *GithubClientSuite) TestCheck_RateLimit() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "rate limit")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "rate limit")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *GithubClientSuite) TestCheck_Unauthorized() {
@@ -217,10 +216,10 @@ func (s *GithubClientSuite) TestCheck_Unauthorized() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "invalid or missing token")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "invalid or missing token")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *GithubClientSuite) TestCheck_ServerError() {
@@ -237,10 +236,10 @@ func (s *GithubClientSuite) TestCheck_ServerError() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "returned status 500")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "returned status 500")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *GithubClientSuite) TestCheck_InvalidJSON() {
@@ -259,10 +258,10 @@ func (s *GithubClientSuite) TestCheck_InvalidJSON() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "failed to decode")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to decode")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *GithubClientSuite) TestCheck_ContextTimeout() {
@@ -282,8 +281,8 @@ func (s *GithubClientSuite) TestCheck_ContextTimeout() {
 
 	changed, desc, err := s.client.Check(ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "context deadline exceeded")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "context deadline exceeded")
+	s.False(changed)
+	s.Empty(desc)
 }

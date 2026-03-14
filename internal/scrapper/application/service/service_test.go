@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"testing"
 
 	gomock "github.com/golang/mock/gomock"
@@ -47,7 +46,7 @@ func TestService_AddLink_ChatNotExists(t *testing.T) {
 	link, err := svc.AddLink(1, "url", nil)
 
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, errChatInstRegistered))
+	assert.ErrorIs(t, err, errChatInstRegistered)
 	assert.Equal(t, domain.Link{}, link)
 }
 
@@ -81,7 +80,7 @@ func TestService_RemoveLink_ChatNotExists(t *testing.T) {
 	_, err := svc.RemoveLink(1, "url")
 
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, errChatInstRegistered))
+	assert.ErrorIs(t, err, errChatInstRegistered)
 }
 
 func TestService_GetLinks_Success(t *testing.T) {
@@ -117,7 +116,7 @@ func TestService_GetLinks_ChatNotExists(t *testing.T) {
 	links, err := svc.GetLinks(1)
 
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, errChatInstRegistered))
+	assert.ErrorIs(t, err, errChatInstRegistered)
 	assert.Nil(t, links)
 }
 
@@ -178,5 +177,5 @@ func TestService_DeleteChat_NotExists(t *testing.T) {
 	err := svc.DeleteChat(1)
 
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, errChatInstRegistered))
+	assert.ErrorIs(t, err, errChatInstRegistered)
 }

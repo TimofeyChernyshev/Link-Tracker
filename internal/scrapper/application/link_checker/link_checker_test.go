@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
@@ -80,7 +79,7 @@ func (s *LinkCheckerSuite) TestCheckUpdates_SingleLink_WithChanges() {
 
 	s.mockStorage.EXPECT().UpdateTimestamp(link.URL, gomock.Any()).Do(
 		func(_ string, ts time.Time) {
-			assert.WithinDuration(s.T(), time.Now(), ts, time.Second)
+			s.WithinDuration(time.Now(), ts, time.Second)
 		},
 	)
 

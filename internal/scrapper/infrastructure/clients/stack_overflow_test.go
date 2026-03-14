@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
@@ -88,10 +87,10 @@ func (s *SOClientSuite) TestExtractQuestionID() {
 			result, err := s.client.extractQuestionID(tt.url)
 
 			if tt.wantErr {
-				assert.Error(s.T(), err)
+				s.Require().Error(err)
 			} else {
-				assert.NoError(s.T(), err)
-				assert.Equal(s.T(), tt.expected, result)
+				s.NoError(err)
+				s.Equal(tt.expected, result)
 			}
 		})
 	}
@@ -138,16 +137,16 @@ func (s *SOClientSuite) TestExtractSite() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			result := s.client.extractSite(tt.url)
-			assert.Equal(s.T(), tt.want, result)
+			s.Equal(tt.want, result)
 		})
 	}
 }
 
 func (s *SOClientSuite) TestCheck_WithChanges() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(s.T(), "stackoverflow", r.URL.Query().Get("site"))
-		assert.Equal(s.T(), "!nNPvSNVZMB", r.URL.Query().Get("filter"))
-		assert.Equal(s.T(), "/2.3/questions/12345", r.URL.Path)
+		s.Equal("stackoverflow", r.URL.Query().Get("site"))
+		s.Equal("!nNPvSNVZMB", r.URL.Query().Get("filter"))
+		s.Equal("/2.3/questions/12345", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -170,9 +169,9 @@ func (s *SOClientSuite) TestCheck_WithChanges() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.NoError(s.T(), err)
-	assert.True(s.T(), changed)
-	assert.Contains(s.T(), desc, "Question updated: Test Question")
+	s.Require().NoError(err)
+	s.True(changed)
+	s.Contains(desc, "Question updated: Test Question")
 }
 
 func (s *SOClientSuite) TestCheck_NoChanges() {
@@ -200,9 +199,9 @@ func (s *SOClientSuite) TestCheck_NoChanges() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.NoError(s.T(), err)
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().NoError(err)
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *SOClientSuite) TestCheck_NotFound() {
@@ -221,10 +220,10 @@ func (s *SOClientSuite) TestCheck_NotFound() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "not found")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "not found")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *SOClientSuite) TestCheck_RateLimit() {
@@ -241,10 +240,10 @@ func (s *SOClientSuite) TestCheck_RateLimit() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "rate limit")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "rate limit")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *SOClientSuite) TestCheck_BadRequest() {
@@ -261,10 +260,10 @@ func (s *SOClientSuite) TestCheck_BadRequest() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "invalid request")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "invalid request")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *SOClientSuite) TestCheck_ServerError() {
@@ -281,10 +280,10 @@ func (s *SOClientSuite) TestCheck_ServerError() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "returned status 500")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "returned status 500")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *SOClientSuite) TestCheck_InvalidJSON() {
@@ -303,10 +302,10 @@ func (s *SOClientSuite) TestCheck_InvalidJSON() {
 
 	changed, desc, err := s.client.Check(s.ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "failed to decode")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to decode")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *SOClientSuite) TestCheck_ContextTimeout() {
@@ -326,10 +325,10 @@ func (s *SOClientSuite) TestCheck_ContextTimeout() {
 
 	changed, desc, err := s.client.Check(ctx, link)
 
-	assert.Error(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "context deadline exceeded")
-	assert.False(s.T(), changed)
-	assert.Empty(s.T(), desc)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "context deadline exceeded")
+	s.False(changed)
+	s.Empty(desc)
 }
 
 func (s *SOClientSuite) TestCheck_DifferentSites() {
@@ -345,7 +344,7 @@ func (s *SOClientSuite) TestCheck_DifferentSites() {
 	for _, tt := range sites {
 		s.Run(tt.site, func() {
 			s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(s.T(), tt.site, r.URL.Query().Get("site"))
+				s.Equal(tt.site, r.URL.Query().Get("site"))
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
@@ -368,9 +367,9 @@ func (s *SOClientSuite) TestCheck_DifferentSites() {
 
 			changed, desc, err := s.client.Check(s.ctx, link)
 
-			assert.NoError(s.T(), err)
-			assert.True(s.T(), changed)
-			assert.NotEmpty(s.T(), desc)
+			s.Require().NoError(err)
+			s.True(changed)
+			s.NotEmpty(desc)
 		})
 	}
 }
