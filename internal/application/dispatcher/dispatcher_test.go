@@ -107,7 +107,7 @@ func TestCommandDispatcher_Dispatch_NonCommand(t *testing.T) {
 
 	resp, err := dispatcher.Dispatch(msg)
 
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Nil(t, resp)
 }
 
