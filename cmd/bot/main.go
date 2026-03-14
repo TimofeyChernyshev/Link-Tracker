@@ -76,6 +76,14 @@ func main() {
 		}
 	}()
 
+	go func() {
+		slog.Info("http server for bot starting", "port", cfg.BotPort)
+		err := server.Start()
+		if !errors.Is(err, http.ErrServerClosed) {
+			errChan <- err
+		}
+	}()
+
 	// Ожидание сигнала о завершении или ошибку
 	select {
 	case <-ctx.Done():
