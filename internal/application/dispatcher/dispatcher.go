@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -39,11 +40,19 @@ func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, er
 	handler, exists := cd.commands[cmdName]
 	if exists {
 		slog.Debug("found handler", "handler name", handler.Name(), "inputed command", cmdName)
-		return handler.Execute(msg)
+		resp, err := handler.Execute(msg)
+		if err != nil {
+			return nil, fmt.Errorf("execute command %s: %w", cmdName, err)
+		}
+		return resp, nil
 	}
 
 	slog.Debug("handler not found", "inputed command", cmdName)
-	return cd.unknownCommand.Execute(msg)
+	resp, err := cd.unknownCommand.Execute(msg)
+	if err != nil {
+		return nil, fmt.Errorf("execute unknown command for %q: %w", msg.Text, err)
+	}
+	return resp, nil
 }
 
 func (cd *CommandDispatcher) GetCommands() []domain.BotCommand {
