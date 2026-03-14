@@ -19,7 +19,7 @@ type BotClientSuite struct {
 	suite.Suite
 	ctrl           *gomock.Controller
 	mockDispatcher *MockCommandDispatcher
-	client         *BotClient
+	client         *Client
 }
 
 func (s *BotClientSuite) SetupTest() {
@@ -28,7 +28,7 @@ func (s *BotClientSuite) SetupTest() {
 
 	api, cleanup := newTestBot(s.T())
 
-	s.client = &BotClient{
+	s.client = &Client{
 		api:        api,
 		dispatcher: s.mockDispatcher,
 		stopChan:   make(chan struct{}),

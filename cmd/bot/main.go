@@ -33,7 +33,7 @@ func main() {
 	d.Register(dispatcher.NewStartHandler())
 	d.Register(dispatcher.NewHelpHandler())
 
-	bot, err := bot.NewBotClient(cfg.TelegramToken, d)
+	bot, err := bot.NewClient(cfg.TelegramToken, d)
 	if err != nil {
 		slog.Error("cannot start bot", "error", err)
 	}
