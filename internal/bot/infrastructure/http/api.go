@@ -1,4 +1,4 @@
-package bot_server
+package botserver
 
 type LinkUpdate struct {
 	ID          int64   `json:"id"`

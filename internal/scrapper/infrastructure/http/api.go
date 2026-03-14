@@ -1,4 +1,4 @@
-package scrapper_server
+package scrapperserver
 
 type LinkResponse struct {
 	ID      int64    `json:"id"`
