@@ -9,8 +9,13 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/domain"
 )
 
-const workers = 8
-const senders = 4
+const (
+	workers = 8
+	senders = 4
+
+	jobsBufferSize     = 100
+	outgoingBufferSize = 100
+)
 
 type BotClient struct {
 	api        *tgbotapi.BotAPI
@@ -51,8 +56,8 @@ func NewBotClient(token string, d CommandDispatcher) (*BotClient, error) {
 
 func (b *BotClient) Start() error {
 	b.stopChan = make(chan struct{})
-	b.jobs = make(chan tgbotapi.Update, 100)
-	b.outgoing = make(chan *domain.Response, 100)
+	b.jobs = make(chan tgbotapi.Update, jobsBufferSize)
+	b.outgoing = make(chan *domain.Response, outgoingBufferSize)
 
 	for range workers {
 		b.workerWg.Add(1)
