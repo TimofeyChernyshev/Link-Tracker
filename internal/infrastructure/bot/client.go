@@ -89,29 +89,6 @@ func (b *BotClient) Start() error {
 	}
 }
 
-func (b *BotClient) worker() {
-	defer b.workerWg.Done()
-
-	for upd := range b.jobs {
-		b.handleUpdate(upd)
-	}
-}
-
-func (b *BotClient) sender() {
-	defer b.senderWg.Done()
-
-	for resp := range b.outgoing {
-		msg := tgbotapi.NewMessage(resp.ChatID, resp.Text)
-
-		_, err := b.api.Send(msg)
-		if err != nil {
-			slog.Warn("Error sending message", "err", err)
-		}
-
-		slog.Debug("message sent to chat", "chatID", msg.ChatID)
-	}
-}
-
 // SendMessage отправляет в канал сообщений для отправки сообщения из внешнего источника
 func (b *BotClient) SendMessage(resp *domain.Response) {
 	select {
@@ -120,29 +97,6 @@ func (b *BotClient) SendMessage(resp *domain.Response) {
 	case b.outgoing <- resp:
 	default:
 		slog.Warn("outgoing queue full")
-	}
-}
-
-func (b *BotClient) handleUpdate(update tgbotapi.Update) {
-	msg := &domain.Message{
-		Text:      update.Message.Text,
-		ChatID:    update.Message.Chat.ID,
-		Username:  update.Message.From.UserName,
-		MessageID: update.Message.MessageID,
-	}
-
-	slog.Debug("got message", "message text", msg.Text, "chatID", msg.ChatID, "user", msg.Username)
-
-	response, err := b.dispatcher.Dispatch(msg)
-	if err != nil {
-		slog.Error("error ocurs while trying to dispatch message", "error", err, "message", msg.Text)
-		b.SendMessage(&domain.Response{Text: err.Error(), ChatID: msg.ChatID})
-		return
-	}
-
-	if response != nil {
-		slog.Debug("got response", "response text", response.Text, "chatID", response.ChatID)
-		b.SendMessage(response)
 	}
 }
 
@@ -181,4 +135,50 @@ func (b *BotClient) Stop(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (b *BotClient) worker() {
+	defer b.workerWg.Done()
+
+	for upd := range b.jobs {
+		b.handleUpdate(upd)
+	}
+}
+
+func (b *BotClient) sender() {
+	defer b.senderWg.Done()
+
+	for resp := range b.outgoing {
+		msg := tgbotapi.NewMessage(resp.ChatID, resp.Text)
+
+		_, err := b.api.Send(msg)
+		if err != nil {
+			slog.Warn("Error sending message", "err", err)
+		}
+
+		slog.Debug("message sent to chat", "chatID", msg.ChatID)
+	}
+}
+
+func (b *BotClient) handleUpdate(update tgbotapi.Update) {
+	msg := &domain.Message{
+		Text:      update.Message.Text,
+		ChatID:    update.Message.Chat.ID,
+		Username:  update.Message.From.UserName,
+		MessageID: update.Message.MessageID,
+	}
+
+	slog.Debug("got message", "message text", msg.Text, "chatID", msg.ChatID, "user", msg.Username)
+
+	response, err := b.dispatcher.Dispatch(msg)
+	if err != nil {
+		slog.Error("error ocurs while trying to dispatch message", "error", err, "message", msg.Text)
+		b.SendMessage(&domain.Response{Text: err.Error(), ChatID: msg.ChatID})
+		return
+	}
+
+	if response != nil {
+		slog.Debug("got response", "response text", response.Text, "chatID", response.ChatID)
+		b.SendMessage(response)
+	}
 }
