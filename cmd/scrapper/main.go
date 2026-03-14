@@ -74,7 +74,7 @@ func main() {
 	select {
 	case sig := <-sigChan:
 		slog.Info("received signal", "signal", sig)
-	case err := <-errChan:
+	case err = <-errChan:
 		slog.Error("server error", "error", err)
 	}
 

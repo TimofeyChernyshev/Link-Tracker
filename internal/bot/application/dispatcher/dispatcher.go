@@ -29,8 +29,12 @@ func (cd *CommandDispatcher) Register(name string, cmd func() Command) {
 }
 
 func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, error) {
-	if convRaw, ok := cd.conversations.Load(msg.ChatID); ok {
-		if conv, ok := convRaw.(Command); ok {
+	var convRaw any
+	var ok bool
+	var conv Command
+
+	if convRaw, ok = cd.conversations.Load(msg.ChatID); ok {
+		if conv, ok = convRaw.(Command); ok {
 			resp, done, err := conv.Execute(msg)
 			if done {
 				cd.conversations.Delete(msg.ChatID)
@@ -51,8 +55,8 @@ func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, er
 	factory, exists := cd.factories[cmdName]
 	isCommand := strings.HasPrefix(msg.Text, "/")
 	if !exists || !isCommand {
-		if convRaw, ok := cd.conversations.Load(msg.ChatID); ok {
-			if conv, ok := convRaw.(Command); ok {
+		if convRaw, ok = cd.conversations.Load(msg.ChatID); ok {
+			if conv, ok = convRaw.(Command); ok {
 				if cmdName == "/cancel" {
 					cd.conversations.Delete(msg.ChatID)
 					return &domain.Response{Text: "команда отменена", ChatID: msg.ChatID}, nil

@@ -54,7 +54,7 @@ func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 		return err
 	}
 	defer func() {
-		err := resp.Body.Close()
+		err = resp.Body.Close()
 		slog.Error("failed to close response body", "error", err)
 	}()
 

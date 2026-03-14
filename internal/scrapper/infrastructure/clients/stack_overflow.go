@@ -82,7 +82,8 @@ func (c *StackOverflowClient) extractQuestionID(rawURL string) (int64, error) {
 	// Ищем сегмент "questions" и следующий за ним
 	for i, part := range parts {
 		if part == "questions" && i+1 < len(parts) {
-			id, err := strconv.ParseInt(parts[i+1], 10, 64)
+			var id int64
+			id, err = strconv.ParseInt(parts[i+1], 10, 64)
 			if err != nil {
 				return 0, fmt.Errorf("invalid question ID: %s", parts[i+1])
 			}
@@ -140,7 +141,7 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, apiURL string, 
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer func() {
-		err := resp.Body.Close()
+		err = resp.Body.Close()
 		slog.Error("failed to close response body", "error", err)
 	}()
 

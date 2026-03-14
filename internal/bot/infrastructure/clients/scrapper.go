@@ -124,7 +124,7 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 		return err
 	}
 	defer func() {
-		err := resp.Body.Close()
+		err = resp.Body.Close()
 		slog.Error("failed to close response body", "error", err)
 	}()
 

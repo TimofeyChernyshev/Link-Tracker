@@ -86,7 +86,7 @@ func (c *GithubClient) fetchRepository(ctx context.Context, apiURL string) (*rep
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer func() {
-		err := resp.Body.Close()
+		err = resp.Body.Close()
 		slog.Error("failed to close response body", "error", err)
 	}()
 
