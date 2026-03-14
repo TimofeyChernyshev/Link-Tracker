@@ -50,7 +50,7 @@ func TestBotClientSuite(t *testing.T) {
 func newTestBot(t *testing.T) (*tgbotapi.BotAPI, func()) {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/botTESTTOKEN/getMe", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/botTESTTOKEN/getMe", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, `{
 			"ok": true,
 			"result": {
@@ -62,7 +62,7 @@ func newTestBot(t *testing.T) (*tgbotapi.BotAPI, func()) {
 		}`)
 	})
 
-	mux.HandleFunc("/botTESTTOKEN/sendMessage", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/botTESTTOKEN/sendMessage", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, `{
 			"ok": true,
 			"result": {
