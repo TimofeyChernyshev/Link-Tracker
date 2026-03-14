@@ -11,11 +11,11 @@ import (
 )
 
 type Service interface {
-	RegisterChat(chatId int64) error
-	DeleteChat(chatId int64) error
-	AddLink(chatId int64, url string, tags []string) (domain.Link, error)
-	RemoveLink(chatId int64, url string) (domain.Link, error)
-	GetLinks(chatId int64) ([]domain.Link, error)
+	RegisterChat(chatID int64) error
+	DeleteChat(chatID int64) error
+	AddLink(chatID int64, url string, tags []string) (domain.Link, error)
+	RemoveLink(chatID int64, url string) (domain.Link, error)
+	GetLinks(chatID int64) ([]domain.Link, error)
 }
 
 type Server struct {
@@ -121,7 +121,7 @@ func (s *Server) linksGet(w http.ResponseWriter, id int64) {
 
 	response := ListLinksResponse{Size: int32(len(links))}
 	for _, l := range links {
-		response.Links = append(response.Links, LinkResponse{Id: l.ID, Url: l.URL, Tags: l.Tags})
+		response.Links = append(response.Links, LinkResponse{ID: l.ID, URL: l.URL, Tags: l.Tags})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -150,7 +150,7 @@ func (s *Server) linksPost(w http.ResponseWriter, r *http.Request, id int64) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	response := LinkResponse{Id: link.ID, Url: link.URL, Tags: link.Tags}
+	response := LinkResponse{ID: link.ID, URL: link.URL, Tags: link.Tags}
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		slog.Error("cannot encode response", "response", response, "error", err)
@@ -175,7 +175,7 @@ func (s *Server) linksDelete(w http.ResponseWriter, r *http.Request, id int64) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	response := LinkResponse{Id: link.ID, Url: link.URL, Tags: link.Tags}
+	response := LinkResponse{ID: link.ID, URL: link.URL, Tags: link.Tags}
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		slog.Error("cannot encode response", "response", response, "error", err)
@@ -187,7 +187,7 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
-	_ = json.NewEncoder(w).Encode(ApiErrorResponse{
+	_ = json.NewEncoder(w).Encode(APIErrorResponse{
 		Description: msg,
 		Code:        http.StatusText(code),
 	})

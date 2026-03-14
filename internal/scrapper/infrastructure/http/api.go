@@ -1,13 +1,13 @@
 package scrapper_server
 
 type LinkResponse struct {
-	Id      int64    `json:"id"`
-	Url     string   `json:"url"`
+	ID      int64    `json:"id"`
+	URL     string   `json:"url"`
 	Tags    []string `json:"tags"`
 	Filters []string `json:"filters"`
 }
 
-type ApiErrorResponse struct {
+type APIErrorResponse struct {
 	Description      string   `json:"description"`
 	Code             string   `json:"code"`
 	ExceptionName    string   `json:"exceptionName,omitempty"`

@@ -24,21 +24,21 @@ func New() *Storage {
 	}
 }
 
-func (s *Storage) RegisterChat(chatId int64) {
+func (s *Storage) RegisterChat(chatID int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.registeredChats[chatId] = struct{}{}
+	s.registeredChats[chatID] = struct{}{}
 }
 
-func (s *Storage) DeleteChat(chatId int64) {
+func (s *Storage) DeleteChat(chatID int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.registeredChats, chatId)
+	delete(s.registeredChats, chatID)
 
 	for url, set := range s.subs {
-		delete(set, chatId)
+		delete(set, chatID)
 
 		if len(set) == 0 {
 			delete(s.subs, url)
@@ -47,60 +47,60 @@ func (s *Storage) DeleteChat(chatId int64) {
 	}
 }
 
-func (s *Storage) ChatExists(chatId int64) bool {
+func (s *Storage) ChatExists(chatID int64) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, ok := s.registeredChats[chatId]
+	_, ok := s.registeredChats[chatID]
 
 	return ok
 }
 
-func (s *Storage) AddLink(chatId int64, url string, tags []string) (domain.Link, error) {
+func (s *Storage) AddLink(chatID int64, URL string, tags []string) (domain.Link, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	link, exists := s.links[url]
+	link, exists := s.links[URL]
 	if !exists {
 		link = &domain.Link{
-			URL:       url,
+			URL:       URL,
 			Tags:      tags,
 			UpdatedAt: time.Now(),
 		}
 
-		s.links[url] = link
+		s.links[URL] = link
 	}
 
-	if _, ok := s.subs[url]; !ok {
-		s.subs[url] = make(map[int64]struct{})
+	if _, ok := s.subs[URL]; !ok {
+		s.subs[URL] = make(map[int64]struct{})
 	}
 
-	if _, ok := s.subs[url][chatId]; ok {
-		slog.Warn("link already tracked", "chatID", chatId, "url", url)
+	if _, ok := s.subs[URL][chatID]; ok {
+		slog.Warn("link already tracked", "chatID", chatID, "url", URL)
 		return domain.Link{}, errors.New("link already tracked")
 	}
 
-	s.subs[url][chatId] = struct{}{}
+	s.subs[URL][chatID] = struct{}{}
 
 	return *link, nil
 }
 
-func (s *Storage) RemoveLink(chatId int64, url string) (domain.Link, error) {
+func (s *Storage) RemoveLink(chatID int64, URL string) (domain.Link, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	set, ok := s.subs[url]
+	set, ok := s.subs[URL]
 	if !ok {
 		return domain.Link{}, errors.New("link not found")
 	}
 
-	delete(set, chatId)
+	delete(set, chatID)
 
-	link := s.links[url]
+	link := s.links[URL]
 
 	if len(set) == 0 {
-		delete(s.subs, url)
-		delete(s.links, url)
+		delete(s.subs, URL)
+		delete(s.links, URL)
 	}
 
 	return *link, nil
@@ -133,11 +133,11 @@ func (s *Storage) GetAllLinks() []domain.Link {
 	return res
 }
 
-func (s *Storage) GetSubscribers(url string) []int64 {
+func (s *Storage) GetSubscribers(URL string) []int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	set := s.subs[url]
+	set := s.subs[URL]
 
 	res := make([]int64, 0, len(set))
 	for id := range set {
@@ -146,11 +146,11 @@ func (s *Storage) GetSubscribers(url string) []int64 {
 	return res
 }
 
-func (s *Storage) UpdateTimestamp(url string, t time.Time) {
+func (s *Storage) UpdateTimestamp(URL string, t time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if l, ok := s.links[url]; ok {
+	if l, ok := s.links[URL]; ok {
 		l.UpdatedAt = t
 	}
 }
