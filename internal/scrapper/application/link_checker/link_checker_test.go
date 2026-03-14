@@ -79,7 +79,7 @@ func (s *LinkCheckerSuite) TestCheckUpdates_SingleLink_WithChanges() {
 	s.mockClient2.EXPECT().Check(s.ctx, link).Return(true, description, nil)
 
 	s.mockStorage.EXPECT().UpdateTimestamp(link.URL, gomock.Any()).Do(
-		func(ts time.Time) {
+		func(_ string, ts time.Time) {
 			assert.WithinDuration(s.T(), time.Now(), ts, time.Second)
 		},
 	)
