@@ -58,7 +58,7 @@ func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 		slog.Error("failed to close response body", "error", err)
 	}()
 
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= http.StatusMultipleChoices {
 		var apiErr ApiErrorResponse
 		_ = json.NewDecoder(resp.Body).Decode(&apiErr)
 

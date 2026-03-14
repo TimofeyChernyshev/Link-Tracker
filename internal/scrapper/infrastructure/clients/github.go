@@ -65,6 +65,7 @@ func (c *GithubClient) extractRepoPath(rawURL string) (string, error) {
 	path := strings.TrimPrefix(parsed.Path, "/")
 	parts := strings.Split(path, "/")
 
+	//nolint:mnd // 2 - минимальное число частей URL (owner/repo)
 	if len(parts) < 2 {
 		return "", fmt.Errorf("URL must contain owner and repo name")
 	}

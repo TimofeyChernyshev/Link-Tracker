@@ -24,13 +24,13 @@ func (uh *UntrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, 
 	slog.Info("untrack requested", "chatID", msg.ChatID, "step", uh.step)
 
 	switch uh.step {
-	case 0:
+	case untrackStepAwaitingLink:
 		uh.step = 1
 		return &domain.Response{
 			ChatID: msg.ChatID,
 			Text:   "Введите ссылку, которую нужно перестать отслеживать",
 		}, false, nil
-	case 1:
+	case untrackStepRemoving:
 		context, cancel := context.WithTimeout(context.Background(), uh.timeout)
 		defer cancel()
 

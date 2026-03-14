@@ -27,7 +27,7 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 	slog.Info("list requested", "chatID", msg.ChatID)
 
 	switch lh.step {
-	case 0:
+	case listStepAwaitingTags:
 		lh.step = 1
 
 		context, cancel := context.WithTimeout(context.Background(), lh.timeout)
@@ -51,7 +51,7 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 			ChatID: msg.ChatID,
 			Text:   "Введите теги по которым нужно провести фильтрацию или '-', чтобы вывести все ссылки",
 		}, false, nil
-	case 1:
+	case listStepListing:
 		filteredLinks := tagFilter(lh.links, msg.Text)
 
 		if len(filteredLinks) == 0 {

@@ -27,13 +27,13 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 	slog.Info("track requested", "chatID", msg.ChatID, "step", th.step)
 
 	switch th.step {
-	case 0:
+	case trackStepAwaitingLink:
 		th.step = 1
 		return &domain.Response{
 			ChatID: msg.ChatID,
 			Text:   "Введите ссылку для отслеживания",
 		}, false, nil
-	case 1:
+	case trackStepAwaitingTags:
 		_, err := url.ParseRequestURI(msg.Text)
 		if err != nil {
 			return &domain.Response{
@@ -48,7 +48,7 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 			ChatID: msg.ChatID,
 			Text:   "Введите теги через пробел или '-', чтобы пропустить",
 		}, false, nil
-	case 2:
+	case trackStepSaving:
 		tags := parseTags(msg.Text)
 		slog.Debug("parsed tags", "tags", tags)
 
