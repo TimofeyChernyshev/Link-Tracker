@@ -48,7 +48,7 @@ func main() {
 	// Запуск бота в горутине
 	go func() {
 		slog.Info("bot starting")
-		if err := bot.Start(); err != nil {
+		if err = bot.Start(); err != nil {
 			errChan <- err
 		}
 	}()
@@ -57,7 +57,7 @@ func main() {
 	select {
 	case sig := <-sigChan:
 		slog.Info("Received signal", "signal", sig)
-	case err := <-errChan:
+	case err = <-errChan:
 		slog.Error("failed to start bot", "error", err)
 		os.Exit(1)
 	}
@@ -69,7 +69,7 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
 
-	if err := bot.Stop(shutdownCtx); err != nil {
+	if err = bot.Stop(shutdownCtx); err != nil {
 		slog.Error("error during shutdown", "error", err)
 	}
 
