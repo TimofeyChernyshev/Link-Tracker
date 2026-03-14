@@ -139,7 +139,7 @@ func (s *GithubClientSuite) TestCheck_WithChanges() {
 func (s *GithubClientSuite) TestCheck_NoChanges() {
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{
@@ -164,7 +164,7 @@ func (s *GithubClientSuite) TestCheck_NoChanges() {
 }
 
 func (s *GithubClientSuite) TestCheck_NotFound() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer s.server.Close()
@@ -184,7 +184,7 @@ func (s *GithubClientSuite) TestCheck_NotFound() {
 }
 
 func (s *GithubClientSuite) TestCheck_RateLimit() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 	}))
 	defer s.server.Close()
@@ -204,7 +204,7 @@ func (s *GithubClientSuite) TestCheck_RateLimit() {
 }
 
 func (s *GithubClientSuite) TestCheck_Unauthorized() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer s.server.Close()
@@ -224,7 +224,7 @@ func (s *GithubClientSuite) TestCheck_Unauthorized() {
 }
 
 func (s *GithubClientSuite) TestCheck_ServerError() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer s.server.Close()
@@ -244,7 +244,7 @@ func (s *GithubClientSuite) TestCheck_ServerError() {
 }
 
 func (s *GithubClientSuite) TestCheck_InvalidJSON() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"invalid": json`))
@@ -266,7 +266,7 @@ func (s *GithubClientSuite) TestCheck_InvalidJSON() {
 }
 
 func (s *GithubClientSuite) TestCheck_ContextTimeout() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 	}))
 	defer s.server.Close()

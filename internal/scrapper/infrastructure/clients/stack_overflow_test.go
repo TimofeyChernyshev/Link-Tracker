@@ -43,19 +43,19 @@ func (s *SOClientSuite) TestExtractQuestionID() {
 		wantErr  bool
 	}{
 		{
-			name:     "простой URL",
+			name:     "just URL",
 			url:      "https://stackoverflow.com/questions/12345",
 			expected: 12345,
 			wantErr:  false,
 		},
 		{
-			name:     "URL с слешем",
+			name:     "URL with /",
 			url:      "https://stackoverflow.com/questions/12345/",
 			expected: 12345,
 			wantErr:  false,
 		},
 		{
-			name:     "URL с заголовком",
+			name:     "URL with header",
 			url:      "https://stackoverflow.com/questions/12345/how-to-test",
 			expected: 12345,
 			wantErr:  false,
@@ -67,17 +67,17 @@ func (s *SOClientSuite) TestExtractQuestionID() {
 			wantErr:  false,
 		},
 		{
-			name:    "без ID",
+			name:    "without ID",
 			url:     "https://stackoverflow.com/questions/",
 			wantErr: true,
 		},
 		{
-			name:    "невалидный ID",
+			name:    "invalid ID",
 			url:     "https://stackoverflow.com/questions/abc",
 			wantErr: true,
 		},
 		{
-			name:    "неправильный путь",
+			name:    "wrong path",
 			url:     "https://stackoverflow.com/12345",
 			wantErr: true,
 		},
@@ -104,32 +104,32 @@ func (s *SOClientSuite) TestExtractSite() {
 		want string
 	}{
 		{
-			name: "английский",
+			name: "eng",
 			url:  "https://stackoverflow.com/questions/12345",
 			want: "stackoverflow",
 		},
 		{
-			name: "русский",
+			name: "ru",
 			url:  "https://ru.stackoverflow.com/questions/12345",
 			want: "ru.stackoverflow",
 		},
 		{
-			name: "испанский",
+			name: "spanish",
 			url:  "https://es.stackoverflow.com/questions/12345",
 			want: "es.stackoverflow",
 		},
 		{
-			name: "португальский",
+			name: "port",
 			url:  "https://pt.stackoverflow.com/questions/12345",
 			want: "pt.stackoverflow",
 		},
 		{
-			name: "японский",
+			name: "japanese",
 			url:  "https://ja.stackoverflow.com/questions/12345",
 			want: "ja.stackoverflow",
 		},
 		{
-			name: "неизвестный домен",
+			name: "unknown domen",
 			url:  "https://example.com/questions/12345",
 			want: "stackoverflow",
 		},
@@ -178,7 +178,7 @@ func (s *SOClientSuite) TestCheck_WithChanges() {
 func (s *SOClientSuite) TestCheck_NoChanges() {
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{
@@ -206,7 +206,7 @@ func (s *SOClientSuite) TestCheck_NoChanges() {
 }
 
 func (s *SOClientSuite) TestCheck_NotFound() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"items": []}`))
@@ -228,7 +228,7 @@ func (s *SOClientSuite) TestCheck_NotFound() {
 }
 
 func (s *SOClientSuite) TestCheck_RateLimit() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer s.server.Close()
@@ -248,7 +248,7 @@ func (s *SOClientSuite) TestCheck_RateLimit() {
 }
 
 func (s *SOClientSuite) TestCheck_BadRequest() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer s.server.Close()
@@ -268,7 +268,7 @@ func (s *SOClientSuite) TestCheck_BadRequest() {
 }
 
 func (s *SOClientSuite) TestCheck_ServerError() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer s.server.Close()
@@ -288,7 +288,7 @@ func (s *SOClientSuite) TestCheck_ServerError() {
 }
 
 func (s *SOClientSuite) TestCheck_InvalidJSON() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"invalid": json`))
@@ -310,7 +310,7 @@ func (s *SOClientSuite) TestCheck_InvalidJSON() {
 }
 
 func (s *SOClientSuite) TestCheck_ContextTimeout() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 	}))
 	defer s.server.Close()
