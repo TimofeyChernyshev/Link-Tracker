@@ -17,10 +17,9 @@ import (
 
 type ScrapperClientSuite struct {
 	suite.Suite
-	client  *ScrapperClient
-	server  *httptest.Server
-	handler http.HandlerFunc
-	ctx     context.Context
+	client *ScrapperClient
+	server *httptest.Server
+	ctx    context.Context
 }
 
 func (s *ScrapperClientSuite) SetupTest() {
