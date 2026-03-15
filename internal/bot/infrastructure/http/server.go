@@ -3,6 +3,7 @@ package botserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 )
@@ -56,9 +57,19 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 }
 
 func (s *Server) Start() error {
-	return s.srv.ListenAndServe()
+	err := s.srv.ListenAndServe()
+	if err != nil {
+		return fmt.Errorf("cannot start server: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	return s.srv.Shutdown(ctx)
+	err := s.srv.Shutdown(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot shutdown server: %w", err)
+	}
+
+	return nil
 }
