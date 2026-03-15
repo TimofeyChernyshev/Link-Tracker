@@ -99,7 +99,7 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 		b, err := json.Marshal(reqBody)
 		if err != nil {
 			slog.Error("cannot marshal", "body", reqBody, "error", err)
-			return err
+			return fmt.Errorf("cannot marshal request body: %w", err)
 		}
 		body = bytes.NewReader(b)
 	}
@@ -107,7 +107,7 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+url, body)
 	if err != nil {
 		slog.Error("cannot create request", "url", c.baseURL+url, "Method", method, "error", err)
-		return err
+		return fmt.Errorf("cannot create request: %w", err)
 	}
 
 	if reqBody != nil {
@@ -121,7 +121,7 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 	resp, err := c.http.Do(req)
 	if err != nil {
 		slog.Error("cannot send request or get response", "error", err)
-		return err
+		return fmt.Errorf("cannot send request or get response: %w", err)
 	}
 	defer func() {
 		err = resp.Body.Close()
@@ -130,14 +130,20 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
 		var apiErr APIErrorResponse
-		_ = json.NewDecoder(resp.Body).Decode(&apiErr)
+		err = json.NewDecoder(resp.Body).Decode(&apiErr)
+		if err != nil {
+			return fmt.Errorf("cannot decode body: %w", err)
+		}
 
 		slog.Error("got not OK status code", "statusCode", resp.StatusCode)
 		return fmt.Errorf("scrapper error (code: %s): %s", apiErr.Code, apiErr.Description)
 	}
 
 	if respBody != nil {
-		return json.NewDecoder(resp.Body).Decode(respBody)
+		err = json.NewDecoder(resp.Body).Decode(respBody)
+		if err != nil {
+			return fmt.Errorf("cannot decode body: %w", err)
+		}
 	}
 
 	return nil
