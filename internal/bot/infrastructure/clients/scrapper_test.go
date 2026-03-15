@@ -11,41 +11,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-type ScrapperClientSuite struct {
-	suite.Suite
-	client *ScrapperClient
-	server *httptest.Server
-	ctx    context.Context
-}
-
-func (s *ScrapperClientSuite) SetupTest() {
-	s.ctx = context.Background()
-}
-
-func (s *ScrapperClientSuite) TearDownTest() {
-	if s.server != nil {
-		s.server.Close()
-	}
-}
-
-func TestScrapperClientSuite(t *testing.T) {
-	suite.Run(t, new(ScrapperClientSuite))
-}
-
-func (s *ScrapperClientSuite) TestAddLink_Success() {
+func TestAddLink_Success(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.assertCommonHeaders(r, http.MethodPost, 12345)
-		s.Equal("application/json", r.Header.Get("Content-Type"))
+		assertCommonHeaders(t, r, http.MethodPost, 123123)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		var req AddLinkRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
-		s.NoError(err)
-		s.Equal("https://github.com/test", req.Link)
-		s.Equal([]string{"tag1", "tag2"}, req.Tags)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://github.com/test", req.Link)
+		assert.Equal(t, []string{"tag1", "tag2"}, req.Tags)
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(LinkResponse{
@@ -55,32 +35,36 @@ func (s *ScrapperClientSuite) TestAddLink_Success() {
 		})
 	})
 
-	s.startServer(handler)
-	err := s.client.AddLink(s.ctx, 12345, "https://github.com/test", []string{"tag1", "tag2"})
-	s.Require().NoError(err)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
+
+	err := client.AddLink(t.Context(), 123123, "https://github.com/test", []string{"tag1", "tag2"})
+	require.NoError(t, err)
 }
 
-func (s *ScrapperClientSuite) TestAddLink_Error() {
+func TestAddLink_Error(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		s.errorResponse(w, http.StatusBadRequest, "INVALID_LINK", "Invalid link format")
+		errorResponse(w, http.StatusBadRequest, "INVALID_LINK", "Invalid link format")
 	})
 
-	s.startServer(handler)
-	err := s.client.AddLink(s.ctx, 12345, "invalid", []string{"tag1"})
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
-	s.Require().Error(err)
-	s.Contains(err.Error(), "INVALID_LINK")
-	s.Contains(err.Error(), "Invalid link format")
+	err := client.AddLink(t.Context(), 12345, "invalid", []string{"tag1"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "INVALID_LINK")
+	assert.Contains(t, err.Error(), "Invalid link format")
 }
 
-func (s *ScrapperClientSuite) TestRemoveLink_Success() {
+func TestRemoveLink_Success(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.assertCommonHeaders(r, http.MethodDelete, 12345)
+		assertCommonHeaders(t, r, http.MethodDelete, 12345)
 
 		var req RemoveLinkRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
-		s.NoError(err)
-		s.Equal("https://github.com/test", req.Link)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://github.com/test", req.Link)
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(LinkResponse{
@@ -90,19 +74,21 @@ func (s *ScrapperClientSuite) TestRemoveLink_Success() {
 		})
 	})
 
-	s.startServer(handler)
-	err := s.client.RemoveLink(s.ctx, 12345, "https://github.com/test")
-	s.NoError(err)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
+
+	err := client.RemoveLink(t.Context(), 12345, "https://github.com/test")
+	require.NoError(t, err)
 }
 
-func (s *ScrapperClientSuite) TestGetLinks_Success() {
+func TestGetLinks_Success(t *testing.T) {
 	expectedLinks := []domain.Link{
 		{URL: "https://github.com/1", Tags: []string{"tag1"}},
 		{URL: "https://github.com/2", Tags: []string{"tag2", "tag3"}},
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.assertCommonHeaders(r, http.MethodGet, 12345)
+		assertCommonHeaders(t, r, http.MethodGet, 12345)
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(ListLinksResponse{
@@ -114,16 +100,18 @@ func (s *ScrapperClientSuite) TestGetLinks_Success() {
 		})
 	})
 
-	s.startServer(handler)
-	links, err := s.client.GetLinks(s.ctx, 12345)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
-	s.Require().NoError(err)
-	s.Equal(expectedLinks, links)
+	links, err := client.GetLinks(t.Context(), 12345)
+
+	require.NoError(t, err)
+	assert.Equal(t, expectedLinks, links)
 }
 
-func (s *ScrapperClientSuite) TestGetLinks_Empty() {
+func TestGetLinks_Empty(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.assertCommonHeaders(r, http.MethodGet, 12345)
+		assertCommonHeaders(t, r, http.MethodGet, 12345)
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(ListLinksResponse{
@@ -132,106 +120,121 @@ func (s *ScrapperClientSuite) TestGetLinks_Empty() {
 		})
 	})
 
-	s.startServer(handler)
-	links, err := s.client.GetLinks(s.ctx, 12345)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
-	s.Require().NoError(err)
-	s.Empty(links)
+	links, err := client.GetLinks(t.Context(), 12345)
+
+	require.NoError(t, err)
+	assert.Empty(t, links)
 }
 
-func (s *ScrapperClientSuite) TestRegisterChat_Success() {
+func TestRegisterChat_Success(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.Equal(http.MethodPost, r.Method)
-		s.Equal("/tg-chat/12345", r.URL.Path)
-		s.Empty(r.Header.Get(HeaderChatID))
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/tg-chat/12345", r.URL.Path)
+		assert.Empty(t, r.Header.Get(HeaderChatID))
 
 		w.WriteHeader(http.StatusOK)
 	})
 
-	s.startServer(handler)
-	err := s.client.RegisterChat(s.ctx, 12345)
-	s.NoError(err)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
+
+	err := client.RegisterChat(t.Context(), 12345)
+	require.NoError(t, err)
 }
 
-func (s *ScrapperClientSuite) TestRegisterChat_AlreadyExists() {
+func TestRegisterChat_AlreadyExists(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		s.errorResponse(w, http.StatusConflict, "CHAT_ALREADY_EXISTS", "Chat already exists")
+		errorResponse(w, http.StatusConflict, "CHAT_ALREADY_EXISTS", "Chat already exists")
 	})
 
-	s.startServer(handler)
-	err := s.client.RegisterChat(s.ctx, 12345)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
-	s.Require().Error(err)
-	s.Contains(err.Error(), "CHAT_ALREADY_EXISTS")
+	err := client.RegisterChat(t.Context(), 12345)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "CHAT_ALREADY_EXISTS")
 }
 
-func (s *ScrapperClientSuite) TestDeleteChat_Success() {
+func TestDeleteChat_Success(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.Equal(http.MethodDelete, r.Method)
-		s.Equal("/tg-chat/12345", r.URL.Path)
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/tg-chat/12345", r.URL.Path)
 
 		w.WriteHeader(http.StatusOK)
 	})
 
-	s.startServer(handler)
-	err := s.client.DeleteChat(s.ctx, 12345)
-	s.NoError(err)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
+
+	err := client.DeleteChat(t.Context(), 12345)
+	require.NoError(t, err)
 }
 
-func (s *ScrapperClientSuite) TestDeleteChat_NotFound() {
+func TestDeleteChat_NotFound(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		s.errorResponse(w, http.StatusNotFound, "CHAT_NOT_FOUND", "Chat not found")
+		errorResponse(w, http.StatusNotFound, "CHAT_NOT_FOUND", "Chat not found")
 	})
 
-	s.startServer(handler)
-	err := s.client.DeleteChat(s.ctx, 12345)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
-	s.Require().Error(err)
-	s.Contains(err.Error(), "CHAT_NOT_FOUND")
+	err := client.DeleteChat(t.Context(), 12345)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "CHAT_NOT_FOUND")
 }
 
-func (s *ScrapperClientSuite) TestTimeout() {
+func TestTimeout(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	})
 
-	s.startServer(handler)
-	s.client.http.Timeout = 50 * time.Millisecond
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
-	err := s.client.RegisterChat(s.ctx, 12345)
-	s.Require().Error(err)
+	client.http.Timeout = 50 * time.Millisecond
+
+	err := client.RegisterChat(t.Context(), 12345)
+	require.Error(t, err)
 }
 
-func (s *ScrapperClientSuite) TestContextCancel() {
+func TestContextCancel(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	})
 
-	s.startServer(handler)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
-	ctx, cancel := context.WithCancel(s.ctx)
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	err := s.client.RegisterChat(ctx, 12345)
-	s.Require().Error(err)
+	err := client.RegisterChat(ctx, 12345)
+	require.Error(t, err)
 }
 
-func (s *ScrapperClientSuite) TestInvalidJSON() {
+func TestInvalidJSON(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("invalid json"))
 	})
 
-	s.startServer(handler)
-	_, err := s.client.GetLinks(s.ctx, 12345)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
-	s.Require().Error(err)
-	s.Contains(err.Error(), "invalid character")
+	_, err := client.GetLinks(t.Context(), 12345)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid character")
 }
 
-func (s *ScrapperClientSuite) TestConcurrent() {
+func TestConcurrent(t *testing.T) {
 	var requestCount int32
 	var errorCount int32
 
@@ -240,7 +243,8 @@ func (s *ScrapperClientSuite) TestConcurrent() {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	s.startServer(handler)
+	server := httptest.NewServer(handler)
+	client := NewScrapperClient(server.URL)
 
 	wgCount := 10
 
@@ -250,7 +254,7 @@ func (s *ScrapperClientSuite) TestConcurrent() {
 	for i := range wgCount {
 		go func(id int) {
 			defer wg.Done()
-			err := s.client.RegisterChat(s.ctx, int64(id))
+			err := client.RegisterChat(t.Context(), int64(id))
 			if err != nil {
 				atomic.AddInt32(&errorCount, 1)
 			}
@@ -259,28 +263,22 @@ func (s *ScrapperClientSuite) TestConcurrent() {
 
 	wg.Wait()
 
-	s.Equal(int32(wgCount), atomic.LoadInt32(&requestCount))
-	s.Equal(int32(0), atomic.LoadInt32(&errorCount))
-}
-
-// startServer создает тестовый сервер с заданным обработчиком
-func (s *ScrapperClientSuite) startServer(handler http.HandlerFunc) {
-	s.server = httptest.NewServer(handler)
-	s.client = NewScrapperClient(s.server.URL)
+	assert.Equal(t, int32(wgCount), atomic.LoadInt32(&requestCount))
+	assert.Equal(t, int32(0), atomic.LoadInt32(&errorCount))
 }
 
 // assertCommonHeaders проверяет базовые заголовки запроса
-func (s *ScrapperClientSuite) assertCommonHeaders(r *http.Request, expectedMethod string, expectedChatID int64) {
-	s.Equal(expectedMethod, r.Method)
-	s.Equal("/links", r.URL.Path)
+func assertCommonHeaders(t *testing.T, r *http.Request, expectedMethod string, expectedChatID int64) {
+	assert.Equal(t, expectedMethod, r.Method)
+	assert.Equal(t, "/links", r.URL.Path)
 
 	if expectedChatID != 0 {
-		s.Equal(strconv.FormatInt(expectedChatID, 10), r.Header.Get(HeaderChatID))
+		assert.Equal(t, strconv.FormatInt(expectedChatID, 10), r.Header.Get(HeaderChatID))
 	}
 }
 
 // errorResponse создает JSON ответ с ошибкой
-func (s *ScrapperClientSuite) errorResponse(w http.ResponseWriter, statusCode int, code, description string) {
+func errorResponse(w http.ResponseWriter, statusCode int, code, description string) {
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(APIErrorResponse{
 		Code:        code,
