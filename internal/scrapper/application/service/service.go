@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -27,7 +28,12 @@ func (s *Service) AddLink(chatID int64, url string, tags []string) (domain.Link,
 		return domain.Link{}, errChatInstRegistered
 	}
 
-	return s.storage.AddLink(chatID, url, tags)
+	link, err := s.storage.AddLink(chatID, url, tags)
+	if err != nil {
+		return domain.Link{}, fmt.Errorf("adding link: %w", err)
+	}
+
+	return link, nil
 }
 
 func (s *Service) RemoveLink(chatID int64, url string) (domain.Link, error) {
@@ -38,7 +44,12 @@ func (s *Service) RemoveLink(chatID int64, url string) (domain.Link, error) {
 		return domain.Link{}, errChatInstRegistered
 	}
 
-	return s.storage.RemoveLink(chatID, url)
+	link, err := s.storage.RemoveLink(chatID, url)
+	if err != nil {
+		return domain.Link{}, fmt.Errorf("removing link: %w", err)
+	}
+
+	return link, nil
 }
 
 func (s *Service) GetLinks(chatID int64) ([]domain.Link, error) {
