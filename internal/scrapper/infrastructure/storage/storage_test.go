@@ -73,24 +73,28 @@ func TestRemoveLink(t *testing.T) {
 
 	const n = 10
 
+	for i := range n {
+		url := fmt.Sprintf("url-%d", i)
+		_, err := s.AddLink(chatID, url, nil)
+		require.NoError(t, err, "failed to add link %s", url)
+	}
+
 	wg := sync.WaitGroup{}
-	wg.Add(n * 2)
+	wg.Add(n)
 
 	for i := range n {
-		go func() {
+		go func(i int) {
 			defer wg.Done()
 			url := fmt.Sprintf("url-%d", i)
-			s.AddLink(chatID, url, nil)
-		}()
-
-		go func() {
-			defer wg.Done()
-			url := fmt.Sprintf("url-%d", i)
-			s.RemoveLink(chatID, url)
-		}()
+			_, err := s.RemoveLink(chatID, url)
+			assert.NoError(t, err)
+		}(i)
 	}
 
 	wg.Wait()
+
+	links := s.GetLinks(chatID)
+	assert.Empty(t, links)
 }
 
 func TestRemoveLink_NotFound(t *testing.T) {
