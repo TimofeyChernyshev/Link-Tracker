@@ -35,7 +35,11 @@ func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, er
 	convRaw, hasConversation := cd.conversations.Load(msg.ChatID)
 
 	if hasConversation {
-		return cd.handleConversation(convRaw.(Command), msg)
+		cmd, ok := convRaw.(Command)
+		if !ok {
+			return nil, errors.New("cannot convert conversation to command")
+		}
+		return cd.handleConversation(cmd, msg)
 	}
 
 	return cd.handleNewCommand(msg, isCommand)
