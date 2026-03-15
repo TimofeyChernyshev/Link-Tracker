@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -28,7 +29,7 @@ func (sh *StartHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 	err := sh.linkService.RegisterChat(context, msg.ChatID)
 	if err != nil {
 		slog.Error("start error", "error", err)
-		return nil, true, err
+		return nil, true, fmt.Errorf("cannot register chat: %w", err)
 	}
 
 	return &domain.Response{

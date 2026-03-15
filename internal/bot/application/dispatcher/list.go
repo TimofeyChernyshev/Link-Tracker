@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"slices"
 	"strings"
@@ -36,7 +37,7 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 		links, err := lh.linkService.GetLinks(context, msg.ChatID)
 		if err != nil {
 			slog.Error("list error", "error", err)
-			return nil, true, err
+			return nil, true, fmt.Errorf("cannot get links: %w", err)
 		}
 
 		if len(links) == 0 {

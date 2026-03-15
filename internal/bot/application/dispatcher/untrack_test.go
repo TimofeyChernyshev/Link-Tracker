@@ -91,7 +91,7 @@ func (s *UntrackHandlerSuite) TestExecute_Timeout() {
 	resp, done, err = s.handler.Execute(linkMsg)
 	s.Require().Error(err)
 	s.Nil(resp)
-	s.Equal(context.DeadlineExceeded, err)
+	s.ErrorContains(err, context.DeadlineExceeded.Error())
 	s.True(done)
 }
 
@@ -139,7 +139,7 @@ func (s *UntrackHandlerSuite) TestExecute_ValidationError() {
 
 	resp, done, err = s.handler.Execute(linkMsg)
 	s.Require().Error(err)
-	s.Equal(expectedErr, err)
+	s.ErrorContains(err, expectedErr.Error())
 	s.True(done)
 	s.Nil(resp)
 }

@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -58,7 +59,7 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 		err := th.linkService.AddLink(context, msg.ChatID, th.url, tags)
 		if err != nil {
 			slog.Error("track error", "error", err)
-			return nil, true, err
+			return nil, true, fmt.Errorf("cannot add link: %w", err)
 		}
 
 		return &domain.Response{

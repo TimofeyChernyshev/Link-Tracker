@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -37,7 +38,7 @@ func (uh *UntrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, 
 		err := uh.linkService.RemoveLink(context, msg.ChatID, msg.Text)
 		if err != nil {
 			slog.Error("untrack error", "error", err)
-			return nil, true, err
+			return nil, true, fmt.Errorf("cannot remove link: %w", err)
 		}
 
 		return &domain.Response{
