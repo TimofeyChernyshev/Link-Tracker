@@ -21,7 +21,7 @@ type Scheduler struct {
 func New(interval time.Duration, checker LinkChecker) (*Scheduler, error) {
 	s, err := gocron.NewScheduler()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating new scheduler: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -36,7 +36,7 @@ func New(interval time.Duration, checker LinkChecker) (*Scheduler, error) {
 
 	if err != nil {
 		cancel()
-		return nil, err
+		return nil, fmt.Errorf("creating new job: %w", err)
 	}
 
 	return &Scheduler{
