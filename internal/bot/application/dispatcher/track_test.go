@@ -171,7 +171,7 @@ func (s *TrackHandlerSuite) TestExecute_AddLinkError() {
 	resp, done, err = s.handler.Execute(tagsMsg)
 
 	s.Require().Error(err)
-	s.ErrorContains(err, expectedErr.Error())
+	s.Require().ErrorContains(err, expectedErr.Error())
 	s.True(done)
 	s.Nil(resp)
 }
@@ -210,7 +210,7 @@ func (s *TrackHandlerSuite) TestExecute_Timeout() {
 	resp, done, err = s.handler.Execute(tagsMsg)
 
 	s.Require().Error(err)
-	s.ErrorContains(err, context.DeadlineExceeded.Error())
+	s.Require().ErrorContains(err, context.DeadlineExceeded.Error())
 	s.True(done)
 	s.Nil(resp)
 }
