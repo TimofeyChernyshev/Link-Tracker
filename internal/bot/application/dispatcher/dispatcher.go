@@ -29,6 +29,18 @@ func (cd *CommandDispatcher) Register(name string, cmd func() Command) {
 	cd.factories[name] = cmd
 }
 
+func (cd *CommandDispatcher) GetCommands() []domain.BotCommand {
+	botCommands := []domain.BotCommand{}
+	for _, factory := range cd.factories {
+		cmd := factory()
+		botCommands = append(botCommands, domain.BotCommand{
+			Name: cmd.Name(), Description: cmd.Description(),
+		})
+	}
+
+	return botCommands
+}
+
 func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, error) {
 	isCommand := strings.HasPrefix(msg.Text, "/")
 
@@ -104,16 +116,4 @@ func (cd *CommandDispatcher) handleNewCommand(msg *domain.Message, isCommand boo
 	}
 
 	return resp, nil
-}
-
-func (cd *CommandDispatcher) GetCommands() []domain.BotCommand {
-	botCommands := []domain.BotCommand{}
-	for _, factory := range cd.factories {
-		cmd := factory()
-		botCommands = append(botCommands, domain.BotCommand{
-			Name: cmd.Name(), Description: cmd.Description(),
-		})
-	}
-
-	return botCommands
 }
