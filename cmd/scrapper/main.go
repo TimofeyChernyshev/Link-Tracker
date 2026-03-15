@@ -50,7 +50,7 @@ func main() {
 	linkChecker := linkchecker.New(httpClients, botNotifier, memStorage)
 
 	// Планировщик
-	sched, err := scheduler.New(time.Duration(checkInterval), linkChecker)
+	sched, err := scheduler.New(checkInterval, linkChecker)
 
 	s := service.New(memStorage)
 
