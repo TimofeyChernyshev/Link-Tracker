@@ -124,7 +124,7 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, apiURL string, 
 	// Добавляем query параметры
 	reqURL, err := url.Parse(apiURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot parse url: %w", err)
 	}
 
 	q := reqURL.Query()
