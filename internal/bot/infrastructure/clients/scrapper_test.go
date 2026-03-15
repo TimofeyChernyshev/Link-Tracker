@@ -39,7 +39,7 @@ func TestScrapperClientSuite(t *testing.T) {
 
 func (s *ScrapperClientSuite) TestAddLink_Success() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.assertCommonHeaders(r, http.MethodPost, "/links", 12345)
+		s.assertCommonHeaders(r, http.MethodPost, 12345)
 		s.Equal("application/json", r.Header.Get("Content-Type"))
 
 		var req AddLinkRequest
@@ -76,7 +76,7 @@ func (s *ScrapperClientSuite) TestAddLink_Error() {
 
 func (s *ScrapperClientSuite) TestRemoveLink_Success() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.assertCommonHeaders(r, http.MethodDelete, "/links", 12345)
+		s.assertCommonHeaders(r, http.MethodDelete, 12345)
 
 		var req RemoveLinkRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -103,7 +103,7 @@ func (s *ScrapperClientSuite) TestGetLinks_Success() {
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.assertCommonHeaders(r, http.MethodGet, "/links", 12345)
+		s.assertCommonHeaders(r, http.MethodGet, 12345)
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(ListLinksResponse{
@@ -124,7 +124,7 @@ func (s *ScrapperClientSuite) TestGetLinks_Success() {
 
 func (s *ScrapperClientSuite) TestGetLinks_Empty() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.assertCommonHeaders(r, http.MethodGet, "/links", 12345)
+		s.assertCommonHeaders(r, http.MethodGet, 12345)
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(ListLinksResponse{
@@ -271,9 +271,9 @@ func (s *ScrapperClientSuite) startServer(handler http.HandlerFunc) {
 }
 
 // assertCommonHeaders проверяет базовые заголовки запроса
-func (s *ScrapperClientSuite) assertCommonHeaders(r *http.Request, expectedMethod, expectedPath string, expectedChatID int64) {
+func (s *ScrapperClientSuite) assertCommonHeaders(r *http.Request, expectedMethod string, expectedChatID int64) {
 	s.Equal(expectedMethod, r.Method)
-	s.Equal(expectedPath, r.URL.Path)
+	s.Equal("/links", r.URL.Path)
 
 	if expectedChatID != 0 {
 		s.Equal(strconv.FormatInt(expectedChatID, 10), r.Header.Get(HeaderChatID))
