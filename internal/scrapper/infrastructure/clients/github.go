@@ -60,7 +60,7 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) (bool, strin
 func (c *GithubClient) extractRepoPath(rawURL string) (string, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("cannot parse url: %w", err)
 	}
 
 	path := strings.TrimPrefix(parsed.Path, "/")

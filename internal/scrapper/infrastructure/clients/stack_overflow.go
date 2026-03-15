@@ -77,7 +77,7 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) (bool
 func (c *StackOverflowClient) extractQuestionID(rawURL string) (int64, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("cannot parse url: %w", err)
 	}
 
 	// Разбиваем путь на части

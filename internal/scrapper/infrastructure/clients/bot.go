@@ -37,13 +37,13 @@ func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 	body, err := json.Marshal(updAPI)
 	if err != nil {
 		slog.Error("cannot marshal update", "update", updAPI, "error", err)
-		return err
+		return fmt.Errorf("cannot marshal update: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/updates", bytes.NewReader(body))
 	if err != nil {
 		slog.Error("cannot create new request", "url", c.baseURL+"/updates", "error", err)
-		return err
+		return fmt.Errorf("cannot create new request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -51,7 +51,7 @@ func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 	resp, err := c.http.Do(req)
 	if err != nil {
 		slog.Error("cannot send request", "request", req, "error", err)
-		return err
+		return fmt.Errorf("cannot send request: %w", err)
 	}
 	defer func() {
 		err = resp.Body.Close()
