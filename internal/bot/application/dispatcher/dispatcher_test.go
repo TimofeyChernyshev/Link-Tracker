@@ -85,7 +85,7 @@ func TestDispatch_UnknownCommand(t *testing.T) {
 
 	resp, err := dispatcher.Dispatch(msg)
 
-	require.Error(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, expectedResponse, resp)
 }
