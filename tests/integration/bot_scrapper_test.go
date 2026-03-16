@@ -219,7 +219,7 @@ func (s *BotScrapperSuite) TestBotScrapperIntegration() {
 		err = json.NewDecoder(resp.Body).Decode(&response)
 		s.Require().NoError(err)
 
-		s.Len(response.Links, 0)
+		s.Empty(response.Links)
 	})
 
 	s.Run("Delete chat", func() {
