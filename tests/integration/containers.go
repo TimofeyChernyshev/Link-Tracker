@@ -2,8 +2,7 @@ package integration
 
 import (
 	"context"
-	"io"
-	"os"
+	"fmt"
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -33,9 +32,7 @@ func StartScrapper(ctx context.Context, networkName string) (testcontainers.Cont
 		ContainerRequest: req,
 	})
 	if err != nil {
-		logs, _ := container.Logs(ctx)
-		io.Copy(os.Stdout, logs)
-		return nil, "", err
+		return nil, "", fmt.Errorf("starting container: %w", err)
 	}
 
 	host, _ := container.Host(ctx)
@@ -72,9 +69,7 @@ func StartBot(ctx context.Context, networkName string, telegramURL string) (test
 		ContainerRequest: req,
 	})
 	if err != nil {
-		logs, _ := container.Logs(ctx)
-		io.Copy(os.Stdout, logs)
-		return nil, "", err
+		return nil, "", fmt.Errorf("starting container: %w", err)
 	}
 
 	host, _ := container.Host(ctx)

@@ -78,7 +78,7 @@ func (s *BotScrapperSuite) TearDownSuite() {
 func (s *BotScrapperSuite) StartFakeTelegram() *httptest.Server {
 	handler := http.NewServeMux()
 
-	handler.HandleFunc("/bottest/getMe", func(w http.ResponseWriter, r *http.Request) {
+	handler.HandleFunc("/bottest/getMe", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte(`{
 			"ok": true,
 			"result": {
@@ -89,7 +89,7 @@ func (s *BotScrapperSuite) StartFakeTelegram() *httptest.Server {
 		}`))
 	})
 
-	handler.HandleFunc("/bottest/getUpdates", func(w http.ResponseWriter, r *http.Request) {
+	handler.HandleFunc("/bottest/getUpdates", func(w http.ResponseWriter, _ *http.Request) {
 		if s.lastUpdateID < len(s.userMessages) {
 			updates := make([]map[string]interface{}, 0)
 			for i := s.lastUpdateID; i < len(s.userMessages); i++ {
@@ -195,7 +195,7 @@ func (s *BotScrapperSuite) TestBotScrapperIntegration() {
 		s.SendUserMessage("/list")
 		s.SendUserMessage("-")
 
-		s.Equal(s.lastBotMessage, "https://github.com/golang/go")
+		s.Equal("https://github.com/golang/go", s.lastBotMessage)
 	})
 
 	s.Run("Untrack link", func() {
@@ -211,13 +211,15 @@ func (s *BotScrapperSuite) TestBotScrapperIntegration() {
 		defer resp.Body.Close()
 
 		var response struct {
-			Links []interface{}
-			Size  int
+			Links []struct {
+				URL  string   `json:"url"`
+				Tags []string `json:"tags"`
+			} `json:"links"`
 		}
 		err = json.NewDecoder(resp.Body).Decode(&response)
 		s.Require().NoError(err)
 
-		s.Assert().Equal(0, response.Size)
+		s.Len(response.Links, 0)
 	})
 
 	s.Run("Delete chat", func() {
@@ -227,7 +229,7 @@ func (s *BotScrapperSuite) TestBotScrapperIntegration() {
 		s.Require().NoError(err)
 		defer resp.Body.Close()
 
-		s.Assert().Equal(http.StatusOK, resp.StatusCode)
+		s.Equal(http.StatusOK, resp.StatusCode)
 
 		req, _ = http.NewRequest(http.MethodGet, s.scrapperURL+"/links", nil)
 		req.Header.Set("Tg-Chat-Id", "12345")
@@ -236,7 +238,7 @@ func (s *BotScrapperSuite) TestBotScrapperIntegration() {
 		s.Require().NoError(err)
 		defer resp.Body.Close()
 
-		s.Assert().Equal(http.StatusNotFound, resp.StatusCode)
+		s.Equal(http.StatusNotFound, resp.StatusCode)
 	})
 }
 
