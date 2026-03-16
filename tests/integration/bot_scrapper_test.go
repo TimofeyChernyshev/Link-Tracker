@@ -37,6 +37,9 @@ func TestBotScrapperSuite(t *testing.T) {
 
 func (s *BotScrapperSuite) SetupSuite() {
 	s.ctx = context.Background()
+
+	testcontainers.SkipIfProviderIsNotHealthy(s.T())
+
 	s.userMessages = make([]map[string]interface{}, 0)
 	s.lastUpdateID = 0
 
