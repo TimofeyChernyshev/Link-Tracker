@@ -41,12 +41,13 @@ func main() {
 
 	d := setupDispatcher(scrapperClient)
 
-	bot, err := bot.NewClient(cfg.TelegramToken, d)
+	b, err := bot.NewClient(cfg.TelegramToken, d, cfg.TelegramEndpoint)
 	if err != nil {
 		slog.Error("cannot start bot", "error", err)
+		os.Exit(1)
 	}
 
-	service := service.New(bot)
+	service := service.New(b)
 
 	server := botserver.NewServer(service, cfg.BotPort)
 
@@ -59,7 +60,7 @@ func main() {
 	// Запуск бота в горутине
 	go func() {
 		slog.Info("bot starting")
-		if err = bot.Start(); err != nil {
+		if err = b.Start(); err != nil {
 			errChan <- err
 		}
 	}()
@@ -86,7 +87,7 @@ func main() {
 	if err = server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("error during shutdown server", "error", err)
 	}
-	if err = bot.Stop(shutdownCtx); err != nil {
+	if err = b.Stop(shutdownCtx); err != nil {
 		slog.Error("error during shutdown bot", "error", err)
 	}
 

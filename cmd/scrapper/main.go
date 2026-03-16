@@ -27,7 +27,7 @@ func main() {
 	setLogger()
 
 	if err := godotenv.Load(".env.scrapper"); err != nil {
-		slog.Warn("no .env.scrapper file found, using system env")
+		slog.Warn("no .env.scrapper file found")
 	}
 
 	cfg, err := config.Load()

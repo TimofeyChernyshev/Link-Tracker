@@ -30,10 +30,20 @@ type Client struct {
 	outgoing chan *domain.Response
 }
 
-func NewClient(token string, d CommandDispatcher) (*Client, error) {
-	api, err := tgbotapi.NewBotAPI(token)
+func NewClient(token string, d CommandDispatcher, endpoint string) (*Client, error) {
+	var (
+		api *tgbotapi.BotAPI
+		err error
+	)
+
+	// для интеграционных тестов
+	if endpoint != "" {
+		api, err = tgbotapi.NewBotAPIWithAPIEndpoint(token, endpoint+"/bot%s/%s")
+	} else {
+		api, err = tgbotapi.NewBotAPI(token)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("cannot create bot apiL %w", err)
+		return nil, fmt.Errorf("cannot create bot api: %w", err)
 	}
 
 	cmds := d.GetCommands()

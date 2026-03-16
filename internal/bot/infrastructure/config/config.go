@@ -7,9 +7,10 @@ import (
 )
 
 type Config struct {
-	TelegramToken   string
-	BotPort         string
-	ScrapperBaseURL string
+	TelegramToken    string
+	BotPort          string
+	ScrapperBaseURL  string
+	TelegramEndpoint string
 }
 
 func Load() (*Config, error) {
@@ -31,5 +32,7 @@ func Load() (*Config, error) {
 		return nil, errors.New("scrapper base url not found")
 	}
 
-	return &Config{TelegramToken: token, BotPort: port, ScrapperBaseURL: scrapperURL}, nil
+	endpoint := os.Getenv("TELEGRAM_API_URL")
+
+	return &Config{TelegramToken: token, BotPort: port, ScrapperBaseURL: scrapperURL, TelegramEndpoint: endpoint}, nil
 }
