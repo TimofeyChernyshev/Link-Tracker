@@ -68,9 +68,9 @@ func (s *Server) updateChat(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		s.updateChatPost(w, id)
+		s.registerChat(w, id)
 	case http.MethodDelete:
-		s.updateChatDelete(w, id)
+		s.deleteChat(w, id)
 	default:
 		slog.Error("wrong method", "method", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -78,7 +78,7 @@ func (s *Server) updateChat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) updateChatPost(w http.ResponseWriter, id int64) {
+func (s *Server) registerChat(w http.ResponseWriter, id int64) {
 	err := s.service.RegisterChat(id)
 	if err != nil {
 		slog.Error("cannot register chat", "id", id, "error", err)
@@ -88,7 +88,7 @@ func (s *Server) updateChatPost(w http.ResponseWriter, id int64) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) updateChatDelete(w http.ResponseWriter, id int64) {
+func (s *Server) deleteChat(w http.ResponseWriter, id int64) {
 	err := s.service.DeleteChat(id)
 	if err != nil {
 		slog.Error("cannot delete chat", "id", id, "error", err)
