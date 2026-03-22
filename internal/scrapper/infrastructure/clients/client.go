@@ -32,7 +32,9 @@ func (c *HTTPClient) Check(ctx context.Context, link domain.Link) (bool, string,
 	}
 	defer func() {
 		err = resp.Body.Close()
-		slog.Error("failed to close response body", "error", err)
+		if err != nil {
+			slog.Error("failed to close response body", "error", err)
+		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {

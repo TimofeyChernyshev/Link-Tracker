@@ -125,7 +125,9 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 	}
 	defer func() {
 		err = resp.Body.Close()
-		slog.Error("failed to close response body", "error", err)
+		if err != nil {
+			slog.Error("failed to close response body", "error", err)
+		}
 	}()
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
