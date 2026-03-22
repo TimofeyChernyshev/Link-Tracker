@@ -1,6 +1,7 @@
-package dispatcher
+package application
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,13 +16,59 @@ type CommandDispatcher struct {
 	unknownCommand Command
 
 	conversations sync.Map // chatID -> active dialog
+
+	bot Bot
 }
 
-func NewCommandDispatcher(unknownCommand Command) *CommandDispatcher {
+func NewCommandDispatcher(unknownCommand Command, bot Bot) *CommandDispatcher {
 	return &CommandDispatcher{
 		factories:      make(map[string]func() Command),
 		conversations:  sync.Map{},
 		unknownCommand: unknownCommand,
+		bot:            bot,
+	}
+}
+
+func (cd *CommandDispatcher) Run(ctx context.Context) {
+	for {
+		msg, err := cd.bot.Receive(ctx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+			slog.Error("receive error", "error", err)
+			continue
+		}
+
+		cd.HandleMessage(msg)
+	}
+}
+
+func (cd *CommandDispatcher) HandleMessage(msg *domain.Message) {
+	resp, err := cd.Dispatch(msg)
+	if err != nil {
+		slog.Error("dispatch error", "error", err)
+
+		cd.bot.SendMessage(&domain.Response{
+			ChatID: msg.ChatID,
+			Text:   "Произошла ошибка, попробуйте позже",
+		})
+		return
+	}
+
+	if resp != nil {
+		cd.bot.SendMessage(resp)
+	}
+}
+
+func (cd *CommandDispatcher) HandleUpdate(chatIDs []int64, desc string) {
+	slog.Debug("got update", "description", desc, "chatIds", chatIDs)
+
+	for _, chatID := range chatIDs {
+		cd.bot.SendMessage(&domain.Response{
+			ChatID: chatID,
+			Text:   desc,
+		})
 	}
 }
 
@@ -66,7 +113,7 @@ func (cd *CommandDispatcher) handleConversation(conv Command, msg *domain.Messag
 		}, nil
 	}
 
-	// Если введена другая команда во время выполнения текущей, то выполнение прерывается и запускается новая
+	// Если введена другая команда во время выполнения текущей, то выполнение прерывается
 	if strings.HasPrefix(msg.Text, "/") {
 		parts := strings.Fields(msg.Text)
 		cmdName := parts[0]

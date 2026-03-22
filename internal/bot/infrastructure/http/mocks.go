@@ -33,14 +33,14 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
-// SendUpdates mocks base method.
-func (m *MockService) SendUpdates(chatIds []int64, desc string) {
+// HandleUpdate mocks base method.
+func (m *MockService) HandleUpdate(chatIds []int64, desc string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SendUpdates", chatIds, desc)
+	m.ctrl.Call(m, "HandleUpdate", chatIds, desc)
 }
 
-// SendUpdates indicates an expected call of SendUpdates.
-func (mr *MockServiceMockRecorder) SendUpdates(chatIds, desc interface{}) *gomock.Call {
+// HandleUpdate indicates an expected call of HandleUpdate.
+func (mr *MockServiceMockRecorder) HandleUpdate(chatIds, desc interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendUpdates", reflect.TypeOf((*MockService)(nil).SendUpdates), chatIds, desc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleUpdate", reflect.TypeOf((*MockService)(nil).HandleUpdate), chatIds, desc)
 }

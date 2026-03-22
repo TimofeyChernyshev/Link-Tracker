@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/dispatcher"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/service"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/handlers"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
@@ -39,17 +39,17 @@ func main() {
 
 	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL)
 
-	d := setupDispatcher(scrapperClient)
-
-	b, err := bot.NewClient(cfg.TelegramToken, d, cfg.TelegramEndpoint)
+	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint)
 	if err != nil {
 		slog.Error("cannot start bot", "error", err)
 		os.Exit(1)
 	}
 
-	service := service.New(b)
+	d := setupDispatcher(b, scrapperClient)
 
-	server := botserver.NewServer(service, cfg.BotPort)
+	b.SetCommands(d.GetCommands())
+
+	server := botserver.NewServer(d, cfg.BotPort)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -102,15 +102,15 @@ func setLogger() {
 	slog.SetDefault(logger)
 }
 
-func setupDispatcher(scrapperClient *clients.ScrapperClient) *dispatcher.CommandDispatcher {
-	d := dispatcher.NewCommandDispatcher(dispatcher.NewUnknownHandler())
-	start := dispatcher.NewStartHandler(scrapperClient, handlerTimeout)
-	d.Register(start.Name(), func() dispatcher.Command { return start })
-	help := dispatcher.NewHelpHandler()
-	d.Register(help.Name(), func() dispatcher.Command { return help })
-	d.Register("/track", func() dispatcher.Command { return dispatcher.NewTrackHandler(scrapperClient, handlerTimeout) })
-	d.Register("/untrack", func() dispatcher.Command { return dispatcher.NewUntrackHandler(scrapperClient, handlerTimeout) })
-	d.Register("/list", func() dispatcher.Command { return dispatcher.NewListHandler(scrapperClient, handlerTimeout) })
+func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient) *application.CommandDispatcher {
+	d := application.NewCommandDispatcher(handlers.NewUnknownHandler(), bot)
+	start := handlers.NewStartHandler(scrapperClient, handlerTimeout)
+	d.Register(start.Name(), func() application.Command { return start })
+	help := handlers.NewHelpHandler()
+	d.Register(help.Name(), func() application.Command { return help })
+	d.Register("/track", func() application.Command { return handlers.NewTrackHandler(scrapperClient, handlerTimeout) })
+	d.Register("/untrack", func() application.Command { return handlers.NewUntrackHandler(scrapperClient, handlerTimeout) })
+	d.Register("/list", func() application.Command { return handlers.NewListHandler(scrapperClient, handlerTimeout) })
 
 	return d
 }

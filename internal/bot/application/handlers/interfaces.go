@@ -1,4 +1,4 @@
-package dispatcher
+package handlers
 
 import (
 	"context"
@@ -13,11 +13,4 @@ type LinkService interface {
 
 	RegisterChat(ctx context.Context, chatID int64) error
 	DeleteChat(ctx context.Context, chatID int64) error
-}
-
-type Command interface {
-	Name() string
-	Description() string
-
-	Execute(msg *domain.Message) (resp *domain.Response, done bool, err error)
 }

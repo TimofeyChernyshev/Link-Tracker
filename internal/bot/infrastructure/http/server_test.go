@@ -25,7 +25,7 @@ func TestUpdates_OK(t *testing.T) {
 		"tgChatIds": [10, 20]
 	}`
 
-	sender.EXPECT().SendUpdates([]int64{10, 20}, "updated")
+	sender.EXPECT().HandleUpdate([]int64{10, 20}, "updated")
 
 	req := httptest.NewRequest(http.MethodPost, "/updates", strings.NewReader(reqBody))
 	w := httptest.NewRecorder()

@@ -19,8 +19,7 @@ const (
 )
 
 type Client struct {
-	api        *tgbotapi.BotAPI
-	dispatcher CommandDispatcher
+	api *tgbotapi.BotAPI
 
 	stopChan chan struct{}
 	workerWg sync.WaitGroup
@@ -28,9 +27,11 @@ type Client struct {
 
 	jobs     chan tgbotapi.Update
 	outgoing chan *domain.Response
+
+	incoming chan *domain.Message
 }
 
-func NewClient(token string, d CommandDispatcher, endpoint string) (*Client, error) {
+func NewClient(token string, endpoint string) (*Client, error) {
 	var (
 		api *tgbotapi.BotAPI
 		err error
@@ -46,23 +47,23 @@ func NewClient(token string, d CommandDispatcher, endpoint string) (*Client, err
 		return nil, fmt.Errorf("cannot create bot api: %w", err)
 	}
 
-	cmds := d.GetCommands()
+	return &Client{
+		api:      api,
+		incoming: make(chan *domain.Message, jobsBufferSize),
+	}, nil
+}
 
+func (c *Client) SetCommands(cmds []domain.BotCommand) {
 	tgCommands := make([]tgbotapi.BotCommand, 0, len(cmds))
 	for _, c := range cmds {
 		tgCommands = append(tgCommands, tgbotapi.BotCommand{Command: c.Name, Description: c.Description})
 	}
 
 	setCmdCfg := tgbotapi.NewSetMyCommands(tgCommands...)
-	_, err = api.Request(setCmdCfg)
+	_, err := c.api.Request(setCmdCfg)
 	if err != nil {
 		slog.Warn("failed to set commands menu", "error", err)
 	}
-
-	return &Client{
-		api:        api,
-		dispatcher: d,
-	}, nil
 }
 
 func (c *Client) Start() error {
@@ -113,6 +114,17 @@ func (c *Client) SendMessage(resp *domain.Response) {
 	case c.outgoing <- resp:
 	default:
 		slog.Warn("outgoing queue full")
+	}
+}
+
+func (c *Client) Receive(ctx context.Context) (*domain.Message, error) {
+	select {
+	case msg := <-c.incoming:
+		return msg, nil
+	case <-c.stopChan:
+		return nil, fmt.Errorf("bot stopped")
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 
@@ -186,15 +198,9 @@ func (c *Client) handleUpdate(update tgbotapi.Update) {
 
 	slog.Debug("got message", "message text", msg.Text, "chatID", msg.ChatID, "user", msg.Username)
 
-	response, err := c.dispatcher.Dispatch(msg)
-	if err != nil {
-		slog.Error("error ocurs while trying to dispatch message", "error", err, "message", msg.Text)
-		c.SendMessage(&domain.Response{Text: err.Error(), ChatID: msg.ChatID})
-		return
-	}
-
-	if response != nil {
-		slog.Debug("got response", "response text", response.Text, "chatID", response.ChatID)
-		c.SendMessage(response)
+	select {
+	case c.incoming <- msg:
+	default:
+		slog.Warn("incoming queue full")
 	}
 }

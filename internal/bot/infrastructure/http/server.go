@@ -9,7 +9,7 @@ import (
 )
 
 type Service interface {
-	SendUpdates(chatIDs []int64, desc string)
+	HandleUpdate(chatIDs []int64, desc string)
 }
 
 type Server struct {
@@ -33,7 +33,7 @@ func NewServer(service Service, port string) *Server {
 			return
 		}
 
-		service.SendUpdates(upd.TgChatIDs, upd.Description)
+		service.HandleUpdate(upd.TgChatIDs, upd.Description)
 
 		w.WriteHeader(http.StatusOK)
 	})
