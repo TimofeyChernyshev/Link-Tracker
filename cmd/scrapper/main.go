@@ -11,9 +11,10 @@ import (
 	"github.com/joho/godotenv"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application/link_checker"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application/service"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/clients"
+	botclient "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/bot_client"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	scrapperserver "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/http"
+	httpclient "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/http_client"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/scheduler"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/storage"
 )
@@ -39,10 +40,10 @@ func main() {
 	memStorage := storage.New()
 
 	// HTTP клиенты
-	httpClient := clients.NewHTTPClient()
+	httpClient := httpclient.NewHTTPClient()
 
 	// Notifier для отправки уведомлений в Bot
-	botNotifier := clients.NewBotClient(cfg.BotBaseURL)
+	botNotifier := botclient.NewBotClient(cfg.BotBaseURL)
 
 	// Сервис проверки ссылок
 	linkChecker := linkchecker.New(httpClient, botNotifier, memStorage)

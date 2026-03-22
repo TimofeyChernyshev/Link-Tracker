@@ -1,4 +1,4 @@
-package clients
+package botclient
 
 import (
 	"bytes"

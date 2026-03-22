@@ -1,4 +1,4 @@
-package clients
+package botclient
 
 type LinkUpdate struct {
 	ID          int64   `json:"id"`
