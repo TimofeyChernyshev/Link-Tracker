@@ -3,6 +3,8 @@ package dispatcher
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -17,11 +19,13 @@ type TrackHandlerSuite struct {
 	linkService *MockLinkService
 	handler     *TrackHandler
 	msg         *domain.Message
+	testServer  *httptest.Server
 }
 
 func (s *TrackHandlerSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.linkService = NewMockLinkService(s.ctrl)
+	s.testServer = httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 
 	timeout := time.Second
 	s.handler = NewTrackHandler(s.linkService, timeout)
@@ -50,7 +54,7 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithTags() {
 	s.Contains(resp.Text, "Введите ссылку")
 
 	linkMsg := &domain.Message{
-		Text:      "https://github.com/test",
+		Text:      s.testServer.URL,
 		ChatID:    12345,
 		Username:  "testuser",
 		MessageID: 2,
@@ -69,7 +73,7 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithTags() {
 	}
 
 	s.linkService.EXPECT().
-		AddLink(gomock.Any(), int64(12345), "https://github.com/test", []string{"work", "urgent", "bug"}).
+		AddLink(gomock.Any(), int64(12345), s.testServer.URL, []string{"work", "urgent", "bug"}).
 		Return(nil)
 
 	resp, done, err = s.handler.Execute(tagsMsg)
@@ -109,7 +113,7 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithoutTags() {
 	s.False(done)
 
 	linkMsg := &domain.Message{
-		Text:      "https://github.com/test",
+		Text:      s.testServer.URL,
 		ChatID:    12345,
 		Username:  "testuser",
 		MessageID: 2,
@@ -127,7 +131,7 @@ func (s *TrackHandlerSuite) TestExecute_SuccessWithoutTags() {
 	}
 
 	s.linkService.EXPECT().
-		AddLink(gomock.Any(), int64(12345), "https://github.com/test", []string{}).
+		AddLink(gomock.Any(), int64(12345), s.testServer.URL, []string{}).
 		Return(nil)
 
 	resp, done, err = s.handler.Execute(tagsMsg)
@@ -147,7 +151,7 @@ func (s *TrackHandlerSuite) TestExecute_AddLinkError() {
 	s.False(done)
 
 	linkMsg := &domain.Message{
-		Text:      "https://github.com/test",
+		Text:      s.testServer.URL,
 		ChatID:    12345,
 		Username:  "testuser",
 		MessageID: 2,
@@ -165,7 +169,7 @@ func (s *TrackHandlerSuite) TestExecute_AddLinkError() {
 	}
 
 	s.linkService.EXPECT().
-		AddLink(gomock.Any(), int64(12345), "https://github.com/test", []string{"work"}).
+		AddLink(gomock.Any(), int64(12345), s.testServer.URL, []string{"work"}).
 		Return(expectedErr)
 
 	resp, done, err = s.handler.Execute(tagsMsg)
@@ -183,7 +187,7 @@ func (s *TrackHandlerSuite) TestExecute_Timeout() {
 	s.False(done)
 
 	linkMsg := &domain.Message{
-		Text:      "https://github.com/test",
+		Text:      s.testServer.URL,
 		ChatID:    12345,
 		Username:  "testuser",
 		MessageID: 2,
@@ -201,7 +205,7 @@ func (s *TrackHandlerSuite) TestExecute_Timeout() {
 	}
 
 	s.linkService.EXPECT().
-		AddLink(gomock.Any(), int64(12345), "https://github.com/test", []string{"work"}).
+		AddLink(gomock.Any(), int64(12345), s.testServer.URL, []string{"work"}).
 		DoAndReturn(func(ctx context.Context, _ int64, _ string, _ []string) error {
 			<-ctx.Done()
 			return ctx.Err()
@@ -222,7 +226,7 @@ func (s *TrackHandlerSuite) TestExecute_EmptyTags() {
 	s.False(done)
 
 	linkMsg := &domain.Message{
-		Text:      "https://github.com/test",
+		Text:      s.testServer.URL,
 		ChatID:    12345,
 		Username:  "testuser",
 		MessageID: 2,
@@ -240,7 +244,7 @@ func (s *TrackHandlerSuite) TestExecute_EmptyTags() {
 	}
 
 	s.linkService.EXPECT().
-		AddLink(gomock.Any(), int64(12345), "https://github.com/test", []string{}).
+		AddLink(gomock.Any(), int64(12345), s.testServer.URL, []string{}).
 		Return(nil).
 		Times(1)
 
@@ -257,7 +261,7 @@ func (s *TrackHandlerSuite) TestExecute_TagsWithSpaces() {
 	s.False(done)
 
 	linkMsg := &domain.Message{
-		Text:      "https://github.com/test",
+		Text:      s.testServer.URL,
 		ChatID:    12345,
 		Username:  "testuser",
 		MessageID: 2,
@@ -275,7 +279,7 @@ func (s *TrackHandlerSuite) TestExecute_TagsWithSpaces() {
 	}
 
 	s.linkService.EXPECT().
-		AddLink(gomock.Any(), int64(12345), "https://github.com/test", []string{"work", "urgent", "bug"}).
+		AddLink(gomock.Any(), int64(12345), s.testServer.URL, []string{"work", "urgent", "bug"}).
 		Return(nil)
 
 	_, done, err = s.handler.Execute(tagsMsg)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -40,6 +41,27 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 			return &domain.Response{
 				ChatID: msg.ChatID,
 				Text:   "Некорректный формат ссылки",
+			}, true, nil
+		}
+
+		resp, err := http.Head(msg.Text)
+		if err != nil {
+			return &domain.Response{
+				ChatID: msg.ChatID,
+				Text:   "Ссылка недоступна",
+			}, true, nil
+		}
+		defer func() {
+			err = resp.Body.Close()
+			if err != nil {
+				slog.Error("failed to close response body", "error", err)
+			}
+		}()
+
+		if resp.StatusCode != http.StatusOK {
+			return &domain.Response{
+				ChatID: msg.ChatID,
+				Text:   fmt.Sprintf("Ссылка не отвечает (статус %d)", resp.StatusCode),
 			}, true, nil
 		}
 
