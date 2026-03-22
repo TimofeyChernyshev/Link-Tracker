@@ -9,14 +9,14 @@ import (
 )
 
 type LinkChecker struct {
-	clinets  []Client
+	client   Client
 	notifier Notifier
 	storage  Storage
 }
 
-func New(c []Client, n Notifier, s Storage) *LinkChecker {
+func New(c Client, n Notifier, s Storage) *LinkChecker {
 	return &LinkChecker{
-		clinets:  c,
+		client:   c,
 		notifier: n,
 		storage:  s,
 	}
@@ -26,26 +26,24 @@ func (lc *LinkChecker) CheckUpdates(ctx context.Context) {
 	links := lc.storage.GetAllLinks()
 
 	for _, link := range links {
-		for _, client := range lc.clinets {
-			changed, desc, err := client.Check(ctx, link)
-			if err != nil {
-				slog.Warn("error during checking client", "client", client, "link", link, "error", err)
-				continue
-			}
-			if !changed {
-				continue
-			}
-
-			lc.storage.UpdateTimestamp(link.URL, time.Now())
-
-			chatIDs := lc.storage.GetSubscribers(link.URL)
-
-			_ = lc.notifier.SendUpdate(ctx, domain.LinkUpdate{
-				ID:          link.ID,
-				URL:         link.URL,
-				Description: desc,
-				ChatIDs:     chatIDs,
-			})
+		changed, desc, err := lc.client.Check(ctx, link)
+		if err != nil {
+			slog.Warn("error during checking link", "link", link, "error", err)
+			continue
 		}
+		if !changed {
+			continue
+		}
+
+		lc.storage.UpdateTimestamp(link.URL, time.Now())
+
+		chatIDs := lc.storage.GetSubscribers(link.URL)
+
+		_ = lc.notifier.SendUpdate(ctx, domain.LinkUpdate{
+			ID:          link.ID,
+			URL:         link.URL,
+			Description: desc,
+			ChatIDs:     chatIDs,
+		})
 	}
 }

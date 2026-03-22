@@ -39,15 +39,13 @@ func main() {
 	memStorage := storage.New()
 
 	// HTTP клиенты
-	githubClient := clients.NewGithubClient("link-tracker")
-	stackClient := clients.NewStackOverflowClient("link-tracker")
-	httpClients := []linkchecker.Client{githubClient, stackClient}
+	httpClient := clients.NewHTTPClient()
 
 	// Notifier для отправки уведомлений в Bot
 	botNotifier := clients.NewBotClient(cfg.BotBaseURL)
 
 	// Сервис проверки ссылок
-	linkChecker := linkchecker.New(httpClients, botNotifier, memStorage)
+	linkChecker := linkchecker.New(httpClient, botNotifier, memStorage)
 
 	// Планировщик
 	sched, err := scheduler.New(checkInterval, linkChecker)

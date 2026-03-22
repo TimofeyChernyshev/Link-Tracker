@@ -2,6 +2,7 @@ package linkchecker
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,8 +14,7 @@ import (
 type LinkCheckerSuite struct {
 	suite.Suite
 	ctrl         *gomock.Controller
-	mockClient1  *MockClient
-	mockClient2  *MockClient
+	mockClient   *MockClient
 	mockNotifier *MockNotifier
 	mockStorage  *MockStorage
 	checker      *LinkChecker
@@ -23,13 +23,12 @@ type LinkCheckerSuite struct {
 
 func (s *LinkCheckerSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-	s.mockClient1 = NewMockClient(s.ctrl)
-	s.mockClient2 = NewMockClient(s.ctrl)
+	s.mockClient = NewMockClient(s.ctrl)
 	s.mockNotifier = NewMockNotifier(s.ctrl)
 	s.mockStorage = NewMockStorage(s.ctrl)
 
 	s.checker = New(
-		[]Client{s.mockClient1, s.mockClient2},
+		s.mockClient,
 		s.mockNotifier,
 		s.mockStorage,
 	)
@@ -50,7 +49,7 @@ func (s *LinkCheckerSuite) TestCheckUpdates_NoLinks() {
 	s.checker.CheckUpdates(s.ctx)
 }
 
-func (s *LinkCheckerSuite) TestCheckUpdates_SingleLink_NoChanges() {
+func (s *LinkCheckerSuite) TestCheckUpdates_GotError() {
 	link := domain.Link{
 		ID:  1,
 		URL: "https://github.com/user/repo",
@@ -58,13 +57,12 @@ func (s *LinkCheckerSuite) TestCheckUpdates_SingleLink_NoChanges() {
 
 	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{link})
 
-	s.mockClient1.EXPECT().Check(s.ctx, link).Return(false, "", nil)
-	s.mockClient2.EXPECT().Check(s.ctx, link).Return(false, "", nil)
+	s.mockClient.EXPECT().Check(s.ctx, link).Return(false, "", fmt.Errorf("some text"))
 
 	s.checker.CheckUpdates(s.ctx)
 }
 
-func (s *LinkCheckerSuite) TestCheckUpdates_SingleLink_WithChanges() {
+func (s *LinkCheckerSuite) TestCheckUpdates_NoChanges() {
 	link := domain.Link{
 		ID:  1,
 		URL: "https://github.com/user/repo",
@@ -72,10 +70,21 @@ func (s *LinkCheckerSuite) TestCheckUpdates_SingleLink_WithChanges() {
 
 	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{link})
 
-	s.mockClient1.EXPECT().Check(s.ctx, link).Return(false, "", nil)
+	s.mockClient.EXPECT().Check(s.ctx, link).Return(false, "", nil)
+
+	s.checker.CheckUpdates(s.ctx)
+}
+
+func (s *LinkCheckerSuite) TestCheckUpdates_WithChanges() {
+	link := domain.Link{
+		ID:  1,
+		URL: "https://github.com/user/repo",
+	}
+
+	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{link})
 
 	description := "New commit added"
-	s.mockClient2.EXPECT().Check(s.ctx, link).Return(true, description, nil)
+	s.mockClient.EXPECT().Check(s.ctx, link).Return(true, description, nil)
 
 	s.mockStorage.EXPECT().UpdateTimestamp(link.URL, gomock.Any()).Do(
 		func(_ string, ts time.Time) {
@@ -93,24 +102,6 @@ func (s *LinkCheckerSuite) TestCheckUpdates_SingleLink_WithChanges() {
 		ChatIDs:     chatIDs,
 	}
 	s.mockNotifier.EXPECT().SendUpdate(s.ctx, expectedUpdate).Return(nil)
-
-	s.checker.CheckUpdates(s.ctx)
-}
-
-func (s *LinkCheckerSuite) TestCheckUpdates_MultipleClientsForSameLink() {
-	link := domain.Link{
-		ID:  1,
-		URL: "https://api.github.com/repos/user/repo",
-	}
-
-	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{link})
-
-	s.mockClient1.EXPECT().Check(s.ctx, link).Return(false, "", nil)
-	s.mockClient2.EXPECT().Check(s.ctx, link).Return(true, "update from second", nil)
-
-	s.mockStorage.EXPECT().UpdateTimestamp(link.URL, gomock.Any()).Times(1)
-	s.mockStorage.EXPECT().GetSubscribers(link.URL).Return([]int64{1})
-	s.mockNotifier.EXPECT().SendUpdate(s.ctx, gomock.Any()).Return(nil)
 
 	s.checker.CheckUpdates(s.ctx)
 }
