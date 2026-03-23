@@ -1,4 +1,4 @@
-package scrapperserver
+package scrapperhttp
 
 import (
 	"errors"

@@ -1,4 +1,4 @@
-package botserver
+package bothttp
 
 import (
 	"context"
