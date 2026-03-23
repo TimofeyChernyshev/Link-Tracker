@@ -72,7 +72,7 @@ func (s *BotClientSuite) TestReceive_ContextCanceled() {
 	msg, err := s.client.Receive(ctx)
 	s.Require().Error(err)
 	s.Nil(msg)
-	s.Equal(context.Canceled, err)
+	s.ErrorIs(err, context.Canceled)
 }
 
 func (s *BotClientSuite) TestStop_WaitsSenders() {
