@@ -125,7 +125,7 @@ func (c *Client) Receive(ctx context.Context) (*domain.Message, error) {
 	case <-c.stopChan:
 		return nil, errors.New("bot stopped")
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, fmt.Errorf("receiving message: %w", ctx.Err())
 	}
 }
 

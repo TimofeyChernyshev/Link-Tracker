@@ -50,7 +50,7 @@ func (c *HTTPClient) Check(ctx context.Context, link domain.Link) (bool, string,
 
 	t, err := http.ParseTime(lastModified)
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("parsing time: %w", err)
 	}
 
 	if t.After(link.UpdatedAt) {
