@@ -44,7 +44,7 @@ func (s *BotClientSuite) TestReceive() {
 	received := make(chan *domain.Message, 1)
 	go func() {
 		msg, err := s.client.Receive(ctx)
-		s.Require().NoError(err)
+		s.NoError(err)
 		received <- msg
 	}()
 
