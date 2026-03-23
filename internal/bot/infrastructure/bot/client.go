@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -122,7 +123,7 @@ func (c *Client) Receive(ctx context.Context) (*domain.Message, error) {
 	case msg := <-c.incoming:
 		return msg, nil
 	case <-c.stopChan:
-		return nil, fmt.Errorf("bot stopped")
+		return nil, errors.New("bot stopped")
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

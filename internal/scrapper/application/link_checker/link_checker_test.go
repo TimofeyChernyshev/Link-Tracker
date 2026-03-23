@@ -2,7 +2,7 @@ package linkchecker
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -57,7 +57,7 @@ func (s *LinkCheckerSuite) TestCheckUpdates_GotError() {
 
 	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{link})
 
-	s.mockClient.EXPECT().Check(s.ctx, link).Return(false, "", fmt.Errorf("some text"))
+	s.mockClient.EXPECT().Check(s.ctx, link).Return(false, "", errors.New("some text"))
 
 	s.checker.CheckUpdates(s.ctx)
 }
