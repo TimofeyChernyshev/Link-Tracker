@@ -163,6 +163,8 @@ func (c *Client) Stop(ctx context.Context) error {
 		return fmt.Errorf("wait for senders: %w", ctx.Err())
 	}
 
+	close(c.incoming)
+
 	return nil
 }
 

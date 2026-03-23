@@ -73,6 +73,8 @@ func main() {
 		}
 	}()
 
+	d.Run(ctx)
+
 	// Ожидание сигнала о завершении или ошибку
 	select {
 	case <-ctx.Done():
