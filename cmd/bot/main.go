@@ -2,75 +2,95 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/application/dispatcher"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/bot"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/infrastructure/config"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application/handlers"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
+	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/server/http"
 )
 
-const shutdownTimeout = 30 * time.Second
+const (
+	shutdownTimeout = 30 * time.Second
+	goroutines      = 2
+	handlerTimeout  = 5 * time.Second
+)
 
 func main() {
 	// Создание логера
 	setLogger()
 
 	// Загрузка конфига
-	_ = godotenv.Load()
+	_ = godotenv.Load(".env.bot")
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 
-	// Добавление команд в диспетчер
-	d := dispatcher.NewCommandDispatcher(dispatcher.NewUnknownHandler())
-	d.Register(dispatcher.NewStartHandler())
-	d.Register(dispatcher.NewHelpHandler())
+	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL)
 
-	bot, err := bot.NewClient(cfg.TelegramToken, d)
+	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint)
 	if err != nil {
 		slog.Error("cannot start bot", "error", err)
+		os.Exit(1)
 	}
 
-	// Канал сигналов с размером 1
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	d := setupDispatcher(b, scrapperClient)
+
+	b.SetCommands(d.GetCommands())
+
+	server := bothttp.NewServer(d, cfg.BotPort)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	// Канал ошибок
-	errChan := make(chan error, 1)
+	errChan := make(chan error, goroutines)
 
 	// Запуск бота в горутине
 	go func() {
 		slog.Info("bot starting")
-		if err = bot.Start(); err != nil {
+		if err = b.Start(); err != nil {
 			errChan <- err
 		}
 	}()
 
+	go func() {
+		slog.Info("http server for bot starting", "port", cfg.BotPort)
+		err = server.Start()
+		if !errors.Is(err, http.ErrServerClosed) {
+			errChan <- err
+		}
+	}()
+
+	d.Run(ctx)
+
 	// Ожидание сигнала о завершении или ошибку
 	select {
-	case sig := <-sigChan:
-		slog.Info("Received signal", "signal", sig)
+	case <-ctx.Done():
+		slog.Info("shutdown signal received")
 	case err = <-errChan:
-		slog.Error("failed to start bot", "error", err)
-		os.Exit(1)
+		slog.Error("runtime error", "error", err)
 	}
-
-	// Остановка получения сигналов и закрытие канала
-	signal.Stop(sigChan)
-	close(sigChan)
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
 
-	if err = bot.Stop(shutdownCtx); err != nil {
-		slog.Error("error during shutdown", "error", err)
+	if err = server.Shutdown(shutdownCtx); err != nil {
+		slog.Error("error during shutdown server", "error", err)
+	}
+	if err = b.Stop(shutdownCtx); err != nil {
+		slog.Error("error during shutdown bot", "error", err)
 	}
 
 	slog.Info("bot stoped")
@@ -82,4 +102,17 @@ func setLogger() {
 	})
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
+}
+
+func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient) *application.CommandDispatcher {
+	d := application.NewCommandDispatcher(handlers.NewUnknownHandler(), bot)
+	start := handlers.NewStartHandler(scrapperClient, handlerTimeout)
+	d.Register(start.Name(), func() application.Command { return start })
+	help := handlers.NewHelpHandler()
+	d.Register(help.Name(), func() application.Command { return help })
+	d.Register("/track", func() application.Command { return handlers.NewTrackHandler(scrapperClient, handlerTimeout) })
+	d.Register("/untrack", func() application.Command { return handlers.NewUntrackHandler(scrapperClient, handlerTimeout) })
+	d.Register("/list", func() application.Command { return handlers.NewListHandler(scrapperClient, handlerTimeout) })
+
+	return d
 }
