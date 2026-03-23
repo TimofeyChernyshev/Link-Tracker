@@ -30,3 +30,8 @@ $(addprefix build_,$(MODULES)):
 test:
 	@go test -coverpkg='gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/...' --race -count=1 -coverprofile='$(COVERAGE_FILE)' ./...
 	@go tool cover -func='$(COVERAGE_FILE)' | grep ^total | tr -s '\t'
+
+.PHONY: docker-build
+docker-build:
+	docker build -f Dockerfile.bot -t linktracker-bot .
+	docker build -f Dockerfile.scrapper -t linktracker-scrapper .
