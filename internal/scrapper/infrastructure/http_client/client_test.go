@@ -59,7 +59,7 @@ func (s *HTTPClientSuite) TestCheck_Success_NoChanges() {
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	lastModified := fixedTime.Format(http.TimeFormat)
 
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Last-Modified", lastModified)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -78,7 +78,7 @@ func (s *HTTPClientSuite) TestCheck_Success_NoChanges() {
 }
 
 func (s *HTTPClientSuite) TestCheck_NoLastModifiedHeader() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer s.server.Close()
@@ -96,7 +96,7 @@ func (s *HTTPClientSuite) TestCheck_NoLastModifiedHeader() {
 }
 
 func (s *HTTPClientSuite) TestCheck_InvalidLastModifiedHeader() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Last-Modified", "invalid-date-format")
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -116,7 +116,7 @@ func (s *HTTPClientSuite) TestCheck_InvalidLastModifiedHeader() {
 }
 
 func (s *HTTPClientSuite) TestCheck_NotFound() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer s.server.Close()
@@ -135,7 +135,7 @@ func (s *HTTPClientSuite) TestCheck_NotFound() {
 }
 
 func (s *HTTPClientSuite) TestCheck_ServerError() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer s.server.Close()
@@ -154,7 +154,7 @@ func (s *HTTPClientSuite) TestCheck_ServerError() {
 }
 
 func (s *HTTPClientSuite) TestCheck_ContextTimeout() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -177,7 +177,7 @@ func (s *HTTPClientSuite) TestCheck_ContextTimeout() {
 }
 
 func (s *HTTPClientSuite) TestCheck_ContextCanceled() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	}))
