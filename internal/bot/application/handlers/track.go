@@ -44,7 +44,19 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 			}, true, nil
 		}
 
-		resp, err := http.Head(msg.Text)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, msg.Text, nil)
+		if err != nil {
+			return &domain.Response{
+				ChatID: msg.ChatID,
+				Text:   "Некорректный формат ссылки",
+			}, true, nil
+		}
+
+		client := &http.Client{Timeout: timeout}
+		resp, err := client.Do(req)
 		if err != nil {
 			return &domain.Response{
 				ChatID: msg.ChatID,
