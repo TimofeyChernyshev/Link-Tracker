@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application/link_checker"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application/service"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	botclient "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/bot_client"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
-	httpclient "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/http_client"
+	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/scheduler"
 	scrapperhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/server/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/storage"
@@ -40,21 +39,19 @@ func main() {
 	memStorage := storage.New()
 
 	// HTTP клиенты
-	httpClient := httpclient.NewHTTPClient()
+	linkChecker := linkchecker.NewLinkChecker()
 
 	// Notifier для отправки уведомлений в Bot
 	botNotifier := botclient.NewBotClient(cfg.BotBaseURL)
 
-	// Сервис проверки ссылок
-	linkChecker := linkchecker.New(httpClient, botNotifier, memStorage)
+	// Сервис работы с ссылками
+	linkService := application.NewLinkService(linkChecker, botNotifier, memStorage)
 
 	// Планировщик
-	sched, err := scheduler.New(checkInterval, linkChecker)
-
-	s := service.New(memStorage)
+	sched, err := scheduler.New(checkInterval, linkService)
 
 	// HTTP сервер для API Scrapper
-	server := scrapperhttp.NewServer(cfg.ScrapperPort, s)
+	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)

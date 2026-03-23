@@ -1,4 +1,4 @@
-package httpclient
+package linkchecker
 
 import (
 	"context"
@@ -12,17 +12,17 @@ import (
 
 const timeout = 10 * time.Second
 
-type HTTPClient struct {
+type LinkChecker struct {
 	client *http.Client
 }
 
-func NewHTTPClient() *HTTPClient {
-	return &HTTPClient{
+func NewLinkChecker() *LinkChecker {
+	return &LinkChecker{
 		client: &http.Client{Timeout: timeout},
 	}
 }
 
-func (c *HTTPClient) Check(ctx context.Context, link domain.Link) (bool, string, error) {
+func (c *LinkChecker) Check(ctx context.Context, link domain.Link) (bool, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link.URL, nil)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to create request: %w", err)

@@ -1,4 +1,4 @@
-package httpclient
+package linkchecker
 
 import (
 	"context"
@@ -11,28 +11,28 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-type HTTPClientSuite struct {
+type LinkCheckerSuite struct {
 	suite.Suite
-	client *HTTPClient
+	client *LinkChecker
 	server *httptest.Server
 	ctx    context.Context
 }
 
-func (s *HTTPClientSuite) SetupTest() {
+func (s *LinkCheckerSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.client = NewHTTPClient()
+	s.client = NewLinkChecker()
 }
 
-func (s *HTTPClientSuite) TearDownTest() {
+func (s *LinkCheckerSuite) TearDownTest() {
 	if s.server != nil {
 		s.server.Close()
 	}
 }
 
-func TestHTTPClientSuite(t *testing.T) {
-	suite.Run(t, new(HTTPClientSuite))
+func TestLinkCheckerSuite(t *testing.T) {
+	suite.Run(t, new(LinkCheckerSuite))
 }
-func (s *HTTPClientSuite) TestCheck_Success_WithChanges() {
+func (s *LinkCheckerSuite) TestCheck_Success_WithChanges() {
 	fixedTime := time.Now().UTC()
 	lastModified := fixedTime.Format(http.TimeFormat)
 
@@ -55,7 +55,7 @@ func (s *HTTPClientSuite) TestCheck_Success_WithChanges() {
 	s.Contains(msg, "updated")
 }
 
-func (s *HTTPClientSuite) TestCheck_Success_NoChanges() {
+func (s *LinkCheckerSuite) TestCheck_Success_NoChanges() {
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 	lastModified := fixedTime.Format(http.TimeFormat)
 
@@ -77,7 +77,7 @@ func (s *HTTPClientSuite) TestCheck_Success_NoChanges() {
 	s.Empty(msg)
 }
 
-func (s *HTTPClientSuite) TestCheck_NoLastModifiedHeader() {
+func (s *LinkCheckerSuite) TestCheck_NoLastModifiedHeader() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -95,7 +95,7 @@ func (s *HTTPClientSuite) TestCheck_NoLastModifiedHeader() {
 	s.Equal("no last-modified header", msg)
 }
 
-func (s *HTTPClientSuite) TestCheck_InvalidLastModifiedHeader() {
+func (s *LinkCheckerSuite) TestCheck_InvalidLastModifiedHeader() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Last-Modified", "invalid-date-format")
 		w.WriteHeader(http.StatusOK)
@@ -115,7 +115,7 @@ func (s *HTTPClientSuite) TestCheck_InvalidLastModifiedHeader() {
 	s.Empty(msg)
 }
 
-func (s *HTTPClientSuite) TestCheck_NotFound() {
+func (s *LinkCheckerSuite) TestCheck_NotFound() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -134,7 +134,7 @@ func (s *HTTPClientSuite) TestCheck_NotFound() {
 	s.Empty(msg)
 }
 
-func (s *HTTPClientSuite) TestCheck_ServerError() {
+func (s *LinkCheckerSuite) TestCheck_ServerError() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -153,7 +153,7 @@ func (s *HTTPClientSuite) TestCheck_ServerError() {
 	s.Empty(msg)
 }
 
-func (s *HTTPClientSuite) TestCheck_ContextTimeout() {
+func (s *LinkCheckerSuite) TestCheck_ContextTimeout() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -176,7 +176,7 @@ func (s *HTTPClientSuite) TestCheck_ContextTimeout() {
 	s.Empty(msg)
 }
 
-func (s *HTTPClientSuite) TestCheck_ContextCanceled() {
+func (s *LinkCheckerSuite) TestCheck_ContextCanceled() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
