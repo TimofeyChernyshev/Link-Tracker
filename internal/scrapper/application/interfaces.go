@@ -1,4 +1,4 @@
-package linkchecker
+package application
 
 import (
 	"context"
@@ -15,8 +15,15 @@ type Notifier interface {
 	SendUpdate(ctx context.Context, updatedLink domain.LinkUpdate) error
 }
 
+// Storage - контракт хранилища ссылок
 type Storage interface {
-	GetAllLinks() []domain.Link
-	GetSubscribers(url string) []int64
+	RegisterChat(chatID int64)
+	DeleteChat(chatID int64)
+	ChatExists(chatID int64) bool
+	AddLink(chatID int64, URL string, tags []string) (domain.Link, error)
+	RemoveLink(chatID int64, URL string) (domain.Link, error)
+	GetLinks(chatID int64) []domain.Link
 	UpdateTimestamp(url string, t time.Time)
+	GetSubscribers(url string) []int64
+	GetAllLinks() []domain.Link
 }

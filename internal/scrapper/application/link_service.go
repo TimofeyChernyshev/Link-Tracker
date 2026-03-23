@@ -1,9 +1,11 @@
-package service
+package application
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
@@ -13,11 +15,13 @@ var (
 )
 
 type Service struct {
-	storage Storage
+	client   Client
+	notifier Notifier
+	storage  Storage
 }
 
-func New(storage Storage) *Service {
-	return &Service{storage: storage}
+func NewLinkService(client Client, notifier Notifier, storage Storage) *Service {
+	return &Service{client: client, notifier: notifier, storage: storage}
 }
 
 func (s *Service) AddLink(chatID int64, url string, tags []string) (domain.Link, error) {
@@ -89,4 +93,30 @@ func (s *Service) DeleteChat(chatID int64) error {
 	s.storage.DeleteChat(chatID)
 
 	return nil
+}
+
+func (s *Service) CheckUpdates(ctx context.Context) {
+	links := s.storage.GetAllLinks()
+
+	for _, link := range links {
+		changed, desc, err := s.client.Check(ctx, link)
+		if err != nil {
+			slog.Warn("error during checking link", "link", link, "error", err)
+			continue
+		}
+		if !changed {
+			continue
+		}
+
+		s.storage.UpdateTimestamp(link.URL, time.Now())
+
+		chatIDs := s.storage.GetSubscribers(link.URL)
+
+		_ = s.notifier.SendUpdate(ctx, domain.LinkUpdate{
+			ID:          link.ID,
+			URL:         link.URL,
+			Description: desc,
+			ChatIDs:     chatIDs,
+		})
+	}
 }
