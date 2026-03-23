@@ -44,7 +44,7 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 			}, true, nil
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), timeoutCheckLink)
 		defer cancel()
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodHead, msg.Text, nil)
@@ -55,7 +55,7 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 			}, true, nil
 		}
 
-		client := &http.Client{Timeout: timeout}
+		client := &http.Client{Timeout: timeoutCheckLink}
 		resp, err := client.Do(req)
 		if err != nil {
 			return &domain.Response{

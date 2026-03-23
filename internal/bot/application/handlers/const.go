@@ -11,5 +11,5 @@ const (
 	listStepAwaitingTags    = 0
 	listStepListing         = 1
 
-	timeout = 10 * time.Second
+	timeoutCheckLink = 10 * time.Second
 )
