@@ -131,7 +131,7 @@ func (s *ServiceSuite) TestAddLink_ChatNotExists() {
 	link, err := s.service.AddLink(1, "url", nil)
 
 	s.Require().Error(err)
-	s.ErrorIs(err, errChatInstRegistered)
+	s.Require().ErrorIs(err, errChatInstRegistered)
 	s.Equal(domain.Link{}, link)
 }
 
@@ -177,7 +177,7 @@ func (s *ServiceSuite) TestGetLinks_ChatNotExists() {
 	links, err := s.service.GetLinks(1)
 
 	s.Require().Error(err)
-	s.ErrorIs(err, errChatInstRegistered)
+	s.Require().ErrorIs(err, errChatInstRegistered)
 	s.Nil(links)
 }
 
