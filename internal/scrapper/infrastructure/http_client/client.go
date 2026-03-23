@@ -10,13 +10,15 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
+const timeout = 10 * time.Second
+
 type HTTPClient struct {
 	client *http.Client
 }
 
 func NewHTTPClient() *HTTPClient {
 	return &HTTPClient{
-		client: &http.Client{Timeout: 10 * time.Second},
+		client: &http.Client{Timeout: timeout},
 	}
 }
 
