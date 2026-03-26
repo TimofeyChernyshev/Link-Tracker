@@ -70,7 +70,7 @@ func (s *RepositorySuite) SetupSuite() {
 	s.repo, err = NewRepository(cfg, s.connString)
 	s.Require().NoError(err)
 
-	s.applyMigrations()
+	s.ApplyMigrations()
 }
 
 func (s *RepositorySuite) TearDownSuite() {
@@ -82,7 +82,7 @@ func (s *RepositorySuite) TearDownSuite() {
 	}
 }
 
-func (s *RepositorySuite) cleanup() {
+func (s *RepositorySuite) Cleanup() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -94,7 +94,7 @@ func (s *RepositorySuite) cleanup() {
 	}
 }
 
-func (s *RepositorySuite) applyMigrations() {
+func (s *RepositorySuite) ApplyMigrations() {
 	migrations := []string{
 		`CREATE TABLE IF NOT EXISTS chats (
 			id BIGINT PRIMARY KEY,
@@ -142,7 +142,7 @@ func (s *RepositorySuite) applyMigrations() {
 }
 
 func (s *RepositorySuite) TestRegisterChat() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -153,7 +153,7 @@ func (s *RepositorySuite) TestRegisterChat() {
 }
 
 func (s *RepositorySuite) TestDeleteChat() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -167,7 +167,7 @@ func (s *RepositorySuite) TestDeleteChat() {
 }
 
 func (s *RepositorySuite) TestAddLink() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -182,7 +182,7 @@ func (s *RepositorySuite) TestAddLink() {
 }
 
 func (s *RepositorySuite) TestAddLink_AlreadyTracked() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -196,7 +196,7 @@ func (s *RepositorySuite) TestAddLink_AlreadyTracked() {
 }
 
 func (s *RepositorySuite) TestRemoveLink() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -216,7 +216,7 @@ func (s *RepositorySuite) TestRemoveLink() {
 }
 
 func (s *RepositorySuite) TestRemoveLink_NotFound() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -227,7 +227,7 @@ func (s *RepositorySuite) TestRemoveLink_NotFound() {
 }
 
 func (s *RepositorySuite) TestGetLinks() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -249,7 +249,7 @@ func (s *RepositorySuite) TestGetLinks() {
 }
 
 func (s *RepositorySuite) TestGetLinks_Pagination() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -275,7 +275,7 @@ func (s *RepositorySuite) TestGetLinks_Pagination() {
 }
 
 func (s *RepositorySuite) TestGetLinks_WithTags() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -291,7 +291,7 @@ func (s *RepositorySuite) TestGetLinks_WithTags() {
 }
 
 func (s *RepositorySuite) TestGetAllLinks() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -313,7 +313,7 @@ func (s *RepositorySuite) TestGetAllLinks() {
 }
 
 func (s *RepositorySuite) TestGetSubscribers() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -334,7 +334,7 @@ func (s *RepositorySuite) TestGetSubscribers() {
 }
 
 func (s *RepositorySuite) TestUpdateTimestamp() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -352,7 +352,7 @@ func (s *RepositorySuite) TestUpdateTimestamp() {
 }
 
 func (s *RepositorySuite) TestUpdateLastChecked() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
@@ -366,7 +366,7 @@ func (s *RepositorySuite) TestUpdateLastChecked() {
 }
 
 func (s *RepositorySuite) TestRemoveLink_ClearsUnusedTags() {
-	defer s.cleanup()
+	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
