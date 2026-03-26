@@ -4,12 +4,26 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"strconv"
 )
 
 type Config struct {
 	ScrapperPort string
 	BotBaseURL   string
+	AccessType   AccessType
+	DBUser       string
+	DBPassword   string
+	DBHost       string
+	DBPort       int
+	DBName       string
 }
+
+type AccessType string
+
+const (
+	AccessTypeSQL AccessType = "sql"
+	AccessTypeORM AccessType = "orm"
+)
 
 func Load() (*Config, error) {
 	port := os.Getenv("PORT")
@@ -20,8 +34,23 @@ func Load() (*Config, error) {
 
 	botURL := os.Getenv("BOT_BASE_URL")
 	if botURL == "" {
-		slog.Error("BOT_BASE_URL is not set in .env.scrapper file")
+		slog.Warn("BOT_BASE_URL is not set in .env.scrapper file")
 	}
 
-	return &Config{ScrapperPort: port, BotBaseURL: botURL}, nil
+	portString := os.Getenv("DB_PORT")
+	dbPort, err := strconv.Atoi(portString)
+	if err != nil {
+		slog.Warn("DB_PORT is not int", "error", err)
+	}
+
+	return &Config{
+		ScrapperPort: port,
+		BotBaseURL:   botURL,
+		AccessType:   AccessType(os.Getenv("ACCESS_TYPE")),
+		DBUser:       os.Getenv("DB_USER"),
+		DBPassword:   os.Getenv("DB_PASSWORD"),
+		DBHost:       os.Getenv("DB_HOST"),
+		DBPort:       dbPort,
+		DBName:       os.Getenv("DB_NAME"),
+	}, nil
 }
