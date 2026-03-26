@@ -16,12 +16,12 @@ const (
 	linkCheckInterval = "5 minutes"
 )
 
-type SqlRepository struct {
+type SQLRepository struct {
 	db    *pgxpool.Pool
 	sqlDB *sql.DB
 }
 
-func NewRepository(connString string) (*SqlRepository, error) {
+func NewRepository(connString string) (*SQLRepository, error) {
 	db, err := pgxpool.New(context.Background(), connString)
 	if err != nil {
 		return nil, fmt.Errorf("connect to db: %w", err)
@@ -33,10 +33,10 @@ func NewRepository(connString string) (*SqlRepository, error) {
 		return nil, fmt.Errorf("open sql db: %w", err)
 	}
 
-	return &SqlRepository{db: db, sqlDB: sqlDB}, nil
+	return &SQLRepository{db: db, sqlDB: sqlDB}, nil
 }
 
-func (r *SqlRepository) Close() {
+func (r *SQLRepository) Close() {
 	if r.db != nil {
 		r.db.Close()
 	}
@@ -45,11 +45,11 @@ func (r *SqlRepository) Close() {
 	}
 }
 
-func (r *SqlRepository) DB() *sql.DB {
+func (r *SQLRepository) DB() *sql.DB {
 	return r.sqlDB
 }
 
-func (r *SqlRepository) RegisterChat(ctx context.Context, chatID int64) error {
+func (r *SQLRepository) RegisterChat(ctx context.Context, chatID int64) error {
 	_, err := r.db.Exec(ctx, `
         INSERT INTO chats (id) VALUES ($1) ON CONFLICT (id) DO NOTHING
     `, chatID)
@@ -59,7 +59,7 @@ func (r *SqlRepository) RegisterChat(ctx context.Context, chatID int64) error {
 	return nil
 }
 
-func (r *SqlRepository) DeleteChat(ctx context.Context, chatID int64) error {
+func (r *SQLRepository) DeleteChat(ctx context.Context, chatID int64) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -119,7 +119,7 @@ func (r *SqlRepository) DeleteChat(ctx context.Context, chatID int64) error {
 	return nil
 }
 
-func (r *SqlRepository) ChatExists(ctx context.Context, chatID int64) (bool, error) {
+func (r *SQLRepository) ChatExists(ctx context.Context, chatID int64) (bool, error) {
 	var exists bool
 	err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM chats WHERE id = $1)`, chatID).Scan(&exists)
 	if err != nil {
@@ -128,7 +128,7 @@ func (r *SqlRepository) ChatExists(ctx context.Context, chatID int64) (bool, err
 	return exists, nil
 }
 
-func (r *SqlRepository) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
+func (r *SQLRepository) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("begin tx: %w", err)
@@ -203,7 +203,7 @@ func (r *SqlRepository) AddLink(ctx context.Context, chatID int64, url string, t
 	return link, nil
 }
 
-func (r *SqlRepository) RemoveLink(ctx context.Context, chatID int64, url string) (domain.Link, error) {
+func (r *SQLRepository) RemoveLink(ctx context.Context, chatID int64, url string) (domain.Link, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("begin tx: %w", err)
@@ -264,7 +264,7 @@ func (r *SqlRepository) RemoveLink(ctx context.Context, chatID int64, url string
 	return link, nil
 }
 
-func (r *SqlRepository) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
+func (r *SQLRepository) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
 	rows, err := r.db.Query(ctx, `
         SELECT l.id, l.url, l.updated_at,
             ARRAY_AGG(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as tags
@@ -296,7 +296,7 @@ func (r *SqlRepository) GetLinks(ctx context.Context, chatID int64, limit, offse
 	return links, nil
 }
 
-func (r *SqlRepository) GetAllLinks(ctx context.Context, limit, offset int) ([]domain.Link, error) {
+func (r *SQLRepository) GetAllLinks(ctx context.Context, limit, offset int) ([]domain.Link, error) {
 	rows, err := r.db.Query(ctx, `
         SELECT id, url, updated_at FROM links 
 		WHERE last_checked_at < NOW() - $1::interval
@@ -319,7 +319,7 @@ func (r *SqlRepository) GetAllLinks(ctx context.Context, limit, offset int) ([]d
 	return links, nil
 }
 
-func (r *SqlRepository) GetSubscribers(ctx context.Context, url string) ([]int64, error) {
+func (r *SQLRepository) GetSubscribers(ctx context.Context, url string) ([]int64, error) {
 	rows, err := r.db.Query(ctx, `
         SELECT lc.chat_id
         FROM links l
@@ -342,7 +342,7 @@ func (r *SqlRepository) GetSubscribers(ctx context.Context, url string) ([]int64
 	return chatIDs, nil
 }
 
-func (r *SqlRepository) UpdateTimestamp(ctx context.Context, url string, timestamp time.Time) error {
+func (r *SQLRepository) UpdateTimestamp(ctx context.Context, url string, timestamp time.Time) error {
 	_, err := r.db.Exec(ctx, `
         UPDATE links SET updated_at = $1 WHERE url = $2
     `, timestamp, url)
@@ -352,7 +352,7 @@ func (r *SqlRepository) UpdateTimestamp(ctx context.Context, url string, timesta
 	return nil
 }
 
-func (r *SqlRepository) UpdateLastChecked(ctx context.Context, url string, timestamp time.Time) error {
+func (r *SQLRepository) UpdateLastChecked(ctx context.Context, url string, timestamp time.Time) error {
 	_, err := r.db.Exec(ctx, `
         UPDATE links SET last_checked_at = $1 WHERE url = $2
     `, timestamp, url)
