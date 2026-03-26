@@ -59,7 +59,9 @@ func (r *OrmRepository) DeleteChat(ctx context.Context, chatID int64) error {
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	var linkIDs []int64
 	err = tx.From("link_chat").
@@ -124,7 +126,9 @@ func (r *OrmRepository) AddLink(ctx context.Context, chatID int64, url string, t
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	var linkID int64
 
@@ -206,7 +210,9 @@ func (r *OrmRepository) RemoveLink(ctx context.Context, chatID int64, url string
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	var link domain.Link
 

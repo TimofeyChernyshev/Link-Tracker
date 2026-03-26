@@ -64,8 +64,9 @@ func (r *SqlRepository) DeleteChat(ctx context.Context, chatID int64) error {
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
-
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	rows, err := tx.Query(ctx, `
         SELECT link_id FROM link_chat WHERE chat_id = $1
     `, chatID)
@@ -132,7 +133,9 @@ func (r *SqlRepository) AddLink(ctx context.Context, chatID int64, url string, t
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	// добавление ссылки или получение существующей
 	var linkID int64
@@ -205,7 +208,9 @@ func (r *SqlRepository) RemoveLink(ctx context.Context, chatID int64, url string
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	var linkID int64
 	err = tx.QueryRow(ctx, `SELECT id FROM links WHERE url = $1`, url).Scan(&linkID)
