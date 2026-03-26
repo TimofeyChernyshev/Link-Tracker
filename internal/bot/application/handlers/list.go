@@ -13,9 +13,8 @@ import (
 )
 
 const (
-	minLinksOut   = 1
-	maxLinksOut   = 50
-	defaultOffset = 1
+	minPage      = 1
+	linksPerPage = 50
 )
 
 type ListHandler struct {
@@ -23,10 +22,6 @@ type ListHandler struct {
 
 	step  int
 	links []domain.Link
-	tags  string
-	limit int
-
-	filteredLinks []string
 
 	linkService LinkService
 }
@@ -36,16 +31,24 @@ func NewListHandler(l LinkService, t time.Duration) *ListHandler {
 }
 
 func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, error) {
-	slog.Info("list requested", "chatID", msg.ChatID)
+	slog.Info("list requested", "chatID", msg.ChatID, "command", msg.Text)
+
+	parts := strings.Fields(msg.Text)
+	page := minPage
+	if len(parts) > 1 {
+		if p, err := strconv.Atoi(parts[1]); err == nil && p >= minPage {
+			page = p
+		}
+	}
 
 	switch lh.step {
 	case listStepAwaitingTags:
-		lh.step = listStepAwaitingLimit
+		lh.step = listStepListing
 
 		context, cancel := context.WithTimeout(context.Background(), lh.timeout)
 		defer cancel()
 
-		links, err := lh.linkService.GetLinks(context, msg.ChatID)
+		links, err := lh.linkService.GetLinks(context, msg.ChatID, linksPerPage, (page-1)*linksPerPage)
 		if err != nil {
 			slog.Error("list error", "error", err)
 			return nil, true, fmt.Errorf("cannot get links: %w", err)
@@ -63,14 +66,9 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 			ChatID: msg.ChatID,
 			Text:   "Введите теги по которым нужно провести фильтрацию или '-', чтобы вывести все ссылки",
 		}, false, nil
-	case listStepAwaitingLimit:
-		lh.step = listStepAwaitingOffset
-
-		lh.tags = msg.Text
-
-		lh.filteredLinks = tagFilter(lh.links, lh.tags)
-
-		if len(lh.filteredLinks) == 0 {
+	case listStepListing:
+		filteredLinks := tagFilter(lh.links, msg.Text)
+		if len(filteredLinks) == 0 {
 			return &domain.Response{
 				ChatID: msg.ChatID,
 				Text:   "По указанным тегам ссылок не найдено",
@@ -78,46 +76,7 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 		}
 
 		return &domain.Response{
-			ChatID: msg.ChatID,
-			Text:   "Сколько ссылок вывести за раз? (от 1 до 50):",
-		}, false, nil
-	case listStepAwaitingOffset:
-		lh.step = listStepListing
-
-		limit, err := strconv.Atoi(msg.Text)
-		if err != nil || limit < minLinksOut {
-			limit = minLinksOut
-		}
-		if limit > maxLinksOut {
-			limit = maxLinksOut
-		}
-		lh.limit = limit
-
-		return &domain.Response{
-			ChatID: msg.ChatID,
-			Text:   fmt.Sprintf("Начиная с какой позиции? (от 1 до %d):", len(lh.filteredLinks)),
-		}, false, nil
-	case listStepListing:
-		offset, err := strconv.Atoi(msg.Text)
-		if err != nil || offset < defaultOffset {
-			offset = defaultOffset
-		}
-		startIndex := offset - 1
-
-		if startIndex >= len(lh.filteredLinks) {
-			return &domain.Response{
-				ChatID: msg.ChatID,
-				Text:   fmt.Sprintf("Позиция (%d) превышает количество ссылок (%d)", offset, len(lh.filteredLinks)),
-			}, true, nil
-		}
-
-		end := startIndex + lh.limit
-		if end > len(lh.filteredLinks) {
-			end = len(lh.filteredLinks)
-		}
-
-		return &domain.Response{
-			Text:   strings.Join(lh.filteredLinks[startIndex:end], "\n"),
+			Text:   strings.Join(filteredLinks, "\n"),
 			ChatID: msg.ChatID,
 		}, true, nil
 	}

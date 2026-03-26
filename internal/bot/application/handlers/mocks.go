@@ -64,18 +64,18 @@ func (mr *MockLinkServiceMockRecorder) DeleteChat(ctx, chatID interface{}) *gomo
 }
 
 // GetLinks mocks base method.
-func (m *MockLinkService) GetLinks(ctx context.Context, chatID int64) ([]domain.Link, error) {
+func (m *MockLinkService) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLinks", ctx, chatID)
+	ret := m.ctrl.Call(m, "GetLinks", ctx, chatID, limit, offset)
 	ret0, _ := ret[0].([]domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLinks indicates an expected call of GetLinks.
-func (mr *MockLinkServiceMockRecorder) GetLinks(ctx, chatID interface{}) *gomock.Call {
+func (mr *MockLinkServiceMockRecorder) GetLinks(ctx, chatID, limit, offset interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockLinkService)(nil).GetLinks), ctx, chatID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockLinkService)(nil).GetLinks), ctx, chatID, limit, offset)
 }
 
 // RegisterChat mocks base method.
