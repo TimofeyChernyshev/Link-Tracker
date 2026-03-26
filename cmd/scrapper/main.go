@@ -1,21 +1,28 @@
 package main
 
+// предотвращение, обнаружение, обход,
+
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	botclient "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/bot_client"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/scheduler"
 	scrapperhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/server/http"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/storage"
 )
 
 const (
@@ -36,7 +43,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	memStorage := storage.New()
+	if err := runMigrations(cfg); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+
+	repo, err := repository.NewRepository(cfg, fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName))
+	if err != nil {
+		slog.Error("failed to create repository", "error", err)
+		os.Exit(1)
+	}
+	defer repo.Close()
 
 	// HTTP клиенты
 	linkChecker := linkchecker.NewLinkChecker()
@@ -45,7 +63,7 @@ func main() {
 	botNotifier := botclient.NewBotClient(cfg.BotBaseURL)
 
 	// Сервис работы с ссылками
-	linkService := application.NewLinkService(linkChecker, botNotifier, memStorage)
+	linkService := application.NewLinkService(linkChecker, botNotifier, repo)
 
 	// Планировщик
 	sched, err := scheduler.New(checkInterval, linkService)
@@ -96,4 +114,26 @@ func setLogger() {
 	})
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
+}
+
+func runMigrations(cfg *config.Config) error {
+	connString := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName,
+	)
+
+	m, err := migrate.New(
+		"file://migrations",
+		connString,
+	)
+	if err != nil {
+		return fmt.Errorf("create migrator: %w", err)
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("run migrations: %w", err)
+	}
+
+	return nil
 }
