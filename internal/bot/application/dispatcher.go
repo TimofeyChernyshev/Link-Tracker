@@ -51,7 +51,7 @@ func (cd *CommandDispatcher) HandleMessage(msg *domain.Message) {
 
 		cd.bot.SendMessage(&domain.Response{
 			ChatID: msg.ChatID,
-			Text:   "Произошла ошибка, попробуйте позже",
+			Text:   "Произошла ошибка: " + err.Error(),
 		})
 		return
 	}
