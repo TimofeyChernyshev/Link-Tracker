@@ -47,6 +47,8 @@ func (s *ListHandlerSuite) TestExecute_SuccessWithFilter() {
 		{URL: "https://github.com/1", Tags: []string{"work", "urgent"}},
 		{URL: "https://github.com/2", Tags: []string{"personal"}},
 		{URL: "https://github.com/3", Tags: []string{"work", "archive"}},
+		{URL: "https://github.com/4", Tags: []string{"personal", "work"}},
+		{URL: "https://github.com/5", Tags: []string{"archive"}},
 	}
 
 	s.linkService.EXPECT().
@@ -70,15 +72,38 @@ func (s *ListHandlerSuite) TestExecute_SuccessWithFilter() {
 	}
 
 	resp, done, err = s.handler.Execute(filterMsg)
+	s.Require().NoError(err)
+	s.False(done)
+	s.NotNil(resp)
+	s.Contains(resp.Text, "Сколько ссылок вывести за раз?")
 
+	limitMsg := &domain.Message{
+		Text:      "2",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 3,
+	}
+	resp, done, err = s.handler.Execute(limitMsg)
+	s.Require().NoError(err)
+	s.False(done)
+	s.NotNil(resp)
+	s.Contains(resp.Text, "Начиная с какой позиции?")
+
+	offsetMsg := &domain.Message{
+		Text:      "2",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 4,
+	}
+	resp, done, err = s.handler.Execute(offsetMsg)
 	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
 
 	expected := []string{
-		"https://github.com/1",
 		"https://github.com/3",
+		"https://github.com/4",
 	}
 	s.Equal(strings.Join(expected, "\n"), resp.Text)
 }
@@ -112,13 +137,14 @@ func (s *ListHandlerSuite) TestExecute_FilterNoMatches() {
 	s.True(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
-	s.Equal("Список отслеживаемых ссылок пуст", resp.Text)
+	s.Equal("По указанным тегам ссылок не найдено", resp.Text)
 }
 
 func (s *ListHandlerSuite) TestExecute_AllLinks() {
 	expectedLinks := []domain.Link{
 		{URL: "https://github.com/1", Tags: []string{"work"}},
 		{URL: "https://github.com/2", Tags: []string{"personal"}},
+		{URL: "https://github.com/3", Tags: []string{}},
 	}
 
 	s.linkService.EXPECT().
@@ -139,7 +165,26 @@ func (s *ListHandlerSuite) TestExecute_AllLinks() {
 	}
 
 	resp, done, err = s.handler.Execute(filterMsg)
+	s.Require().NoError(err)
+	s.False(done)
 
+	limitMsg := &domain.Message{
+		Text:      "10",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 3,
+	}
+	resp, done, err = s.handler.Execute(limitMsg)
+	s.Require().NoError(err)
+	s.False(done)
+
+	offsetMsg := &domain.Message{
+		Text:      "1",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 4,
+	}
+	resp, done, err = s.handler.Execute(offsetMsg)
 	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
@@ -147,6 +192,7 @@ func (s *ListHandlerSuite) TestExecute_AllLinks() {
 	expected := []string{
 		"https://github.com/1",
 		"https://github.com/2",
+		"https://github.com/3",
 	}
 	s.Equal(strings.Join(expected, "\n"), resp.Text)
 }
@@ -158,37 +204,6 @@ func (s *ListHandlerSuite) TestExecute_EmptyList() {
 		Times(1)
 
 	resp, done, err := s.handler.Execute(s.msg)
-
-	s.Require().NoError(err)
-	s.True(done)
-	s.NotNil(resp)
-	s.Equal(int64(12345), resp.ChatID)
-	s.Equal("Список отслеживаемых ссылок пуст", resp.Text)
-}
-
-func (s *ListHandlerSuite) TestExecute_EmptyListAfterFilter() {
-	expectedLinks := []domain.Link{
-		{URL: "https://github.com/1", Tags: []string{"work"}},
-		{URL: "https://github.com/2", Tags: []string{"personal"}},
-	}
-
-	s.linkService.EXPECT().
-		GetLinks(gomock.Any(), int64(12345)).
-		Return(expectedLinks, nil)
-
-	resp, done, err := s.handler.Execute(s.msg)
-	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.False(done)
-
-	filterMsg := &domain.Message{
-		Text:      "123",
-		ChatID:    12345,
-		Username:  "testuser",
-		MessageID: 2,
-	}
-
-	resp, done, err = s.handler.Execute(filterMsg)
 
 	s.Require().NoError(err)
 	s.True(done)
@@ -228,6 +243,112 @@ func (s *ListHandlerSuite) TestExecute_Timeout() {
 	s.Require().ErrorContains(err, context.DeadlineExceeded.Error())
 	s.True(done)
 	s.Nil(resp)
+}
+
+func (s *ListHandlerSuite) TestExecute_InvalidLimit() {
+	expectedLinks := []domain.Link{
+		{URL: "https://github.com/1", Tags: []string{"work"}},
+		{URL: "https://github.com/2", Tags: []string{"personal"}},
+	}
+
+	s.linkService.EXPECT().
+		GetLinks(gomock.Any(), int64(12345)).
+		Return(expectedLinks, nil).
+		Times(1)
+
+	resp, done, err := s.handler.Execute(s.msg)
+	s.Require().NoError(err)
+	s.False(done)
+
+	filterMsg := &domain.Message{
+		Text:      "-",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 2,
+	}
+	resp, done, err = s.handler.Execute(filterMsg)
+	s.Require().NoError(err)
+	s.False(done)
+
+	limitMsg := &domain.Message{
+		Text:      "abc",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 3,
+	}
+	resp, done, err = s.handler.Execute(limitMsg)
+	s.Require().NoError(err)
+	s.False(done)
+	s.Contains(resp.Text, "Начиная с какой позиции?")
+	s.Equal(1, s.handler.limit)
+}
+
+func (s *ListHandlerSuite) TestExecute_InvalidOffset() {
+	expectedLinks := []domain.Link{
+		{URL: "https://github.com/1", Tags: []string{"work"}},
+		{URL: "https://github.com/2", Tags: []string{"personal"}},
+	}
+
+	s.linkService.EXPECT().
+		GetLinks(gomock.Any(), int64(12345)).
+		Return(expectedLinks, nil).
+		Times(1)
+
+	s.handler.Execute(s.msg)
+
+	filterMsg := &domain.Message{Text: "-", ChatID: 12345}
+	s.handler.Execute(filterMsg)
+
+	limitMsg := &domain.Message{Text: "10", ChatID: 12345}
+	s.handler.Execute(limitMsg)
+
+	offsetMsg := &domain.Message{
+		Text:      "abc",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 4,
+	}
+	resp, done, err := s.handler.Execute(offsetMsg)
+	s.Require().NoError(err)
+	s.True(done)
+
+	expected := []string{
+		"https://github.com/1",
+		"https://github.com/2",
+	}
+	s.Equal(strings.Join(expected, "\n"), resp.Text)
+}
+
+func (s *ListHandlerSuite) TestExecute_OffsetOutOfRange() {
+	expectedLinks := []domain.Link{
+		{URL: "https://github.com/1", Tags: []string{"work"}},
+		{URL: "https://github.com/2", Tags: []string{"personal"}},
+	}
+
+	s.linkService.EXPECT().
+		GetLinks(gomock.Any(), int64(12345)).
+		Return(expectedLinks, nil).
+		Times(1)
+
+	s.handler.Execute(s.msg)
+
+	filterMsg := &domain.Message{Text: "-", ChatID: 12345}
+	s.handler.Execute(filterMsg)
+
+	limitMsg := &domain.Message{Text: "10", ChatID: 12345}
+	s.handler.Execute(limitMsg)
+
+	offsetMsg := &domain.Message{
+		Text:      "10",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 4,
+	}
+	resp, done, err := s.handler.Execute(offsetMsg)
+	s.Require().NoError(err)
+	s.True(done)
+
+	s.Contains(resp.Text, "превышает количество ссылок")
 }
 
 func (s *ListHandlerSuite) TestTagFilter() {

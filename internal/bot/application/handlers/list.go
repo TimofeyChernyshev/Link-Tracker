@@ -5,10 +5,17 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+)
+
+const (
+	minLinksOut   = 1
+	maxLinksOut   = 50
+	defaultOffset = 1
 )
 
 type ListHandler struct {
@@ -16,6 +23,10 @@ type ListHandler struct {
 
 	step  int
 	links []domain.Link
+	tags  string
+	limit int
+
+	filteredLinks []string
 
 	linkService LinkService
 }
@@ -29,7 +40,7 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 
 	switch lh.step {
 	case listStepAwaitingTags:
-		lh.step = 1
+		lh.step = listStepAwaitingLimit
 
 		context, cancel := context.WithTimeout(context.Background(), lh.timeout)
 		defer cancel()
@@ -52,19 +63,62 @@ func (lh *ListHandler) Execute(msg *domain.Message) (*domain.Response, bool, err
 			ChatID: msg.ChatID,
 			Text:   "Введите теги по которым нужно провести фильтрацию или '-', чтобы вывести все ссылки",
 		}, false, nil
-	case listStepListing:
-		filteredLinks := tagFilter(lh.links, msg.Text)
+	case listStepAwaitingLimit:
+		lh.step = listStepAwaitingOffset
 
-		if len(filteredLinks) == 0 {
+		lh.tags = msg.Text
+
+		lh.filteredLinks = tagFilter(lh.links, lh.tags)
+
+		if len(lh.filteredLinks) == 0 {
 			return &domain.Response{
 				ChatID: msg.ChatID,
-				Text:   "Список отслеживаемых ссылок пуст",
+				Text:   "По указанным тегам ссылок не найдено",
 			}, true, nil
 		}
 
 		return &domain.Response{
 			ChatID: msg.ChatID,
-			Text:   strings.Join(filteredLinks, "\n"),
+			Text:   "Сколько ссылок вывести за раз? (от 1 до 50):",
+		}, false, nil
+	case listStepAwaitingOffset:
+		lh.step = listStepListing
+
+		limit, err := strconv.Atoi(msg.Text)
+		if err != nil || limit < minLinksOut {
+			limit = minLinksOut
+		}
+		if limit > maxLinksOut {
+			limit = maxLinksOut
+		}
+		lh.limit = limit
+
+		return &domain.Response{
+			ChatID: msg.ChatID,
+			Text:   fmt.Sprintf("Начиная с какой позиции? (от 1 до %d):", len(lh.filteredLinks)),
+		}, false, nil
+	case listStepListing:
+		offset, err := strconv.Atoi(msg.Text)
+		if err != nil || offset < defaultOffset {
+			offset = defaultOffset
+		}
+		startIndex := offset - 1
+
+		if startIndex >= len(lh.filteredLinks) {
+			return &domain.Response{
+				ChatID: msg.ChatID,
+				Text:   fmt.Sprintf("Позиция (%d) превышает количество ссылок (%d)", offset, len(lh.filteredLinks)),
+			}, true, nil
+		}
+
+		end := startIndex + lh.limit
+		if end > len(lh.filteredLinks) {
+			end = len(lh.filteredLinks)
+		}
+
+		return &domain.Response{
+			Text:   strings.Join(lh.filteredLinks[startIndex:end], "\n"),
+			ChatID: msg.ChatID,
 		}, true, nil
 	}
 
