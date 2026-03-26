@@ -359,5 +359,6 @@ func (r *SQLRepository) UpdateLastChecked(ctx context.Context, url string, times
 	if err != nil {
 		return fmt.Errorf("update last checked: %w", err)
 	}
-	return err
+
+	return nil
 }
