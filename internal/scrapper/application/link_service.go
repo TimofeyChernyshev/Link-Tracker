@@ -99,7 +99,7 @@ func (s *Service) RegisterChat(ctx context.Context, chatID int64) error {
 		return errors.New("chat already registered")
 	}
 
-	if err := s.storage.RegisterChat(ctx, chatID); err != nil {
+	if err = s.storage.RegisterChat(ctx, chatID); err != nil {
 		return fmt.Errorf("register chat: %w", err)
 	}
 
@@ -118,7 +118,7 @@ func (s *Service) DeleteChat(ctx context.Context, chatID int64) error {
 		return errChatInstRegistered
 	}
 
-	if err := s.storage.DeleteChat(ctx, chatID); err != nil {
+	if err = s.storage.DeleteChat(ctx, chatID); err != nil {
 		return fmt.Errorf("delete chat: %w", err)
 	}
 
@@ -154,7 +154,7 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) {
 		return
 	}
 
-	if err := s.storage.UpdateLastChecked(ctx, link.URL, time.Now()); err != nil {
+	if err = s.storage.UpdateLastChecked(ctx, link.URL, time.Now()); err != nil {
 		slog.Warn("failed to update last checked", "url", link.URL, "error", err)
 	}
 
@@ -162,7 +162,7 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) {
 		return
 	}
 
-	if err := s.storage.UpdateTimestamp(ctx, link.URL, time.Now()); err != nil {
+	if err = s.storage.UpdateTimestamp(ctx, link.URL, time.Now()); err != nil {
 		slog.Warn("failed to update timestamp", "url", link.URL, "error", err)
 	}
 
@@ -172,7 +172,7 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) {
 		return
 	}
 
-	if err := s.notifier.SendUpdate(ctx, domain.LinkUpdate{
+	if err = s.notifier.SendUpdate(ctx, domain.LinkUpdate{
 		ID:          link.ID,
 		URL:         link.URL,
 		Description: desc,

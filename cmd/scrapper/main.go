@@ -43,7 +43,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := runMigrations(cfg); err != nil {
+	if err = runMigrations(cfg); err != nil {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
@@ -131,7 +131,7 @@ func runMigrations(cfg *config.Config) error {
 	}
 	defer m.Close()
 
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 

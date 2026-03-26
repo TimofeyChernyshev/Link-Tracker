@@ -77,13 +77,13 @@ func (r *SqlRepository) DeleteChat(ctx context.Context, chatID int64) error {
 	var linkIDs []int64
 	for rows.Next() {
 		var linkID int64
-		if err := rows.Scan(&linkID); err != nil {
+		if err = rows.Scan(&linkID); err != nil {
 			rows.Close()
 			return fmt.Errorf("scan link_id: %w", err)
 		}
 		linkIDs = append(linkIDs, linkID)
 	}
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		rows.Close()
 		return fmt.Errorf("rows error: %w", err)
 	}
@@ -286,7 +286,7 @@ func (r *SqlRepository) GetLinks(ctx context.Context, chatID int64, limit, offse
 	for rows.Next() {
 		var link domain.Link
 		var tags []string
-		err := rows.Scan(&link.ID, &link.URL, &link.UpdatedAt, &tags)
+		err = rows.Scan(&link.ID, &link.URL, &link.UpdatedAt, &tags)
 		if err != nil {
 			return nil, fmt.Errorf("scan link: %w", err)
 		}
@@ -310,7 +310,7 @@ func (r *SqlRepository) GetAllLinks(ctx context.Context, limit, offset int) ([]d
 	var links []domain.Link
 	for rows.Next() {
 		var link domain.Link
-		err := rows.Scan(&link.ID, &link.URL, &link.UpdatedAt)
+		err = rows.Scan(&link.ID, &link.URL, &link.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("scan link: %w", err)
 		}
@@ -334,7 +334,7 @@ func (r *SqlRepository) GetSubscribers(ctx context.Context, url string) ([]int64
 	var chatIDs []int64
 	for rows.Next() {
 		var id int64
-		if err := rows.Scan(&id); err != nil {
+		if err = rows.Scan(&id); err != nil {
 			return nil, fmt.Errorf("scan chat_id: %w", err)
 		}
 		chatIDs = append(chatIDs, id)
