@@ -321,9 +321,7 @@ func (r *OrmRepository) GetLinks(ctx context.Context, chatID int64, limit, offse
 
 	var result []domain.Link
 	for _, r := range rows {
-		var tags []string
-
-		tags = make([]string, len(r.Tags.Elements))
+		tags := make([]string, len(r.Tags.Elements))
 		for i, el := range r.Tags.Elements {
 			tags[i] = el.String
 		}
