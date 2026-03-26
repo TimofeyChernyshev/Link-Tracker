@@ -115,8 +115,9 @@ func (s *ServiceSuite) TestCheckUpdates_WithChanges() {
 }
 
 func (s *ServiceSuite) TestCheckUpdates_Pagination() {
-	links := make([]domain.Link, 25)
-	for i := 0; i < 25; i++ {
+	linksLen := 25
+	links := make([]domain.Link, linksLen)
+	for i := range linksLen {
 		links[i] = domain.Link{
 			ID:  int64(i + 1),
 			URL: fmt.Sprintf("https://github.com/repo%d", i+1),
@@ -130,7 +131,7 @@ func (s *ServiceSuite) TestCheckUpdates_Pagination() {
 	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 20).Return(links[20:25], nil)
 	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 30).Return([]domain.Link{}, nil)
 
-	for i := 0; i < 25; i++ {
+	for i := range linksLen {
 		s.mockClient.EXPECT().Check(s.ctx, links[i]).Return(false, "", nil)
 		s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, links[i].URL, gomock.Any()).Return(nil)
 	}

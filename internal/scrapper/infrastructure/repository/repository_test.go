@@ -254,7 +254,8 @@ func (s *RepositorySuite) TestGetLinks_Pagination() {
 	err := s.repo.RegisterChat(s.ctx, 12345)
 	s.Require().NoError(err)
 
-	for i := 0; i < 10; i++ {
+	addingLinksAmount := 10
+	for i := range addingLinksAmount {
 		url := fmt.Sprintf("https://github.com/test/repo%d", i)
 		_, err = s.repo.AddLink(s.ctx, 12345, url, []string{fmt.Sprintf("tag%d", i)})
 		s.Require().NoError(err)
