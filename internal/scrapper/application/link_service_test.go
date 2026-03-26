@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -44,7 +45,7 @@ func TestServiceSuite(t *testing.T) {
 }
 
 func (s *ServiceSuite) TestCheckUpdates_NoLinks() {
-	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{})
+	s.mockStorage.EXPECT().GetAllLinks(gomock.Any(), linksForUpdateLimit, defaultOffset).Return([]domain.Link{}, nil)
 
 	s.service.CheckUpdates(s.ctx)
 }
@@ -55,7 +56,8 @@ func (s *ServiceSuite) TestCheckUpdates_GotError() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{link})
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, 0).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
 
 	s.mockClient.EXPECT().Check(s.ctx, link).Return(false, "", errors.New("some text"))
 
@@ -68,9 +70,12 @@ func (s *ServiceSuite) TestCheckUpdates_NoChanges() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{link})
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, 0).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
 
 	s.mockClient.EXPECT().Check(s.ctx, link).Return(false, "", nil)
+
+	s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, link.URL, gomock.Any()).Return(nil)
 
 	s.service.CheckUpdates(s.ctx)
 }
@@ -81,19 +86,22 @@ func (s *ServiceSuite) TestCheckUpdates_WithChanges() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks().Return([]domain.Link{link})
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, 0).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
 
 	description := "New commit added"
 	s.mockClient.EXPECT().Check(s.ctx, link).Return(true, description, nil)
 
-	s.mockStorage.EXPECT().UpdateTimestamp(link.URL, gomock.Any()).Do(
-		func(_ string, ts time.Time) {
+	s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, "https://github.com/user/repo", gomock.Any()).Return(nil)
+
+	s.mockStorage.EXPECT().UpdateTimestamp(s.ctx, link.URL, gomock.Any()).Do(
+		func(_ context.Context, _ string, ts time.Time) {
 			s.WithinDuration(time.Now(), ts, time.Second)
 		},
-	)
+	).Return(nil)
 
 	chatIDs := []int64{123, 456}
-	s.mockStorage.EXPECT().GetSubscribers(link.URL).Return(chatIDs)
+	s.mockStorage.EXPECT().GetSubscribers(s.ctx, link.URL).Return(chatIDs, nil)
 
 	expectedUpdate := domain.LinkUpdate{
 		ID:          link.ID,
@@ -102,6 +110,30 @@ func (s *ServiceSuite) TestCheckUpdates_WithChanges() {
 		ChatIDs:     chatIDs,
 	}
 	s.mockNotifier.EXPECT().SendUpdate(s.ctx, expectedUpdate).Return(nil)
+
+	s.service.CheckUpdates(s.ctx)
+}
+
+func (s *ServiceSuite) TestCheckUpdates_Pagination() {
+	links := make([]domain.Link, 25)
+	for i := 0; i < 25; i++ {
+		links[i] = domain.Link{
+			ID:  int64(i + 1),
+			URL: fmt.Sprintf("https://github.com/repo%d", i+1),
+		}
+	}
+
+	linksForUpdateLimit = 10
+
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 0).Return(links[0:10], nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 10).Return(links[10:20], nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 20).Return(links[20:25], nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 30).Return([]domain.Link{}, nil)
+
+	for i := 0; i < 25; i++ {
+		s.mockClient.EXPECT().Check(s.ctx, links[i]).Return(false, "", nil)
+		s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, links[i].URL, gomock.Any()).Return(nil)
+	}
 
 	s.service.CheckUpdates(s.ctx)
 }
@@ -116,19 +148,19 @@ func (s *ServiceSuite) TestAddLink_Success() {
 		Tags: tags,
 	}
 
-	s.mockStorage.EXPECT().ChatExists(chatID).Return(true)
-	s.mockStorage.EXPECT().AddLink(chatID, url, tags).Return(expected, nil)
+	s.mockStorage.EXPECT().ChatExists(s.ctx, chatID).Return(true, nil)
+	s.mockStorage.EXPECT().AddLink(s.ctx, chatID, url, tags).Return(expected, nil)
 
-	link, err := s.service.AddLink(chatID, url, tags)
+	link, err := s.service.AddLink(s.ctx, chatID, url, tags)
 
 	s.Require().NoError(err)
 	s.Equal(expected, link)
 }
 
 func (s *ServiceSuite) TestAddLink_ChatNotExists() {
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(false)
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(false, nil)
 
-	link, err := s.service.AddLink(1, "url", nil)
+	link, err := s.service.AddLink(s.ctx, 1, "url", nil)
 
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, errChatInstRegistered)
@@ -138,19 +170,19 @@ func (s *ServiceSuite) TestAddLink_ChatNotExists() {
 func (s *ServiceSuite) TestRemoveLink_Success() {
 	expected := domain.Link{URL: "https://example.com"}
 
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(true)
-	s.mockStorage.EXPECT().RemoveLink(int64(1), expected.URL).Return(expected, nil)
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
+	s.mockStorage.EXPECT().RemoveLink(s.ctx, int64(1), expected.URL).Return(expected, nil)
 
-	link, err := s.service.RemoveLink(1, expected.URL)
+	link, err := s.service.RemoveLink(s.ctx, 1, expected.URL)
 
 	s.Require().NoError(err)
 	s.Equal(expected, link)
 }
 
 func (s *ServiceSuite) TestRemoveLink_ChatNotExists() {
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(false)
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(false, nil)
 
-	_, err := s.service.RemoveLink(1, "url")
+	_, err := s.service.RemoveLink(s.ctx, 1, "url")
 
 	s.Require().Error(err)
 	s.ErrorIs(err, errChatInstRegistered)
@@ -162,19 +194,22 @@ func (s *ServiceSuite) TestGetLinks_Success() {
 		{URL: "b"},
 	}
 
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(true)
-	s.mockStorage.EXPECT().GetLinks(int64(1)).Return(expected)
+	limit := 10
+	offset := 0
 
-	links, err := s.service.GetLinks(1)
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
+	s.mockStorage.EXPECT().GetLinks(s.ctx, int64(1), limit, offset).Return(expected, nil)
+
+	links, err := s.service.GetLinks(s.ctx, 1, limit, offset)
 
 	s.Require().NoError(err)
 	s.Equal(expected, links)
 }
 
 func (s *ServiceSuite) TestGetLinks_ChatNotExists() {
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(false)
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(false, nil)
 
-	links, err := s.service.GetLinks(1)
+	links, err := s.service.GetLinks(s.ctx, 1, 10, 0)
 
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, errChatInstRegistered)
@@ -182,36 +217,36 @@ func (s *ServiceSuite) TestGetLinks_ChatNotExists() {
 }
 
 func (s *ServiceSuite) TestRegisterChat_Success() {
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(false)
-	s.mockStorage.EXPECT().RegisterChat(int64(1))
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(false, nil)
+	s.mockStorage.EXPECT().RegisterChat(s.ctx, int64(1)).Return(nil)
 
-	err := s.service.RegisterChat(1)
+	err := s.service.RegisterChat(s.ctx, 1)
 
 	s.Require().NoError(err)
 }
 
 func (s *ServiceSuite) TestRegisterChat_AlreadyExists() {
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(true)
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
 
-	err := s.service.RegisterChat(1)
+	err := s.service.RegisterChat(s.ctx, 1)
 
 	s.Require().Error(err)
 	s.Equal("chat already registered", err.Error())
 }
 
 func (s *ServiceSuite) TestDeleteChat_Success() {
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(true)
-	s.mockStorage.EXPECT().DeleteChat(int64(1))
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
+	s.mockStorage.EXPECT().DeleteChat(s.ctx, int64(1)).Return(nil)
 
-	err := s.service.DeleteChat(1)
+	err := s.service.DeleteChat(s.ctx, 1)
 
 	s.Require().NoError(err)
 }
 
 func (s *ServiceSuite) TestDeleteChat_NotExists() {
-	s.mockStorage.EXPECT().ChatExists(int64(1)).Return(false)
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(false, nil)
 
-	err := s.service.DeleteChat(1)
+	err := s.service.DeleteChat(s.ctx, 1)
 
 	s.Require().Error(err)
 	s.ErrorIs(err, errChatInstRegistered)

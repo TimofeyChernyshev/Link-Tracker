@@ -113,123 +113,147 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // AddLink mocks base method.
-func (m *MockStorage) AddLink(chatID int64, URL string, tags []string) (domain.Link, error) {
+func (m *MockStorage) AddLink(ctx context.Context, chatID int64, URL string, tags []string) (domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddLink", chatID, URL, tags)
+	ret := m.ctrl.Call(m, "AddLink", ctx, chatID, URL, tags)
 	ret0, _ := ret[0].(domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AddLink indicates an expected call of AddLink.
-func (mr *MockStorageMockRecorder) AddLink(chatID, URL, tags interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) AddLink(ctx, chatID, URL, tags interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockStorage)(nil).AddLink), chatID, URL, tags)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockStorage)(nil).AddLink), ctx, chatID, URL, tags)
 }
 
 // ChatExists mocks base method.
-func (m *MockStorage) ChatExists(chatID int64) bool {
+func (m *MockStorage) ChatExists(ctx context.Context, chatID int64) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChatExists", chatID)
+	ret := m.ctrl.Call(m, "ChatExists", ctx, chatID)
 	ret0, _ := ret[0].(bool)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ChatExists indicates an expected call of ChatExists.
-func (mr *MockStorageMockRecorder) ChatExists(chatID interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) ChatExists(ctx, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChatExists", reflect.TypeOf((*MockStorage)(nil).ChatExists), chatID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChatExists", reflect.TypeOf((*MockStorage)(nil).ChatExists), ctx, chatID)
 }
 
 // DeleteChat mocks base method.
-func (m *MockStorage) DeleteChat(chatID int64) {
+func (m *MockStorage) DeleteChat(ctx context.Context, chatID int64) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeleteChat", chatID)
+	ret := m.ctrl.Call(m, "DeleteChat", ctx, chatID)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // DeleteChat indicates an expected call of DeleteChat.
-func (mr *MockStorageMockRecorder) DeleteChat(chatID interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteChat(ctx, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockStorage)(nil).DeleteChat), chatID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockStorage)(nil).DeleteChat), ctx, chatID)
 }
 
 // GetAllLinks mocks base method.
-func (m *MockStorage) GetAllLinks() []domain.Link {
+func (m *MockStorage) GetAllLinks(ctx context.Context, limit, offset int) ([]domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllLinks")
+	ret := m.ctrl.Call(m, "GetAllLinks", ctx, limit, offset)
 	ret0, _ := ret[0].([]domain.Link)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetAllLinks indicates an expected call of GetAllLinks.
-func (mr *MockStorageMockRecorder) GetAllLinks() *gomock.Call {
+func (mr *MockStorageMockRecorder) GetAllLinks(ctx, limit, offset interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllLinks", reflect.TypeOf((*MockStorage)(nil).GetAllLinks))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllLinks", reflect.TypeOf((*MockStorage)(nil).GetAllLinks), ctx, limit, offset)
 }
 
 // GetLinks mocks base method.
-func (m *MockStorage) GetLinks(chatID int64) []domain.Link {
+func (m *MockStorage) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLinks", chatID)
+	ret := m.ctrl.Call(m, "GetLinks", ctx, chatID, limit, offset)
 	ret0, _ := ret[0].([]domain.Link)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetLinks indicates an expected call of GetLinks.
-func (mr *MockStorageMockRecorder) GetLinks(chatID interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetLinks(ctx, chatID, limit, offset interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockStorage)(nil).GetLinks), chatID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockStorage)(nil).GetLinks), ctx, chatID, limit, offset)
 }
 
 // GetSubscribers mocks base method.
-func (m *MockStorage) GetSubscribers(url string) []int64 {
+func (m *MockStorage) GetSubscribers(ctx context.Context, url string) ([]int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSubscribers", url)
+	ret := m.ctrl.Call(m, "GetSubscribers", ctx, url)
 	ret0, _ := ret[0].([]int64)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetSubscribers indicates an expected call of GetSubscribers.
-func (mr *MockStorageMockRecorder) GetSubscribers(url interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetSubscribers(ctx, url interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubscribers", reflect.TypeOf((*MockStorage)(nil).GetSubscribers), url)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubscribers", reflect.TypeOf((*MockStorage)(nil).GetSubscribers), ctx, url)
 }
 
 // RegisterChat mocks base method.
-func (m *MockStorage) RegisterChat(chatID int64) {
+func (m *MockStorage) RegisterChat(ctx context.Context, chatID int64) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RegisterChat", chatID)
+	ret := m.ctrl.Call(m, "RegisterChat", ctx, chatID)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // RegisterChat indicates an expected call of RegisterChat.
-func (mr *MockStorageMockRecorder) RegisterChat(chatID interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) RegisterChat(ctx, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterChat", reflect.TypeOf((*MockStorage)(nil).RegisterChat), chatID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterChat", reflect.TypeOf((*MockStorage)(nil).RegisterChat), ctx, chatID)
 }
 
 // RemoveLink mocks base method.
-func (m *MockStorage) RemoveLink(chatID int64, URL string) (domain.Link, error) {
+func (m *MockStorage) RemoveLink(ctx context.Context, chatID int64, URL string) (domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveLink", chatID, URL)
+	ret := m.ctrl.Call(m, "RemoveLink", ctx, chatID, URL)
 	ret0, _ := ret[0].(domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RemoveLink indicates an expected call of RemoveLink.
-func (mr *MockStorageMockRecorder) RemoveLink(chatID, URL interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) RemoveLink(ctx, chatID, URL interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLink", reflect.TypeOf((*MockStorage)(nil).RemoveLink), chatID, URL)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLink", reflect.TypeOf((*MockStorage)(nil).RemoveLink), ctx, chatID, URL)
+}
+
+// UpdateLastChecked mocks base method.
+func (m *MockStorage) UpdateLastChecked(ctx context.Context, url string, t time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateLastChecked", ctx, url, t)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateLastChecked indicates an expected call of UpdateLastChecked.
+func (mr *MockStorageMockRecorder) UpdateLastChecked(ctx, url, t interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateLastChecked", reflect.TypeOf((*MockStorage)(nil).UpdateLastChecked), ctx, url, t)
 }
 
 // UpdateTimestamp mocks base method.
-func (m *MockStorage) UpdateTimestamp(url string, t time.Time) {
+func (m *MockStorage) UpdateTimestamp(ctx context.Context, url string, t time.Time) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UpdateTimestamp", url, t)
+	ret := m.ctrl.Call(m, "UpdateTimestamp", ctx, url, t)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // UpdateTimestamp indicates an expected call of UpdateTimestamp.
-func (mr *MockStorageMockRecorder) UpdateTimestamp(url, t interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) UpdateTimestamp(ctx, url, t interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTimestamp", reflect.TypeOf((*MockStorage)(nil).UpdateTimestamp), url, t)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTimestamp", reflect.TypeOf((*MockStorage)(nil).UpdateTimestamp), ctx, url, t)
 }
