@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -46,7 +47,7 @@ func Load() (*Config, error) {
 	return &Config{
 		ScrapperPort: port,
 		BotBaseURL:   botURL,
-		AccessType:   AccessType(os.Getenv("ACCESS_TYPE")),
+		AccessType:   AccessType(strings.ToLower(os.Getenv("ACCESS_TYPE"))),
 		DBUser:       os.Getenv("DB_USER"),
 		DBPassword:   os.Getenv("DB_PASSWORD"),
 		DBHost:       os.Getenv("DB_HOST"),
