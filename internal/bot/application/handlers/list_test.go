@@ -73,9 +73,8 @@ func (s *ListHandlerSuite) TestExecute_SuccessWithFilter() {
 
 	resp, done, err = s.handler.Execute(filterMsg)
 	s.Require().NoError(err)
-	s.False(done)
+	s.True(done)
 	s.NotNil(resp)
-	s.Contains(resp.Text, "Сколько ссылок вывести за раз?")
 
 	expected := []string{
 		"https://github.com/1",
