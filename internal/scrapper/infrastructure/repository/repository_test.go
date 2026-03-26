@@ -33,6 +33,8 @@ func TestORMRepository(t *testing.T) {
 func (s *RepositorySuite) SetupSuite() {
 	s.ctx = context.Background()
 
+	testcontainers.SkipIfProviderIsNotHealthy(s.T())
+
 	req := testcontainers.ContainerRequest{
 		Image:        "postgres:15",
 		ExposedPorts: []string{"5432/tcp"},
