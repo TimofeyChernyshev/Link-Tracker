@@ -64,10 +64,12 @@ func (c *ScrapperClient) RemoveLink(ctx context.Context, chatID int64, url strin
 	return nil
 }
 
-func (c *ScrapperClient) GetLinks(ctx context.Context, chatID int64) ([]domain.Link, error) {
+func (c *ScrapperClient) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
 	respBody := &ListLinksResponse{}
 
-	err := c.doJSON(ctx, http.MethodGet, chatID, "/links", nil, respBody)
+	url := fmt.Sprintf("/links?limit=%d&offset=%d", limit, offset)
+
+	err := c.doJSON(ctx, http.MethodGet, chatID, url, nil, respBody)
 	if err != nil {
 		return nil, err
 	}

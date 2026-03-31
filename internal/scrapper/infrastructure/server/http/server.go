@@ -11,12 +11,18 @@ import (
 	domain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
+const (
+	defaultLimit  = 50
+	defaultOffset = 0
+	maxLimit      = 100
+)
+
 type Service interface {
-	RegisterChat(chatID int64) error
-	DeleteChat(chatID int64) error
-	AddLink(chatID int64, url string, tags []string) (domain.Link, error)
-	RemoveLink(chatID int64, url string) (domain.Link, error)
-	GetLinks(chatID int64) ([]domain.Link, error)
+	RegisterChat(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+	AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error)
+	RemoveLink(ctx context.Context, chatID int64, url string) (domain.Link, error)
+	GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error)
 }
 
 type Server struct {
@@ -68,9 +74,9 @@ func (s *Server) updateChat(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		s.registerChat(w, id)
+		s.registerChat(r.Context(), w, id)
 	case http.MethodDelete:
-		s.deleteChat(w, id)
+		s.deleteChat(r.Context(), w, id)
 	default:
 		slog.Error("wrong method", "method", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -78,8 +84,8 @@ func (s *Server) updateChat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) registerChat(w http.ResponseWriter, id int64) {
-	err := s.service.RegisterChat(id)
+func (s *Server) registerChat(ctx context.Context, w http.ResponseWriter, id int64) {
+	err := s.service.RegisterChat(ctx, id)
 	if err != nil {
 		slog.Error("cannot register chat", "id", id, "error", err)
 		writeError(w, http.StatusConflict, err.Error())
@@ -88,8 +94,8 @@ func (s *Server) registerChat(w http.ResponseWriter, id int64) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) deleteChat(w http.ResponseWriter, id int64) {
-	err := s.service.DeleteChat(id)
+func (s *Server) deleteChat(ctx context.Context, w http.ResponseWriter, id int64) {
+	err := s.service.DeleteChat(ctx, id)
 	if err != nil {
 		slog.Error("cannot delete chat", "id", id, "error", err)
 		writeError(w, http.StatusConflict, err.Error())
@@ -110,11 +116,11 @@ func (s *Server) links(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		s.linksGet(w, id)
+		s.linksGet(r, w, id)
 	case http.MethodPost:
-		s.linksPost(w, r, id)
+		s.linksPost(r.Context(), w, r, id)
 	case http.MethodDelete:
-		s.linksDelete(w, r, id)
+		s.linksDelete(r.Context(), w, r, id)
 	default:
 		slog.Error("wrong method", "method", r.Method)
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -122,8 +128,10 @@ func (s *Server) links(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) linksGet(w http.ResponseWriter, id int64) {
-	links, err := s.service.GetLinks(id)
+func (s *Server) linksGet(r *http.Request, w http.ResponseWriter, id int64) {
+	limit, offset := parsePaginationParams(r)
+
+	links, err := s.service.GetLinks(r.Context(), id, limit, offset)
 	if err != nil {
 		slog.Error("get links error", "error", err)
 		writeError(w, http.StatusNotFound, err.Error())
@@ -144,7 +152,29 @@ func (s *Server) linksGet(w http.ResponseWriter, id int64) {
 	}
 }
 
-func (s *Server) linksPost(w http.ResponseWriter, r *http.Request, id int64) {
+func parsePaginationParams(r *http.Request) (limit, offset int) {
+	limit = defaultLimit
+	offset = defaultOffset
+
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+			limit = parsed
+			if limit > maxLimit {
+				limit = maxLimit
+			}
+		}
+	}
+
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsed, err := strconv.Atoi(offsetStr); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	return limit, offset
+}
+
+func (s *Server) linksPost(ctx context.Context, w http.ResponseWriter, r *http.Request, id int64) {
 	var addableLink AddLinkRequest
 	if err := json.NewDecoder(r.Body).Decode(&addableLink); err != nil {
 		slog.Error("cannot parse request", "error", err)
@@ -152,7 +182,7 @@ func (s *Server) linksPost(w http.ResponseWriter, r *http.Request, id int64) {
 		return
 	}
 
-	link, err := s.service.AddLink(id, addableLink.Link, addableLink.Tags)
+	link, err := s.service.AddLink(ctx, id, addableLink.Link, addableLink.Tags)
 	if err != nil {
 		slog.Error("add link error", "error", err)
 		writeError(w, http.StatusConflict, err.Error())
@@ -169,7 +199,7 @@ func (s *Server) linksPost(w http.ResponseWriter, r *http.Request, id int64) {
 	}
 }
 
-func (s *Server) linksDelete(w http.ResponseWriter, r *http.Request, id int64) {
+func (s *Server) linksDelete(ctx context.Context, w http.ResponseWriter, r *http.Request, id int64) {
 	var removableLink RemoveLinkRequest
 	if err := json.NewDecoder(r.Body).Decode(&removableLink); err != nil {
 		slog.Error("cannot parse request", "error", err)
@@ -177,7 +207,7 @@ func (s *Server) linksDelete(w http.ResponseWriter, r *http.Request, id int64) {
 		return
 	}
 
-	link, err := s.service.RemoveLink(id, removableLink.Link)
+	link, err := s.service.RemoveLink(ctx, id, removableLink.Link)
 	if err != nil {
 		slog.Error("remove link error", "error", err)
 		writeError(w, http.StatusBadRequest, err.Error())

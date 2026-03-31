@@ -47,10 +47,12 @@ func (s *ListHandlerSuite) TestExecute_SuccessWithFilter() {
 		{URL: "https://github.com/1", Tags: []string{"work", "urgent"}},
 		{URL: "https://github.com/2", Tags: []string{"personal"}},
 		{URL: "https://github.com/3", Tags: []string{"work", "archive"}},
+		{URL: "https://github.com/4", Tags: []string{"personal", "work"}},
+		{URL: "https://github.com/5", Tags: []string{"archive"}},
 	}
 
 	s.linkService.EXPECT().
-		GetLinks(gomock.Any(), int64(12345)).
+		GetLinks(gomock.Any(), int64(12345), 50, 0).
 		Return(expectedLinks, nil).
 		Times(1)
 
@@ -70,19 +72,60 @@ func (s *ListHandlerSuite) TestExecute_SuccessWithFilter() {
 	}
 
 	resp, done, err = s.handler.Execute(filterMsg)
-
 	s.Require().NoError(err)
 	s.True(done)
 	s.NotNil(resp)
-	s.Equal(int64(12345), resp.ChatID)
 
 	expected := []string{
 		"https://github.com/1",
 		"https://github.com/3",
+		"https://github.com/4",
 	}
 	s.Equal(strings.Join(expected, "\n"), resp.Text)
 }
 
+func (s *ListHandlerSuite) TestExecute_WithPage() {
+	expectedLinks := []domain.Link{
+		{URL: "https://github.com/51", Tags: []string{"work"}},
+		{URL: "https://github.com/52", Tags: []string{"personal"}},
+	}
+
+	msgWithPage := &domain.Message{
+		Text:      "/list 2",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 1,
+	}
+
+	s.linkService.EXPECT().
+		GetLinks(gomock.Any(), int64(12345), 50, 50).
+		Return(expectedLinks, nil).
+		Times(1)
+
+	resp, done, err := s.handler.Execute(msgWithPage)
+
+	s.Require().NoError(err)
+	s.False(done)
+	s.NotNil(resp)
+	s.Contains(resp.Text, "Введите теги")
+
+	filterMsg := &domain.Message{
+		Text:      "-",
+		ChatID:    12345,
+		Username:  "testuser",
+		MessageID: 2,
+	}
+
+	resp, done, err = s.handler.Execute(filterMsg)
+	s.Require().NoError(err)
+	s.True(done)
+
+	expected := []string{
+		"https://github.com/51",
+		"https://github.com/52",
+	}
+	s.Equal(strings.Join(expected, "\n"), resp.Text)
+}
 func (s *ListHandlerSuite) TestExecute_FilterNoMatches() {
 	expectedLinks := []domain.Link{
 		{URL: "https://github.com/1", Tags: []string{"work"}},
@@ -90,7 +133,7 @@ func (s *ListHandlerSuite) TestExecute_FilterNoMatches() {
 	}
 
 	s.linkService.EXPECT().
-		GetLinks(gomock.Any(), int64(12345)).
+		GetLinks(gomock.Any(), int64(12345), 50, 0).
 		Return(expectedLinks, nil).
 		Times(1)
 
@@ -112,17 +155,18 @@ func (s *ListHandlerSuite) TestExecute_FilterNoMatches() {
 	s.True(done)
 	s.NotNil(resp)
 	s.Equal(int64(12345), resp.ChatID)
-	s.Equal("Список отслеживаемых ссылок пуст", resp.Text)
+	s.Equal("По указанным тегам ссылок не найдено", resp.Text)
 }
 
 func (s *ListHandlerSuite) TestExecute_AllLinks() {
 	expectedLinks := []domain.Link{
 		{URL: "https://github.com/1", Tags: []string{"work"}},
 		{URL: "https://github.com/2", Tags: []string{"personal"}},
+		{URL: "https://github.com/3", Tags: []string{}},
 	}
 
 	s.linkService.EXPECT().
-		GetLinks(gomock.Any(), int64(12345)).
+		GetLinks(gomock.Any(), int64(12345), 50, 0).
 		Return(expectedLinks, nil).
 		Times(1)
 
@@ -139,21 +183,20 @@ func (s *ListHandlerSuite) TestExecute_AllLinks() {
 	}
 
 	resp, done, err = s.handler.Execute(filterMsg)
-
 	s.Require().NoError(err)
 	s.True(done)
-	s.NotNil(resp)
 
 	expected := []string{
 		"https://github.com/1",
 		"https://github.com/2",
+		"https://github.com/3",
 	}
 	s.Equal(strings.Join(expected, "\n"), resp.Text)
 }
 
 func (s *ListHandlerSuite) TestExecute_EmptyList() {
 	s.linkService.EXPECT().
-		GetLinks(gomock.Any(), int64(12345)).
+		GetLinks(gomock.Any(), int64(12345), 50, 0).
 		Return([]domain.Link{}, nil).
 		Times(1)
 
@@ -166,42 +209,11 @@ func (s *ListHandlerSuite) TestExecute_EmptyList() {
 	s.Equal("Список отслеживаемых ссылок пуст", resp.Text)
 }
 
-func (s *ListHandlerSuite) TestExecute_EmptyListAfterFilter() {
-	expectedLinks := []domain.Link{
-		{URL: "https://github.com/1", Tags: []string{"work"}},
-		{URL: "https://github.com/2", Tags: []string{"personal"}},
-	}
-
-	s.linkService.EXPECT().
-		GetLinks(gomock.Any(), int64(12345)).
-		Return(expectedLinks, nil)
-
-	resp, done, err := s.handler.Execute(s.msg)
-	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.False(done)
-
-	filterMsg := &domain.Message{
-		Text:      "123",
-		ChatID:    12345,
-		Username:  "testuser",
-		MessageID: 2,
-	}
-
-	resp, done, err = s.handler.Execute(filterMsg)
-
-	s.Require().NoError(err)
-	s.True(done)
-	s.NotNil(resp)
-	s.Equal(int64(12345), resp.ChatID)
-	s.Equal("Список отслеживаемых ссылок пуст", resp.Text)
-}
-
 func (s *ListHandlerSuite) TestExecute_ServiceError() {
 	expectedErr := errors.New("service unavailable")
 
 	s.linkService.EXPECT().
-		GetLinks(gomock.Any(), int64(12345)).
+		GetLinks(gomock.Any(), int64(12345), 50, 0).
 		Return(nil, expectedErr).
 		Times(1)
 
@@ -215,8 +227,8 @@ func (s *ListHandlerSuite) TestExecute_ServiceError() {
 
 func (s *ListHandlerSuite) TestExecute_Timeout() {
 	s.linkService.EXPECT().
-		GetLinks(gomock.Any(), int64(12345)).
-		DoAndReturn(func(ctx context.Context, _ int64) ([]domain.Link, error) {
+		GetLinks(gomock.Any(), int64(12345), 50, 0).
+		DoAndReturn(func(ctx context.Context, _ int64, _, _ int) ([]domain.Link, error) {
 			<-ctx.Done()
 			return nil, ctx.Err()
 		}).

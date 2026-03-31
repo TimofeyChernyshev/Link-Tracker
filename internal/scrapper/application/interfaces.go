@@ -17,13 +17,15 @@ type Notifier interface {
 
 // Storage - контракт хранилища ссылок
 type Storage interface {
-	RegisterChat(chatID int64)
-	DeleteChat(chatID int64)
-	ChatExists(chatID int64) bool
-	AddLink(chatID int64, URL string, tags []string) (domain.Link, error)
-	RemoveLink(chatID int64, URL string) (domain.Link, error)
-	GetLinks(chatID int64) []domain.Link
-	UpdateTimestamp(url string, t time.Time)
-	GetSubscribers(url string) []int64
-	GetAllLinks() []domain.Link
+	RegisterChat(ctx context.Context, chatID int64) error
+	DeleteChat(ctx context.Context, chatID int64) error
+	ChatExists(ctx context.Context, chatID int64) (bool, error)
+
+	AddLink(ctx context.Context, chatID int64, URL string, tags []string) (domain.Link, error)
+	RemoveLink(ctx context.Context, chatID int64, URL string) (domain.Link, error)
+	GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error)
+	GetAllLinks(ctx context.Context, limit, offset int) ([]domain.Link, error)
+	GetSubscribers(ctx context.Context, url string) ([]int64, error)
+	UpdateTimestamp(ctx context.Context, url string, t time.Time) error
+	UpdateLastChecked(ctx context.Context, url string, t time.Time) error
 }

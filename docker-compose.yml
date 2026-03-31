@@ -1,4 +1,24 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: linktracker-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: linktracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   scrapper:
     build:
       context: .
@@ -10,6 +30,12 @@ services:
     environment:
       - PORT=8081
       - BOT_BASE_URL=http://bot:8080
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - ACCESS_TYPE=sql
     networks:
       - linktracker-net
 
@@ -27,6 +53,9 @@ services:
       - SCRAPPER_BASE_URL=http://scrapper:8081
     networks:
       - linktracker-net
+
+volumes:
+  postgres_data:
 
 networks:
   linktracker-net:

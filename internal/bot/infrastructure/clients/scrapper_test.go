@@ -103,7 +103,7 @@ func TestGetLinks_Success(t *testing.T) {
 	server := httptest.NewServer(handler)
 	client := NewScrapperClient(server.URL)
 
-	links, err := client.GetLinks(t.Context(), 12345)
+	links, err := client.GetLinks(t.Context(), 12345, 50, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, expectedLinks, links)
@@ -123,7 +123,7 @@ func TestGetLinks_Empty(t *testing.T) {
 	server := httptest.NewServer(handler)
 	client := NewScrapperClient(server.URL)
 
-	links, err := client.GetLinks(t.Context(), 12345)
+	links, err := client.GetLinks(t.Context(), 12345, 10, 20)
 
 	require.NoError(t, err)
 	assert.Empty(t, links)
@@ -228,7 +228,7 @@ func TestInvalidJSON(t *testing.T) {
 	server := httptest.NewServer(handler)
 	client := NewScrapperClient(server.URL)
 
-	_, err := client.GetLinks(t.Context(), 12345)
+	_, err := client.GetLinks(t.Context(), 12345, 10, 20)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid character")

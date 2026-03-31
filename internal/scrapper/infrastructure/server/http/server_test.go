@@ -36,7 +36,7 @@ func TestServerSuite(t *testing.T) {
 }
 
 func (s *ServerSuite) TestUpdateChat_Register() {
-	s.service.EXPECT().RegisterChat(int64(1)).Return(nil)
+	s.service.EXPECT().RegisterChat(gomock.Any(), int64(1)).Return(nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/tg-chat/1", nil)
 	rec := httptest.NewRecorder()
@@ -56,7 +56,7 @@ func (s *ServerSuite) TestUpdateChat_WrongID() {
 }
 
 func (s *ServerSuite) TestUpdateChat_RegisterReturnError() {
-	s.service.EXPECT().RegisterChat(int64(2)).Return(errors.New("some error"))
+	s.service.EXPECT().RegisterChat(gomock.Any(), int64(2)).Return(errors.New("some error"))
 
 	req := httptest.NewRequest(http.MethodPost, "/tg-chat/2", nil)
 	rec := httptest.NewRecorder()
@@ -67,7 +67,7 @@ func (s *ServerSuite) TestUpdateChat_RegisterReturnError() {
 }
 
 func (s *ServerSuite) TestUpdateChat_Delete() {
-	s.service.EXPECT().DeleteChat(int64(2)).Return(nil)
+	s.service.EXPECT().DeleteChat(gomock.Any(), int64(2)).Return(nil)
 
 	req := httptest.NewRequest(http.MethodDelete, "/tg-chat/2", nil)
 	rec := httptest.NewRecorder()
@@ -87,7 +87,19 @@ func (s *ServerSuite) TestUpdateChat_AnotherMethod() {
 }
 
 func (s *ServerSuite) TestLinks_Get() {
-	s.service.EXPECT().GetLinks(int64(2)).Return(nil, nil)
+	s.service.EXPECT().GetLinks(gomock.Any(), int64(2), 1, 2).Return(nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/links?limit=1&offset=2", nil)
+	req.Header["Tg-Chat-Id"] = []string{"2"}
+	rec := httptest.NewRecorder()
+
+	s.server.srv.Handler.ServeHTTP(rec, req)
+
+	s.Equal(200, rec.Code)
+}
+
+func (s *ServerSuite) TestLinks_GetDefaultValues() {
+	s.service.EXPECT().GetLinks(gomock.Any(), int64(2), defaultLimit, defaultOffset).Return(nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/links", nil)
 	req.Header["Tg-Chat-Id"] = []string{"2"}
@@ -99,7 +111,7 @@ func (s *ServerSuite) TestLinks_Get() {
 }
 
 func (s *ServerSuite) TestLinks_Post() {
-	s.service.EXPECT().AddLink(int64(2), "https://123", []string{"123"}).Return(domain.Link{ID: 0, URL: "https://123", Tags: []string{"123"}}, nil)
+	s.service.EXPECT().AddLink(gomock.Any(), int64(2), "https://123", []string{"123"}).Return(domain.Link{ID: 0, URL: "https://123", Tags: []string{"123"}}, nil)
 
 	body := `{"link":"https://123","tags":["123"]}`
 	req := httptest.NewRequest(http.MethodPost, "/links", strings.NewReader(body))
@@ -112,7 +124,7 @@ func (s *ServerSuite) TestLinks_Post() {
 }
 
 func (s *ServerSuite) TestLinks_Delete() {
-	s.service.EXPECT().RemoveLink(int64(2), "https://123").Return(domain.Link{ID: 0, URL: "https://123", Tags: []string{"123"}}, nil)
+	s.service.EXPECT().RemoveLink(gomock.Any(), int64(2), "https://123").Return(domain.Link{ID: 0, URL: "https://123", Tags: []string{"123"}}, nil)
 
 	body := `{"link":"https://123"}`
 	req := httptest.NewRequest(http.MethodDelete, "/links", strings.NewReader(body))

@@ -3,10 +3,10 @@ package domain
 import "time"
 
 type Link struct {
-	ID        int64
-	URL       string
-	Tags      []string
-	UpdatedAt time.Time
+	ID        int64     `db:"id"`
+	URL       string    `db:"url"`
+	Tags      []string  `db:"tags"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 type LinkUpdate struct {

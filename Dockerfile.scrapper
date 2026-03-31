@@ -9,4 +9,6 @@ COPY . .
 
 RUN go build -o scrapper ./cmd/scrapper
 
+COPY ./migrations ./migrations
+
 CMD ["./scrapper"]
