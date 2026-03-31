@@ -9,7 +9,7 @@ import (
 type LinkService interface {
 	AddLink(ctx context.Context, chatID int64, url string, tags []string) error
 	RemoveLink(ctx context.Context, chatID int64, url string) error
-	GetLinks(ctx context.Context, chatID int64) ([]domain.Link, error)
+	GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error)
 
 	RegisterChat(ctx context.Context, chatID int64) error
 	DeleteChat(ctx context.Context, chatID int64) error

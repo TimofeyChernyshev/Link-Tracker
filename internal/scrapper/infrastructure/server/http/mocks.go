@@ -5,6 +5,7 @@
 package scrapperhttp
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -35,74 +36,74 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // AddLink mocks base method.
-func (m *MockService) AddLink(chatId int64, url string, tags []string) (domain.Link, error) {
+func (m *MockService) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddLink", chatId, url, tags)
+	ret := m.ctrl.Call(m, "AddLink", ctx, chatID, url, tags)
 	ret0, _ := ret[0].(domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AddLink indicates an expected call of AddLink.
-func (mr *MockServiceMockRecorder) AddLink(chatId, url, tags interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) AddLink(ctx, chatID, url, tags interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockService)(nil).AddLink), chatId, url, tags)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLink", reflect.TypeOf((*MockService)(nil).AddLink), ctx, chatID, url, tags)
 }
 
 // DeleteChat mocks base method.
-func (m *MockService) DeleteChat(chatId int64) error {
+func (m *MockService) DeleteChat(ctx context.Context, chatID int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteChat", chatId)
+	ret := m.ctrl.Call(m, "DeleteChat", ctx, chatID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteChat indicates an expected call of DeleteChat.
-func (mr *MockServiceMockRecorder) DeleteChat(chatId interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) DeleteChat(ctx, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockService)(nil).DeleteChat), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChat", reflect.TypeOf((*MockService)(nil).DeleteChat), ctx, chatID)
 }
 
 // GetLinks mocks base method.
-func (m *MockService) GetLinks(chatId int64) ([]domain.Link, error) {
+func (m *MockService) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLinks", chatId)
+	ret := m.ctrl.Call(m, "GetLinks", ctx, chatID, limit, offset)
 	ret0, _ := ret[0].([]domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLinks indicates an expected call of GetLinks.
-func (mr *MockServiceMockRecorder) GetLinks(chatId interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) GetLinks(ctx, chatID, limit, offset interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockService)(nil).GetLinks), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockService)(nil).GetLinks), ctx, chatID, limit, offset)
 }
 
 // RegisterChat mocks base method.
-func (m *MockService) RegisterChat(chatId int64) error {
+func (m *MockService) RegisterChat(ctx context.Context, chatID int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RegisterChat", chatId)
+	ret := m.ctrl.Call(m, "RegisterChat", ctx, chatID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RegisterChat indicates an expected call of RegisterChat.
-func (mr *MockServiceMockRecorder) RegisterChat(chatId interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) RegisterChat(ctx, chatID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterChat", reflect.TypeOf((*MockService)(nil).RegisterChat), chatId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterChat", reflect.TypeOf((*MockService)(nil).RegisterChat), ctx, chatID)
 }
 
 // RemoveLink mocks base method.
-func (m *MockService) RemoveLink(chatId int64, url string) (domain.Link, error) {
+func (m *MockService) RemoveLink(ctx context.Context, chatID int64, url string) (domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveLink", chatId, url)
+	ret := m.ctrl.Call(m, "RemoveLink", ctx, chatID, url)
 	ret0, _ := ret[0].(domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RemoveLink indicates an expected call of RemoveLink.
-func (mr *MockServiceMockRecorder) RemoveLink(chatId, url interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) RemoveLink(ctx, chatID, url interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLink", reflect.TypeOf((*MockService)(nil).RemoveLink), chatId, url)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLink", reflect.TypeOf((*MockService)(nil).RemoveLink), ctx, chatID, url)
 }

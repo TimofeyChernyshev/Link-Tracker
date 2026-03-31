@@ -12,6 +12,9 @@ import (
 
 var (
 	errChatInstRegistered = errors.New("chat isn't registered")
+
+	linksForUpdateLimit = 20
+	defaultOffset       = 0
 )
 
 type Service struct {
@@ -24,15 +27,19 @@ func NewLinkService(client Client, notifier Notifier, storage Storage) *Service 
 	return &Service{client: client, notifier: notifier, storage: storage}
 }
 
-func (s *Service) AddLink(chatID int64, url string, tags []string) (domain.Link, error) {
+func (s *Service) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
 	slog.Debug("adding link", "chatID", chatID, "url", url, "tags", tags)
 
-	if !s.storage.ChatExists(chatID) {
+	exists, err := s.storage.ChatExists(ctx, chatID)
+	if err != nil {
+		return domain.Link{}, fmt.Errorf("check chat existence: %w", err)
+	}
+	if !exists {
 		slog.Warn("cannot add link", "chatID", chatID, "error", errChatInstRegistered)
 		return domain.Link{}, errChatInstRegistered
 	}
 
-	link, err := s.storage.AddLink(chatID, url, tags)
+	link, err := s.storage.AddLink(ctx, chatID, url, tags)
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("adding link: %w", err)
 	}
@@ -40,15 +47,19 @@ func (s *Service) AddLink(chatID int64, url string, tags []string) (domain.Link,
 	return link, nil
 }
 
-func (s *Service) RemoveLink(chatID int64, url string) (domain.Link, error) {
+func (s *Service) RemoveLink(ctx context.Context, chatID int64, url string) (domain.Link, error) {
 	slog.Debug("removing link", "chatID", chatID, "url", url)
 
-	if !s.storage.ChatExists(chatID) {
+	exists, err := s.storage.ChatExists(ctx, chatID)
+	if err != nil {
+		return domain.Link{}, fmt.Errorf("check chat existence: %w", err)
+	}
+	if !exists {
 		slog.Warn("cannot remove link", "chatID", chatID, "error", errChatInstRegistered)
 		return domain.Link{}, errChatInstRegistered
 	}
 
-	link, err := s.storage.RemoveLink(chatID, url)
+	link, err := s.storage.RemoveLink(ctx, chatID, url)
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("removing link: %w", err)
 	}
@@ -56,67 +67,117 @@ func (s *Service) RemoveLink(chatID int64, url string) (domain.Link, error) {
 	return link, nil
 }
 
-func (s *Service) GetLinks(chatID int64) ([]domain.Link, error) {
+func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
 	slog.Debug("getting links", "chatID", chatID)
 
-	if !s.storage.ChatExists(chatID) {
+	exists, err := s.storage.ChatExists(ctx, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("check chat existence: %w", err)
+	}
+	if !exists {
 		slog.Warn("cannot get links", "chatID", chatID, "error", errChatInstRegistered)
 		return nil, errChatInstRegistered
 	}
 
-	links := s.storage.GetLinks(chatID)
+	links, err := s.storage.GetLinks(ctx, chatID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("getting links: %w", err)
+	}
 
 	return links, nil
 }
 
-func (s *Service) RegisterChat(chatID int64) error {
+func (s *Service) RegisterChat(ctx context.Context, chatID int64) error {
 	slog.Debug("registering chat", "chatID", chatID)
 
-	if s.storage.ChatExists(chatID) {
-		slog.Warn("cannot register chat", "chatID", chatID, "error", errors.New("chat already registered"))
+	exists, err := s.storage.ChatExists(ctx, chatID)
+	if err != nil {
+		return fmt.Errorf("check chat existence: %w", err)
+	}
+	if exists {
+		slog.Warn("cannot register chat", "chatID", chatID, "error", "chat already registered")
 		return errors.New("chat already registered")
 	}
 
-	s.storage.RegisterChat(chatID)
+	if err = s.storage.RegisterChat(ctx, chatID); err != nil {
+		return fmt.Errorf("register chat: %w", err)
+	}
 
 	return nil
 }
 
-func (s *Service) DeleteChat(chatID int64) error {
+func (s *Service) DeleteChat(ctx context.Context, chatID int64) error {
 	slog.Debug("deleting chat", "chatID", chatID)
 
-	if !s.storage.ChatExists(chatID) {
+	exists, err := s.storage.ChatExists(ctx, chatID)
+	if err != nil {
+		return fmt.Errorf("check chat existence: %w", err)
+	}
+	if !exists {
 		slog.Warn("cannot delete chat", "chatID", chatID, "error", errChatInstRegistered)
 		return errChatInstRegistered
 	}
 
-	s.storage.DeleteChat(chatID)
+	if err = s.storage.DeleteChat(ctx, chatID); err != nil {
+		return fmt.Errorf("delete chat: %w", err)
+	}
 
 	return nil
 }
 
 func (s *Service) CheckUpdates(ctx context.Context) {
-	links := s.storage.GetAllLinks()
+	offset := defaultOffset
 
-	for _, link := range links {
-		changed, desc, err := s.client.Check(ctx, link)
+	for {
+		links, err := s.storage.GetAllLinks(ctx, linksForUpdateLimit, offset)
 		if err != nil {
-			slog.Warn("error during checking link", "link", link, "error", err)
-			continue
-		}
-		if !changed {
-			continue
+			slog.Error("failed to get links", "error", err)
+			return
 		}
 
-		s.storage.UpdateTimestamp(link.URL, time.Now())
+		if len(links) == 0 {
+			break
+		}
 
-		chatIDs := s.storage.GetSubscribers(link.URL)
+		for _, link := range links {
+			s.checkLink(ctx, link)
+		}
 
-		_ = s.notifier.SendUpdate(ctx, domain.LinkUpdate{
-			ID:          link.ID,
-			URL:         link.URL,
-			Description: desc,
-			ChatIDs:     chatIDs,
-		})
+		offset += linksForUpdateLimit
+	}
+}
+
+func (s *Service) checkLink(ctx context.Context, link domain.Link) {
+	changed, desc, err := s.client.Check(ctx, link)
+	if err != nil {
+		slog.Warn("error during checking link", "url", link.URL, "error", err)
+		return
+	}
+
+	if err = s.storage.UpdateLastChecked(ctx, link.URL, time.Now()); err != nil {
+		slog.Warn("failed to update last checked", "url", link.URL, "error", err)
+	}
+
+	if !changed {
+		return
+	}
+
+	if err = s.storage.UpdateTimestamp(ctx, link.URL, time.Now()); err != nil {
+		slog.Warn("failed to update timestamp", "url", link.URL, "error", err)
+	}
+
+	chatIDs, err := s.storage.GetSubscribers(ctx, link.URL)
+	if err != nil {
+		slog.Warn("failed to get subscribers", "url", link.URL, "error", err)
+		return
+	}
+
+	if err = s.notifier.SendUpdate(ctx, domain.LinkUpdate{
+		ID:          link.ID,
+		URL:         link.URL,
+		Description: desc,
+		ChatIDs:     chatIDs,
+	}); err != nil {
+		slog.Error("failed to send update", "url", link.URL, "error", err)
 	}
 }
