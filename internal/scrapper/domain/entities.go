@@ -15,3 +15,8 @@ type LinkUpdate struct {
 	Description string
 	ChatIDs     []int64
 }
+
+type Event struct {
+	OccurredAt  time.Time
+	Description string
+}
