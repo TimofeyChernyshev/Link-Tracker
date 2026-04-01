@@ -5,32 +5,50 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	githubchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker/gihub_checker"
+	stackoverflowchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker/stack_overflow_checker"
 )
 
 const timeout = 10 * time.Second
 
 type LinkChecker struct {
-	client *http.Client
+	client              *http.Client
+	githubClient        *githubchecker.GithubClient
+	stackOverflowClient *stackoverflowchecker.StackOverflowClient
 }
 
-func NewLinkChecker() *LinkChecker {
+func NewLinkChecker(userAgent string, batchSize int) *LinkChecker {
 	return &LinkChecker{
-		client: &http.Client{Timeout: timeout},
+		client:              &http.Client{Timeout: timeout},
+		githubClient:        githubchecker.NewGithubClient(userAgent, batchSize),
+		stackOverflowClient: stackoverflowchecker.NewStackOverflowClient(userAgent, batchSize),
 	}
 }
 
-func (c *LinkChecker) Check(ctx context.Context, link domain.Link) (bool, string, error) {
+func (c *LinkChecker) Check(ctx context.Context, link domain.Link) ([]domain.Event, error) {
+	switch {
+	case strings.Contains(link.URL, "github.com"):
+		return c.githubClient.Check(ctx, link)
+	case strings.Contains(link.URL, "stackoverflow.com"):
+		return c.stackOverflowClient.Check(ctx, link)
+	default:
+		return c.checkLastModified(ctx, link)
+	}
+}
+
+func (c *LinkChecker) checkLastModified(ctx context.Context, link domain.Link) ([]domain.Event, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link.URL, nil)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to execute request: %w", err)
+		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer func() {
 		err = resp.Body.Close()
@@ -40,23 +58,25 @@ func (c *LinkChecker) Check(ctx context.Context, link domain.Link) (bool, string
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return false, "", fmt.Errorf("status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("status code: %d", resp.StatusCode)
 	}
 
 	lastModified := resp.Header.Get("Last-Modified")
 	if lastModified == "" {
-		return false, "no last-modified header", nil
+		return nil, nil
 	}
 
 	t, err := http.ParseTime(lastModified)
 	if err != nil {
-		return false, "", fmt.Errorf("parsing time: %w", err)
+		return nil, fmt.Errorf("parsing time: %w", err)
 	}
 
 	if t.After(link.UpdatedAt) {
-		updateMessage := fmt.Sprintf("%s updated", link.URL)
-		return true, updateMessage, nil
+		return []domain.Event{{
+			Description: fmt.Sprintf("%s updated", link.URL),
+			OccurredAt:  t,
+		}}, nil
 	}
 
-	return false, "", nil
+	return nil, nil
 }

@@ -29,15 +29,17 @@ type StackOverflowClient struct {
 	httpClient *http.Client
 	baseURL    string
 	userAgent  string
+	batchSize  int
 }
 
-func NewStackOverflowClient(userAgent string) *StackOverflowClient {
+func NewStackOverflowClient(userAgent string, batchSize int) *StackOverflowClient {
 	return &StackOverflowClient{
 		httpClient: &http.Client{
 			Timeout: StackOverflowTimeout,
 		},
 		baseURL:   "https://api.stackexchange.com/2.3/questions",
 		userAgent: userAgent,
+		batchSize: batchSize,
 	}
 }
 
@@ -180,6 +182,7 @@ func (c *StackOverflowClient) fetchNewAnswers(ctx context.Context, questionID in
 	q.Add("order", "desc")
 	q.Add("sort", "creation")
 	q.Add("filter", "withbody")
+	q.Add("pagesize", strconv.Itoa(c.batchSize))
 	reqURL.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
@@ -229,6 +232,7 @@ func (c *StackOverflowClient) fetchNewComments(ctx context.Context, questionID i
 	q.Add("order", "desc")
 	q.Add("sort", "creation")
 	q.Add("filter", "withbody")
+	q.Add("pagesize", strconv.Itoa(c.batchSize))
 	reqURL.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)

@@ -21,8 +21,10 @@ type GithubClientSuite struct {
 }
 
 func (s *GithubClientSuite) SetupTest() {
+	batchSize := 100
+
 	s.ctx = context.Background()
-	s.client = NewGithubClient("test-bot/1.0")
+	s.client = NewGithubClient("test-bot/1.0", batchSize)
 }
 
 func (s *GithubClientSuite) TearDownTest() {

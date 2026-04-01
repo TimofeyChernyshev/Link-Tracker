@@ -24,13 +24,15 @@ type GithubClient struct {
 	http      *http.Client
 	baseURL   string
 	userAgent string
+	batchSize int
 }
 
-func NewGithubClient(userAgent string) *GithubClient {
+func NewGithubClient(userAgent string, batchSize int) *GithubClient {
 	return &GithubClient{
 		http:      &http.Client{Timeout: GitHubTimeout},
 		baseURL:   "https://api.github.com/repos",
 		userAgent: userAgent,
+		batchSize: batchSize,
 	}
 }
 
@@ -126,9 +128,8 @@ func truncateString(s string) string {
 }
 
 func (c *GithubClient) fetchPRs(ctx context.Context, repoPath string, since time.Time) ([]PullRequest, error) {
-	// может быть стоит использовать per_page=20 вместо since
-	url := fmt.Sprintf("%s/%s/pulls?state=all&sort=created&direction=desc&since=%s",
-		c.baseURL, repoPath, since.Format(time.RFC3339),
+	url := fmt.Sprintf("%s/%s/pulls?state=all&sort=created&direction=desc&since=%s&per_page=%d",
+		c.baseURL, repoPath, since.Format(time.RFC3339), c.batchSize,
 	)
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -155,8 +156,8 @@ func (c *GithubClient) fetchPRs(ctx context.Context, repoPath string, since time
 }
 
 func (c *GithubClient) fetchIssues(ctx context.Context, repoPath string, since time.Time) ([]Issue, error) {
-	url := fmt.Sprintf("%s/%s/issues?state=all&sort=created&direction=desc&since=%s",
-		c.baseURL, repoPath, since.Format(time.RFC3339),
+	url := fmt.Sprintf("%s/%s/issues?state=all&sort=created&direction=desc&since=%s&per_page=%d",
+		c.baseURL, repoPath, since.Format(time.RFC3339), c.batchSize,
 	)
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

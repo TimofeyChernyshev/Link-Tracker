@@ -13,14 +13,16 @@ import (
 
 type LinkCheckerSuite struct {
 	suite.Suite
-	client *LinkChecker
-	server *httptest.Server
-	ctx    context.Context
+	client    *LinkChecker
+	server    *httptest.Server
+	ctx       context.Context
+	batchSize int
 }
 
 func (s *LinkCheckerSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.client = NewLinkChecker()
+	s.batchSize = 100
+	s.client = NewLinkChecker("test-bot/1.0", s.batchSize)
 }
 
 func (s *LinkCheckerSuite) TearDownTest() {
@@ -48,11 +50,11 @@ func (s *LinkCheckerSuite) TestCheck_Success_WithChanges() {
 		UpdatedAt: fixedTime.Add(-24 * time.Hour),
 	}
 
-	changed, msg, err := s.client.Check(s.ctx, link)
+	events, err := s.client.Check(s.ctx, link)
 
 	s.Require().NoError(err)
-	s.True(changed)
-	s.Contains(msg, "updated")
+	s.NotEmpty(events)
+	s.Contains(events[0].Description, "updated")
 }
 
 func (s *LinkCheckerSuite) TestCheck_Success_NoChanges() {
@@ -70,11 +72,10 @@ func (s *LinkCheckerSuite) TestCheck_Success_NoChanges() {
 		UpdatedAt: fixedTime.Add(1 * time.Hour),
 	}
 
-	changed, msg, err := s.client.Check(s.ctx, link)
+	events, err := s.client.Check(s.ctx, link)
 
 	s.Require().NoError(err)
-	s.False(changed)
-	s.Empty(msg)
+	s.Empty(events)
 }
 
 func (s *LinkCheckerSuite) TestCheck_NoLastModifiedHeader() {
@@ -88,11 +89,10 @@ func (s *LinkCheckerSuite) TestCheck_NoLastModifiedHeader() {
 		UpdatedAt: time.Now(),
 	}
 
-	changed, msg, err := s.client.Check(s.ctx, link)
+	events, err := s.client.Check(s.ctx, link)
 
 	s.Require().NoError(err)
-	s.False(changed)
-	s.Equal("no last-modified header", msg)
+	s.Empty(events)
 }
 
 func (s *LinkCheckerSuite) TestCheck_InvalidLastModifiedHeader() {
@@ -107,12 +107,11 @@ func (s *LinkCheckerSuite) TestCheck_InvalidLastModifiedHeader() {
 		UpdatedAt: time.Now(),
 	}
 
-	changed, msg, err := s.client.Check(s.ctx, link)
+	events, err := s.client.Check(s.ctx, link)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "parsing time")
-	s.False(changed)
-	s.Empty(msg)
+	s.Nil(events)
 }
 
 func (s *LinkCheckerSuite) TestCheck_NotFound() {
@@ -126,12 +125,11 @@ func (s *LinkCheckerSuite) TestCheck_NotFound() {
 		UpdatedAt: time.Now(),
 	}
 
-	changed, msg, err := s.client.Check(s.ctx, link)
+	events, err := s.client.Check(s.ctx, link)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "status code: 404")
-	s.False(changed)
-	s.Empty(msg)
+	s.Nil(events)
 }
 
 func (s *LinkCheckerSuite) TestCheck_ServerError() {
@@ -145,12 +143,11 @@ func (s *LinkCheckerSuite) TestCheck_ServerError() {
 		UpdatedAt: time.Now(),
 	}
 
-	changed, msg, err := s.client.Check(s.ctx, link)
+	events, err := s.client.Check(s.ctx, link)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "status code: 500")
-	s.False(changed)
-	s.Empty(msg)
+	s.Nil(events)
 }
 
 func (s *LinkCheckerSuite) TestCheck_ContextTimeout() {
@@ -168,12 +165,11 @@ func (s *LinkCheckerSuite) TestCheck_ContextTimeout() {
 		UpdatedAt: time.Now(),
 	}
 
-	changed, msg, err := s.client.Check(ctx, link)
+	events, err := s.client.Check(ctx, link)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "context deadline exceeded")
-	s.False(changed)
-	s.Empty(msg)
+	s.Nil(events)
 }
 
 func (s *LinkCheckerSuite) TestCheck_ContextCanceled() {
@@ -191,10 +187,9 @@ func (s *LinkCheckerSuite) TestCheck_ContextCanceled() {
 		UpdatedAt: time.Now(),
 	}
 
-	changed, msg, err := s.client.Check(ctx, link)
+	events, err := s.client.Check(ctx, link)
 
 	s.Require().Error(err)
 	s.Contains(err.Error(), "context canceled")
-	s.False(changed)
-	s.Empty(msg)
+	s.Nil(events)
 }
