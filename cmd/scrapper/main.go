@@ -27,7 +27,6 @@ import (
 
 const (
 	shutdownTimeout = 30 * time.Second
-	checkInterval   = 5 * time.Minute
 )
 
 func main() {
@@ -57,7 +56,7 @@ func main() {
 	defer repo.Close()
 
 	// HTTP клиенты
-	linkChecker := linkchecker.NewLinkChecker()
+	linkChecker := linkchecker.NewLinkChecker("link-tracker", cfg.BatchSize)
 
 	// Notifier для отправки уведомлений в Bot
 	botNotifier := botclient.NewBotClient(cfg.BotBaseURL)
@@ -66,7 +65,7 @@ func main() {
 	linkService := application.NewLinkService(linkChecker, botNotifier, repo)
 
 	// Планировщик
-	sched, err := scheduler.New(checkInterval, linkService)
+	sched, err := scheduler.New(cfg.CheckInterval, linkService)
 
 	// HTTP сервер для API Scrapper
 	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService)
@@ -76,7 +75,7 @@ func main() {
 	errChan := make(chan error, 1)
 
 	sched.Start()
-	slog.Info("scheduler started", "interval", checkInterval)
+	slog.Info("scheduler started", "interval", cfg.CheckInterval)
 
 	go func() {
 		slog.Info("starting scrapper server", "port", cfg.ScrapperPort)
