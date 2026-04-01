@@ -148,7 +148,7 @@ func (s *Service) CheckUpdates(ctx context.Context) {
 }
 
 func (s *Service) checkLink(ctx context.Context, link domain.Link) {
-	changed, desc, err := s.client.Check(ctx, link)
+	events, err := s.client.Check(ctx, link)
 	if err != nil {
 		slog.Warn("error during checking link", "url", link.URL, "error", err)
 		return
@@ -158,12 +158,8 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) {
 		slog.Warn("failed to update last checked", "url", link.URL, "error", err)
 	}
 
-	if !changed {
+	if len(events) == 0 {
 		return
-	}
-
-	if err = s.storage.UpdateTimestamp(ctx, link.URL, time.Now()); err != nil {
-		slog.Warn("failed to update timestamp", "url", link.URL, "error", err)
 	}
 
 	chatIDs, err := s.storage.GetSubscribers(ctx, link.URL)
@@ -172,12 +168,24 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) {
 		return
 	}
 
-	if err = s.notifier.SendUpdate(ctx, domain.LinkUpdate{
-		ID:          link.ID,
-		URL:         link.URL,
-		Description: desc,
-		ChatIDs:     chatIDs,
-	}); err != nil {
-		slog.Error("failed to send update", "url", link.URL, "error", err)
+	var maxTime time.Time
+
+	for _, event := range events {
+		if event.OccurredAt.After(maxTime) {
+			maxTime = event.OccurredAt
+		}
+
+		if err := s.notifier.SendUpdate(ctx, domain.LinkUpdate{
+			ID:          link.ID,
+			URL:         link.URL,
+			Description: event.Description,
+			ChatIDs:     chatIDs,
+		}); err != nil {
+			slog.Error("failed to send update", "url", link.URL, "error", err)
+		}
+	}
+
+	if err = s.storage.UpdateTimestamp(ctx, link.URL, maxTime); err != nil {
+		slog.Warn("failed to update timestamp", "url", link.URL, "error", err)
 	}
 }

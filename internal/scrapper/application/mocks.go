@@ -37,13 +37,12 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Check mocks base method.
-func (m *MockClient) Check(ctx context.Context, link domain.Link) (bool, string, error) {
+func (m *MockClient) Check(ctx context.Context, link domain.Link) ([]domain.Event, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Check", ctx, link)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(string)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret0, _ := ret[0].([]domain.Event)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Check indicates an expected call of Check.

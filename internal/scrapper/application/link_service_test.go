@@ -59,7 +59,7 @@ func (s *ServiceSuite) TestCheckUpdates_GotError() {
 	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, 0).Return([]domain.Link{link}, nil)
 	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
 
-	s.mockClient.EXPECT().Check(s.ctx, link).Return(false, "", errors.New("some text"))
+	s.mockClient.EXPECT().Check(s.ctx, link).Return(nil, errors.New("some text"))
 
 	s.service.CheckUpdates(s.ctx)
 }
@@ -73,7 +73,7 @@ func (s *ServiceSuite) TestCheckUpdates_NoChanges() {
 	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, 0).Return([]domain.Link{link}, nil)
 	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
 
-	s.mockClient.EXPECT().Check(s.ctx, link).Return(false, "", nil)
+	s.mockClient.EXPECT().Check(s.ctx, link).Return(nil, nil)
 
 	s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, link.URL, gomock.Any()).Return(nil)
 
@@ -90,7 +90,7 @@ func (s *ServiceSuite) TestCheckUpdates_WithChanges() {
 	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
 
 	description := "New commit added"
-	s.mockClient.EXPECT().Check(s.ctx, link).Return(true, description, nil)
+	s.mockClient.EXPECT().Check(s.ctx, link).Return([]domain.Event{{Description: description, OccurredAt: time.Now()}}, nil)
 
 	s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, "https://github.com/user/repo", gomock.Any()).Return(nil)
 
@@ -132,7 +132,7 @@ func (s *ServiceSuite) TestCheckUpdates_Pagination() {
 	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 30).Return([]domain.Link{}, nil)
 
 	for i := range linksLen {
-		s.mockClient.EXPECT().Check(s.ctx, links[i]).Return(false, "", nil)
+		s.mockClient.EXPECT().Check(s.ctx, links[i]).Return(nil, nil)
 		s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, links[i].URL, gomock.Any()).Return(nil)
 	}
 

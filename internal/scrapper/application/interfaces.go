@@ -8,7 +8,7 @@ import (
 )
 
 type Client interface {
-	Check(ctx context.Context, link domain.Link) (changed bool, description string, err error)
+	Check(ctx context.Context, link domain.Link) (updates []domain.Event, err error)
 }
 
 type Notifier interface {
