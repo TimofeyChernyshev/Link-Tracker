@@ -47,12 +47,14 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 	// 	return nil, err
 	// }
 
-	prs, err := c.fetchPRs(ctx, repoPath, link.UpdatedAt)
+	var prs []PullRequest
+	err = c.fetchItems(ctx, repoPath, "pulls", link.UpdatedAt, &prs)
 	if err != nil {
 		slog.Warn("cannot fetch PRs", "error", err)
 	}
 
-	issues, err := c.fetchIssues(ctx, repoPath, link.UpdatedAt)
+	var issues []Issue
+	err = c.fetchItems(ctx, repoPath, "issues", link.UpdatedAt, &issues)
 	if err != nil {
 		slog.Warn("cannot fetch issues", "error", err)
 	}
@@ -127,9 +129,9 @@ func truncateString(s string) string {
 	return s[:previewLen] + "..."
 }
 
-func (c *GithubClient) fetchPRs(ctx context.Context, repoPath string, since time.Time) ([]PullRequest, error) {
-	url := fmt.Sprintf("%s/%s/pulls?state=all&sort=created&direction=desc&since=%s&per_page=%d",
-		c.baseURL, repoPath, since.Format(time.RFC3339), c.batchSize,
+func (c *GithubClient) fetchItems(ctx context.Context, repoPath, itemCategory string, since time.Time, result interface{}) error {
+	url := fmt.Sprintf("%s/%s/%s?state=all&sort=created&direction=desc&since=%s&per_page=%d",
+		c.baseURL, repoPath, itemCategory, since.Format(time.RFC3339), c.batchSize,
 	)
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -137,7 +139,7 @@ func (c *GithubClient) fetchPRs(ctx context.Context, repoPath string, since time
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("cannot do http request: %w", err)
+		return fmt.Errorf("cannot do http request: %w", err)
 	}
 	defer func() {
 		err = resp.Body.Close()
@@ -147,48 +149,14 @@ func (c *GithubClient) fetchPRs(ctx context.Context, repoPath string, since time
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status %d", resp.StatusCode)
+		return fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	var prs []PullRequest
-	err = json.NewDecoder(resp.Body).Decode(&prs)
-	if err != nil {
-		return nil, fmt.Errorf("cannot decode pull requests: %w", err)
+	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return fmt.Errorf("cannot decoode: %w", err)
 	}
 
-	return prs, nil
-}
-
-func (c *GithubClient) fetchIssues(ctx context.Context, repoPath string, since time.Time) ([]Issue, error) {
-	url := fmt.Sprintf("%s/%s/issues?state=all&sort=created&direction=desc&since=%s&per_page=%d",
-		c.baseURL, repoPath, since.Format(time.RFC3339), c.batchSize,
-	)
-
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	req.Header.Set("User-Agent", c.userAgent)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("cannot do http request: %w", err)
-	}
-	defer func() {
-		err = resp.Body.Close()
-		if err != nil {
-			slog.Warn("cannot close response body", "error", err)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status %d", resp.StatusCode)
-	}
-
-	var issues []Issue
-	err = json.NewDecoder(resp.Body).Decode(&issues)
-	if err != nil {
-		return nil, fmt.Errorf("cannot decode issues: %w", err)
-	}
-
-	return issues, nil
+	return nil
 }
 
 // func (c *GithubClient) fetchRepository(ctx context.Context, apiURL string) (*Repository, error) {
