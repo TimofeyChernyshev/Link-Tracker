@@ -163,7 +163,7 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, questionID int6
 	}
 
 	var qResp QuestionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&qResp); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&qResp); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
@@ -214,7 +214,7 @@ func (c *StackOverflowClient) fetchNewAnswers(ctx context.Context, questionID in
 	}
 
 	var answersResp AnswersResponse
-	if err := json.NewDecoder(resp.Body).Decode(&answersResp); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&answersResp); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
@@ -269,7 +269,7 @@ func (c *StackOverflowClient) fetchNewComments(ctx context.Context, questionID i
 	}
 
 	var commentsResp CommentsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&commentsResp); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&commentsResp); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 

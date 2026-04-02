@@ -175,7 +175,7 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) {
 			maxTime = event.OccurredAt
 		}
 
-		if err := s.notifier.SendUpdate(ctx, domain.LinkUpdate{
+		if err = s.notifier.SendUpdate(ctx, domain.LinkUpdate{
 			ID:          link.ID,
 			URL:         link.URL,
 			Description: event.Description,
