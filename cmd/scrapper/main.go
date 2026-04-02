@@ -1,7 +1,5 @@
 package main
 
-// предотвращение, обнаружение, обход,
-
 import (
 	"context"
 	"errors"
