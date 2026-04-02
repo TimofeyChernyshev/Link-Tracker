@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	defaultBatchSize = 100
+	minBatchSize     = 50
+	maxBatchSize     = 500
+)
+
 type Config struct {
 	ScrapperPort  string
 	BotBaseURL    string
@@ -47,11 +53,11 @@ func Load() (*Config, error) {
 		slog.Warn("DB_PORT is not int", "error", err)
 	}
 
-	batchSize := getEnvInt("BATCH_SIZE", 100)
-	if batchSize < 50 {
-		batchSize = 50
-	} else if batchSize > 500 {
-		batchSize = 500
+	batchSize := getEnvInt("BATCH_SIZE", defaultBatchSize)
+	if batchSize < minBatchSize {
+		batchSize = minBatchSize
+	} else if batchSize > maxBatchSize {
+		batchSize = maxBatchSize
 	}
 
 	var checkInterval time.Duration
