@@ -55,13 +55,11 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) ([]do
 	answers, err := c.fetchNewAnswers(ctx, questionID, site, link.UpdatedAt)
 	if err != nil {
 		slog.Warn("cannot fetch answers", "error", err)
-		answers = []Answer{}
 	}
 
 	comments, err := c.fetchNewComments(ctx, questionID, site, link.UpdatedAt)
 	if err != nil {
 		slog.Warn("cannot fetch comments", "error", err)
-		comments = []Comment{}
 	}
 
 	var events []domain.Event
@@ -171,47 +169,10 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, questionID int6
 }
 
 func (c *StackOverflowClient) fetchNewAnswers(ctx context.Context, questionID int64, site string, since time.Time) ([]Answer, error) {
-	apiURL := fmt.Sprintf("%s/%d/answers", c.baseURL, questionID)
-
-	reqURL, err := url.Parse(apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("parse url: %w", err)
-	}
-
-	q := reqURL.Query()
-	q.Add("site", site)
-	q.Add("order", "desc")
-	q.Add("sort", "creation")
-	q.Add("filter", "withbody")
-	q.Add("pagesize", strconv.Itoa(c.batchSize))
-	reqURL.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-
-	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("execute request: %w", err)
-	}
-	defer func() {
-		err = resp.Body.Close()
-		if err != nil {
-			slog.Warn("cannot close response", "error", err)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
-	}
-
 	var answersResp AnswersResponse
-	if err = json.NewDecoder(resp.Body).Decode(&answersResp); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	err := c.fetchItems(ctx, questionID, site, "answers", &answersResp)
+	if err != nil {
+		return nil, err
 	}
 
 	var newAnswers []Answer
@@ -226,11 +187,30 @@ func (c *StackOverflowClient) fetchNewAnswers(ctx context.Context, questionID in
 }
 
 func (c *StackOverflowClient) fetchNewComments(ctx context.Context, questionID int64, site string, since time.Time) ([]Comment, error) {
-	apiURL := fmt.Sprintf("%s/%d/comments", c.baseURL, questionID)
+	var commentsResp CommentsResponse
+	err := c.fetchItems(ctx, questionID, site, "comments", &commentsResp)
+	if err != nil {
+		return nil, err
+	}
+
+	var newComments []Comment
+	for _, comment := range commentsResp.Items {
+		if time.Unix(comment.CreationDate, 0).After(since) {
+			newComments = append(newComments, comment)
+		}
+	}
+
+	return newComments, nil
+}
+
+func (c *StackOverflowClient) fetchItems(
+	ctx context.Context, questionID int64, site, item string, result interface{},
+) error {
+	apiURL := fmt.Sprintf("%s/%d/%s", c.baseURL, questionID, item)
 
 	reqURL, err := url.Parse(apiURL)
 	if err != nil {
-		return nil, fmt.Errorf("parse url: %w", err)
+		return fmt.Errorf("parse url: %w", err)
 	}
 
 	q := reqURL.Query()
@@ -243,7 +223,7 @@ func (c *StackOverflowClient) fetchNewComments(ctx context.Context, questionID i
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+		return fmt.Errorf("create request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", c.userAgent)
@@ -251,7 +231,7 @@ func (c *StackOverflowClient) fetchNewComments(ctx context.Context, questionID i
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("execute request: %w", err)
+		return fmt.Errorf("execute request: %w", err)
 	}
 	defer func() {
 		err = resp.Body.Close()
@@ -261,22 +241,14 @@ func (c *StackOverflowClient) fetchNewComments(ctx context.Context, questionID i
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+		return fmt.Errorf("API returned status %d", resp.StatusCode)
 	}
 
-	var commentsResp CommentsResponse
-	if err = json.NewDecoder(resp.Body).Decode(&commentsResp); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	if err = json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return fmt.Errorf("decode response: %w", err)
 	}
 
-	var newComments []Comment
-	for _, comment := range commentsResp.Items {
-		if time.Unix(comment.CreationDate, 0).After(since) {
-			newComments = append(newComments, comment)
-		}
-	}
-
-	return newComments, nil
+	return nil
 }
 
 func (c *StackOverflowClient) extractQuestionID(rawURL string) (int64, error) {
