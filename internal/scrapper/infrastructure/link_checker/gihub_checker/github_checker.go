@@ -152,7 +152,11 @@ func (c *GithubClient) fetchPRs(ctx context.Context, repoPath string, since time
 
 	var prs []PullRequest
 	err = json.NewDecoder(resp.Body).Decode(&prs)
-	return prs, err
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode pull requests: %w", err)
+	}
+
+	return prs, nil
 }
 
 func (c *GithubClient) fetchIssues(ctx context.Context, repoPath string, since time.Time) ([]Issue, error) {
@@ -180,8 +184,11 @@ func (c *GithubClient) fetchIssues(ctx context.Context, repoPath string, since t
 
 	var issues []Issue
 	err = json.NewDecoder(resp.Body).Decode(&issues)
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode issues: %w", err)
+	}
 
-	return issues, err
+	return issues, nil
 }
 
 // func (c *GithubClient) fetchRepository(ctx context.Context, apiURL string) (*Repository, error) {

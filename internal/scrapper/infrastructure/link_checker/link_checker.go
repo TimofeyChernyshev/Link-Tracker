@@ -32,9 +32,19 @@ func NewLinkChecker(userAgent string, batchSize int) *LinkChecker {
 func (c *LinkChecker) Check(ctx context.Context, link domain.Link) ([]domain.Event, error) {
 	switch {
 	case strings.Contains(link.URL, "github.com"):
-		return c.githubClient.Check(ctx, link)
+		events, err := c.githubClient.Check(ctx, link)
+		if err != nil {
+			return nil, fmt.Errorf("checking github client: %w", err)
+		}
+
+		return events, nil
 	case strings.Contains(link.URL, "stackoverflow.com"):
-		return c.stackOverflowClient.Check(ctx, link)
+		events, err := c.stackOverflowClient.Check(ctx, link)
+		if err != nil {
+			return nil, fmt.Errorf("checking stack overflow client: %w", err)
+		}
+
+		return events, nil
 	default:
 		return c.checkLastModified(ctx, link)
 	}
