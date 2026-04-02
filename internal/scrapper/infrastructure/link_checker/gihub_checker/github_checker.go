@@ -152,7 +152,7 @@ func (c *GithubClient) fetchItems(ctx context.Context, repoPath, itemCategory st
 		return fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(result); err != nil {
 		return fmt.Errorf("cannot decoode: %w", err)
 	}
 
