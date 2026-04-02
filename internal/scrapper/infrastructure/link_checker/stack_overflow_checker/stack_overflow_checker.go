@@ -21,10 +21,6 @@ const (
 	previewLen           = 200
 )
 
-var (
-	errQuestionNotFound = errors.New("question not found")
-)
-
 type StackOverflowClient struct {
 	httpClient *http.Client
 	baseURL    string
