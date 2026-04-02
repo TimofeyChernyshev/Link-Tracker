@@ -137,7 +137,7 @@ func (c *GithubClient) fetchPRs(ctx context.Context, repoPath string, since time
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("doing http request: %w", err)
+		return nil, fmt.Errorf("cannot do http request: %w", err)
 	}
 	defer func() {
 		err = resp.Body.Close()
@@ -169,7 +169,7 @@ func (c *GithubClient) fetchIssues(ctx context.Context, repoPath string, since t
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot do http request: %w", err)
 	}
 	defer func() {
 		err = resp.Body.Close()
