@@ -151,7 +151,12 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, questionID int6
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			slog.Warn("cannot close response", "error", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
@@ -197,7 +202,12 @@ func (c *StackOverflowClient) fetchNewAnswers(ctx context.Context, questionID in
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			slog.Warn("cannot close response", "error", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
@@ -247,7 +257,12 @@ func (c *StackOverflowClient) fetchNewComments(ctx context.Context, questionID i
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			slog.Warn("cannot close response", "error", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
