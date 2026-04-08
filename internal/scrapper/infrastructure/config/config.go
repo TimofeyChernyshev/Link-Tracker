@@ -12,6 +12,7 @@ import (
 const (
 	defaultAPIBatchSize = 100
 	defaultBatchSize    = 20
+	defaultWorkerCount  = 4
 	minAPIBatchSize     = 50
 	maxAPIBatchSize     = 500
 	minBatchSize        = 10
@@ -86,7 +87,7 @@ func Load() (*Config, error) {
 		batchSize = maxBatchSize
 	}
 
-	workerCount := getEnvInt("WORKER_COUNT", 4)
+	workerCount := getEnvInt("WORKER_COUNT", defaultWorkerCount)
 	if workerCount < minWorkers {
 		workerCount = minWorkers
 	} else if workerCount > maxWorkers {
@@ -105,6 +106,7 @@ func Load() (*Config, error) {
 		APIBatchSize:  APIBatchSize,
 		CheckInterval: checkInterval,
 		WorkerCount:   workerCount,
+		BatchSize:     batchSize,
 	}, nil
 }
 
