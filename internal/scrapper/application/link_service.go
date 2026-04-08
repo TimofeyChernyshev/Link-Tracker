@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -161,7 +162,7 @@ func (s *Service) processBatch(ctx context.Context, links []domain.Link) []domai
 
 	slog.Debug("processing batch", "total_links", len(links), "worker_count", s.workerCount, "chunk_size", chunkSize)
 
-	for i := 0; i < s.workerCount; i++ {
+	for i := range s.workerCount {
 		start := i * chunkSize
 		end := start + chunkSize
 		if start >= len(links) {
@@ -277,12 +278,12 @@ func (s *Service) sendErrorReport(ctx context.Context, errors []domain.CheckResu
 }
 
 func joinErrors(errors []string) string {
-	result := ""
+	var builder strings.Builder
 	for i, s := range errors {
 		if i > 0 {
-			result += "\n"
+			builder.WriteString("\n")
 		}
-		result += s
+		builder.WriteString(s)
 	}
-	return result
+	return builder.String()
 }
