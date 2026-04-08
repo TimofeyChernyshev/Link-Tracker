@@ -10,9 +10,14 @@ import (
 )
 
 const (
-	defaultBatchSize = 100
-	minBatchSize     = 50
-	maxBatchSize     = 500
+	defaultAPIBatchSize = 100
+	defaultBatchSize    = 20
+	minAPIBatchSize     = 50
+	maxAPIBatchSize     = 500
+	minBatchSize        = 10
+	maxBatchSize        = 1000
+	minWorkers          = 1
+	maxWorkers          = 20
 )
 
 type Config struct {
@@ -24,8 +29,10 @@ type Config struct {
 	DBHost        string
 	DBPort        int
 	DBName        string
-	BatchSize     int
+	APIBatchSize  int
 	CheckInterval time.Duration
+	WorkerCount   int
+	BatchSize     int
 }
 
 type AccessType string
@@ -53,11 +60,11 @@ func Load() (*Config, error) {
 		slog.Warn("DB_PORT is not int", "error", err)
 	}
 
-	batchSize := getEnvInt("BATCH_SIZE", defaultBatchSize)
-	if batchSize < minBatchSize {
-		batchSize = minBatchSize
-	} else if batchSize > maxBatchSize {
-		batchSize = maxBatchSize
+	APIBatchSize := getEnvInt("API_BATCH_SIZE", defaultAPIBatchSize)
+	if APIBatchSize < minAPIBatchSize {
+		APIBatchSize = minAPIBatchSize
+	} else if APIBatchSize > maxAPIBatchSize {
+		APIBatchSize = maxAPIBatchSize
 	}
 
 	var checkInterval time.Duration
@@ -72,6 +79,20 @@ func Load() (*Config, error) {
 		}
 	}
 
+	batchSize := getEnvInt("BATCH_SIZE", defaultBatchSize)
+	if batchSize < minBatchSize {
+		batchSize = minBatchSize
+	} else if batchSize > maxBatchSize {
+		batchSize = maxBatchSize
+	}
+
+	workerCount := getEnvInt("WORKER_COUNT", 4)
+	if workerCount < minWorkers {
+		workerCount = minWorkers
+	} else if workerCount > maxWorkers {
+		workerCount = maxWorkers
+	}
+
 	return &Config{
 		ScrapperPort:  port,
 		BotBaseURL:    botURL,
@@ -81,8 +102,9 @@ func Load() (*Config, error) {
 		DBHost:        os.Getenv("DB_HOST"),
 		DBPort:        dbPort,
 		DBName:        os.Getenv("DB_NAME"),
-		BatchSize:     batchSize,
+		APIBatchSize:  APIBatchSize,
 		CheckInterval: checkInterval,
+		WorkerCount:   workerCount,
 	}, nil
 }
 

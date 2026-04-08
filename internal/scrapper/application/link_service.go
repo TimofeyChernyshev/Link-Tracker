@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
@@ -13,18 +14,19 @@ import (
 var (
 	errChatInstRegistered = errors.New("chat isn't registered")
 
-	linksForUpdateLimit = 20
-	defaultOffset       = 0
+	defaultOffset = 0
 )
 
 type Service struct {
-	client   Client
-	notifier Notifier
-	storage  Storage
+	client      Client
+	notifier    Notifier
+	storage     Storage
+	batchSize   int
+	workerCount int
 }
 
-func NewLinkService(client Client, notifier Notifier, storage Storage) *Service {
-	return &Service{client: client, notifier: notifier, storage: storage}
+func NewLinkService(c Client, n Notifier, s Storage, bs, wk int) *Service {
+	return &Service{client: c, notifier: n, storage: s, batchSize: bs, workerCount: wk}
 }
 
 func (s *Service) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
@@ -127,9 +129,10 @@ func (s *Service) DeleteChat(ctx context.Context, chatID int64) error {
 
 func (s *Service) CheckUpdates(ctx context.Context) {
 	offset := defaultOffset
+	var allErrors []domain.CheckResult
 
 	for {
-		links, err := s.storage.GetAllLinks(ctx, linksForUpdateLimit, offset)
+		links, err := s.storage.GetAllLinks(ctx, s.batchSize, offset)
 		if err != nil {
 			slog.Error("failed to get links", "error", err)
 			return
@@ -139,19 +142,68 @@ func (s *Service) CheckUpdates(ctx context.Context) {
 			break
 		}
 
-		for _, link := range links {
-			s.checkLink(ctx, link)
-		}
+		errors := s.processBatch(ctx, links)
+		allErrors = append(allErrors, errors...)
 
-		offset += linksForUpdateLimit
+		offset += s.batchSize
+	}
+
+	if len(allErrors) > 0 {
+		s.sendErrorReport(ctx, allErrors)
 	}
 }
 
-func (s *Service) checkLink(ctx context.Context, link domain.Link) {
+func (s *Service) processBatch(ctx context.Context, links []domain.Link) []domain.CheckResult {
+	chunkSize := (len(links) + s.workerCount - 1) / s.workerCount
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var errors []domain.CheckResult
+
+	slog.Debug("processing batch", "total_links", len(links), "worker_count", s.workerCount, "chunk_size", chunkSize)
+
+	for i := 0; i < s.workerCount; i++ {
+		start := i * chunkSize
+		end := start + chunkSize
+		if start >= len(links) {
+			break
+		}
+		if end > len(links) {
+			end = len(links)
+		}
+
+		wg.Add(1)
+		go func(chunk []domain.Link, workerID int) {
+			defer wg.Done()
+			slog.Debug("worker started", "worker_id", workerID, "chunk_size", len(chunk))
+
+			for _, link := range chunk {
+				result := s.checkLink(ctx, link)
+				if result.Error != nil {
+					mu.Lock()
+					errors = append(errors, result)
+					mu.Unlock()
+				}
+			}
+
+			slog.Debug("worker finished", "worker_id", workerID)
+		}(links[start:end], i)
+	}
+
+	wg.Wait()
+	return errors
+}
+
+func (s *Service) checkLink(ctx context.Context, link domain.Link) domain.CheckResult {
+	result := domain.CheckResult{
+		Link:        link,
+		ProcessedAt: time.Now(),
+	}
+
 	events, err := s.client.Check(ctx, link)
 	if err != nil {
+		result.Error = fmt.Errorf("check failed: %w", err)
 		slog.Warn("error during checking link", "url", link.URL, "error", err)
-		return
+		return result
 	}
 
 	if err = s.storage.UpdateLastChecked(ctx, link.URL, time.Now()); err != nil {
@@ -159,13 +211,14 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) {
 	}
 
 	if len(events) == 0 {
-		return
+		return result
 	}
 
 	chatIDs, err := s.storage.GetSubscribers(ctx, link.URL)
 	if err != nil {
+		result.Error = fmt.Errorf("get subscribers failed: %w", err)
 		slog.Warn("failed to get subscribers", "url", link.URL, "error", err)
-		return
+		return result
 	}
 
 	var maxTime time.Time
@@ -188,4 +241,48 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) {
 	if err = s.storage.UpdateTimestamp(ctx, link.URL, maxTime); err != nil {
 		slog.Warn("failed to update timestamp", "url", link.URL, "error", err)
 	}
+
+	result.Events = events
+	return result
+}
+
+func (s *Service) sendErrorReport(ctx context.Context, errors []domain.CheckResult) {
+	errorsByChat := make(map[int64][]string)
+
+	for _, err := range errors {
+		subscribers, errSub := s.storage.GetSubscribers(ctx, err.Link.URL)
+		if errSub != nil {
+			slog.Warn("got error while getting subs", "link", err.Link.URL, "error", errSub)
+			continue
+		}
+		for _, chatID := range subscribers {
+			errorsByChat[chatID] = append(errorsByChat[chatID], fmt.Sprintf("- %s: %v", err.Link.URL, err.Error))
+		}
+	}
+
+	for chatID, errList := range errorsByChat {
+		report := fmt.Sprintf("Ошибки при проверке ссылок\n"+
+			"Не удалось обработать %d ссылок:\n%s",
+			len(errList), joinErrors(errList))
+
+		err := s.notifier.SendUpdate(ctx, domain.LinkUpdate{
+			Description: report,
+			ChatIDs:     []int64{chatID},
+		})
+		if err != nil {
+			slog.Warn("got error while sending update", "chatdID", chatID, "error", err)
+			continue
+		}
+	}
+}
+
+func joinErrors(errors []string) string {
+	result := ""
+	for i, s := range errors {
+		if i > 0 {
+			result += "\n"
+		}
+		result += s
+	}
+	return result
 }

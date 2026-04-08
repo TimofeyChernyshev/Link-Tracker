@@ -12,6 +12,11 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
+const (
+	testBatchSize   = 10
+	testWorkerCount = 2
+)
+
 type ServiceSuite struct {
 	suite.Suite
 	ctrl         *gomock.Controller
@@ -32,6 +37,8 @@ func (s *ServiceSuite) SetupTest() {
 		s.mockClient,
 		s.mockNotifier,
 		s.mockStorage,
+		testBatchSize,
+		testWorkerCount,
 	)
 	s.ctx = context.Background()
 }
@@ -45,7 +52,7 @@ func TestServiceSuite(t *testing.T) {
 }
 
 func (s *ServiceSuite) TestCheckUpdates_NoLinks() {
-	s.mockStorage.EXPECT().GetAllLinks(gomock.Any(), linksForUpdateLimit, defaultOffset).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(gomock.Any(), testBatchSize, defaultOffset).Return([]domain.Link{}, nil)
 
 	s.service.CheckUpdates(s.ctx)
 }
@@ -56,10 +63,18 @@ func (s *ServiceSuite) TestCheckUpdates_GotError() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, 0).Return([]domain.Link{link}, nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 0).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, testBatchSize).Return([]domain.Link{}, nil)
 
 	s.mockClient.EXPECT().Check(s.ctx, link).Return(nil, errors.New("some text"))
+
+	s.mockStorage.EXPECT().GetSubscribers(s.ctx, link.URL).Return([]int64{1}, nil)
+
+	s.mockNotifier.EXPECT().SendUpdate(s.ctx, domain.LinkUpdate{
+		Description: "Ошибки при проверке ссылок\n" +
+			"Не удалось обработать 1 ссылок:\n- https://github.com/user/repo: check failed: some text",
+		ChatIDs: []int64{1},
+	}).Return(nil)
 
 	s.service.CheckUpdates(s.ctx)
 }
@@ -70,8 +85,8 @@ func (s *ServiceSuite) TestCheckUpdates_NoChanges() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, 0).Return([]domain.Link{link}, nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 0).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, testBatchSize).Return([]domain.Link{}, nil)
 
 	s.mockClient.EXPECT().Check(s.ctx, link).Return(nil, nil)
 
@@ -86,8 +101,8 @@ func (s *ServiceSuite) TestCheckUpdates_WithChanges() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, 0).Return([]domain.Link{link}, nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, linksForUpdateLimit, linksForUpdateLimit).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 0).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, testBatchSize).Return([]domain.Link{}, nil)
 
 	description := "New commit added"
 	s.mockClient.EXPECT().Check(s.ctx, link).Return([]domain.Event{{Description: description, OccurredAt: time.Now()}}, nil)
@@ -124,12 +139,10 @@ func (s *ServiceSuite) TestCheckUpdates_Pagination() {
 		}
 	}
 
-	linksForUpdateLimit = 10
-
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 0).Return(links[0:10], nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 10).Return(links[10:20], nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 20).Return(links[20:25], nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, 10, 30).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 0).Return(links[0:10], nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 10).Return(links[10:20], nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 20).Return(links[20:25], nil)
+	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 30).Return([]domain.Link{}, nil)
 
 	for i := range linksLen {
 		s.mockClient.EXPECT().Check(s.ctx, links[i]).Return(nil, nil)

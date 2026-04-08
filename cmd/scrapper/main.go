@@ -54,13 +54,13 @@ func main() {
 	defer repo.Close()
 
 	// HTTP клиенты
-	linkChecker := linkchecker.NewLinkChecker("link-tracker", cfg.BatchSize)
+	linkChecker := linkchecker.NewLinkChecker("link-tracker", cfg.APIBatchSize)
 
 	// Notifier для отправки уведомлений в Bot
 	botNotifier := botclient.NewBotClient(cfg.BotBaseURL)
 
 	// Сервис работы с ссылками
-	linkService := application.NewLinkService(linkChecker, botNotifier, repo)
+	linkService := application.NewLinkService(linkChecker, botNotifier, repo, cfg.BatchSize, cfg.WorkerCount)
 
 	// Планировщик
 	sched, err := scheduler.New(cfg.CheckInterval, linkService)
