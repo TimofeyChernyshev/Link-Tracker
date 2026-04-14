@@ -16,26 +16,21 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-const (
-	StackOverflowTimeout = 5 * time.Second
-	previewLen           = 200
-)
-
 type StackOverflowClient struct {
 	httpClient *http.Client
 	baseURL    string
 	userAgent  string
 	batchSize  int
+	previewLen int
 }
 
-func NewStackOverflowClient(baseURL, userAgent string, batchSize int) *StackOverflowClient {
+func NewStackOverflowClient(baseURL, userAgent string, batchSize, previewLen int, timeout time.Duration) *StackOverflowClient {
 	return &StackOverflowClient{
-		httpClient: &http.Client{
-			Timeout: StackOverflowTimeout,
-		},
-		baseURL:   baseURL,
-		userAgent: userAgent,
-		batchSize: batchSize,
+		httpClient: &http.Client{Timeout: timeout},
+		baseURL:    baseURL,
+		userAgent:  userAgent,
+		batchSize:  batchSize,
+		previewLen: previewLen,
 	}
 }
 
@@ -89,7 +84,7 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) ([]do
 }
 
 func (c *StackOverflowClient) formatAnswerMessage(answer *Answer) string {
-	preview := truncateString(answer.Body)
+	preview := truncateString(answer.Body, c.previewLen)
 	return fmt.Sprintf(
 		"Новый ответ на вопрос\n\n Вопрос: %s\n Автор: %s\n Время создания: %s\n Текст ответа:\n%s\n\n"+
 			"[Ссылка](https://stackoverflow.com/q/%d#answer-%d)",
@@ -103,7 +98,7 @@ func (c *StackOverflowClient) formatAnswerMessage(answer *Answer) string {
 }
 
 func (c *StackOverflowClient) formatCommentMessage(comment *Comment, questionTitle string) string {
-	preview := truncateString(comment.Body)
+	preview := truncateString(comment.Body, c.previewLen)
 	return fmt.Sprintf(
 		"Новый комментарий к вопросу\n\n Вопрос: %s\n Автор: %s\n Время создания: %s\n Текст комментария:\n%s",
 		questionTitle,
@@ -113,7 +108,7 @@ func (c *StackOverflowClient) formatCommentMessage(comment *Comment, questionTit
 	)
 }
 
-func truncateString(s string) string {
+func truncateString(s string, previewLen int) string {
 	if len(s) <= previewLen {
 		return s
 	}

@@ -22,9 +22,11 @@ type SOClientSuite struct {
 
 func (s *SOClientSuite) SetupTest() {
 	batchSize := 100
+	timeout := time.Second * 5
+	previewLen := 200
 
 	s.ctx = context.Background()
-	s.client = NewStackOverflowClient("stack", "test-bot/1.0", batchSize)
+	s.client = NewStackOverflowClient("stack", "test-bot/1.0", batchSize, previewLen, timeout)
 }
 
 func (s *SOClientSuite) TearDownTest() {

@@ -19,20 +19,29 @@ const (
 )
 
 type Config struct {
-	ScrapperPort  string        `env:"PORT,required"`
-	BotBaseURL    string        `env:"BOT_BASE_URL,required"`
-	AccessType    AccessType    `env:"ACCESS_TYPE,required"`
-	DBUser        string        `env:"DB_USER,required"`
-	DBPassword    string        `env:"DB_PASSWORD,required"`
-	DBHost        string        `env:"DB_HOST,required"`
-	DBPort        int           `env:"DB_PORT,required"`
-	DBName        string        `env:"DB_NAME,required"`
-	APIBatchSize  int           `env:"API_BATCH_SIZE" envDefault:"100"`
+	ScrapperPort string        `env:"PORT,required"`
+	BotBaseURL   string        `env:"BOT_BASE_URL,required"`
+	BotTimeout   time.Duration `env:"BOT_TIMEOUT" envDefault:"5s"`
+
+	AccessType AccessType `env:"ACCESS_TYPE,required"`
+	DBUser     string     `env:"DB_USER,required"`
+	DBPassword string     `env:"DB_PASSWORD,required"`
+	DBHost     string     `env:"DB_HOST,required"`
+	DBPort     int        `env:"DB_PORT,required"`
+	DBName     string     `env:"DB_NAME,required"`
+
 	CheckInterval time.Duration `env:"CHECK_INTERVAL" envDefault:"60s"`
-	WorkerCount   int           `env:"WORKER_COUNT" envDefault:"4"`
-	BatchSize     int           `env:"BATCH_SIZE" envDefault:"20"`
+
+	WorkerCount int `env:"WORKER_COUNT" envDefault:"4"`
+	BatchSize   int `env:"BATCH_SIZE" envDefault:"20"`
+
+	APIBatchSize  int           `env:"API_BATCH_SIZE" envDefault:"100"`
 	GighubBaseURL string        `env:"GITHUB_BASE_URL,required"`
+	GithubTimeout time.Duration `env:"GITHUB_TIMEOUT" envDefault:"5s"`
 	StackBaseURL  string        `env:"STACK_BASE_URL,required"`
+	StackTimeout  time.Duration `env:"STACK_TIMEOUT" envDefault:"5s"`
+
+	CheckerPreviewLen int `env:"CHECKER_PREVIEW_LEN" envDefault:"200"`
 }
 
 type AccessType string

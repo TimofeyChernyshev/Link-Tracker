@@ -22,7 +22,10 @@ type LinkCheckerSuite struct {
 func (s *LinkCheckerSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.batchSize = 100
-	s.client = NewLinkChecker("test-bot/1.0", s.batchSize, "github", "stack")
+	previewLen := 200
+	githubTimeout := time.Second * 5
+	stackTimeout := time.Second * 5
+	s.client = NewLinkChecker("test-bot/1.0", s.batchSize, previewLen, "github", "stack", githubTimeout, stackTimeout)
 }
 
 func (s *LinkCheckerSuite) TearDownTest() {

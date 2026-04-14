@@ -15,28 +15,21 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-// вынести константы в конфиг
-// go-resty/resty
-// вынести в конфиг baseURL "https://api.github.com/repos"
-
-const (
-	GitHubTimeout = 5 * time.Second
-	previewLen    = 200
-)
-
 type GithubClient struct {
-	http      *http.Client
-	baseURL   string
-	userAgent string
-	batchSize int
+	http       *http.Client
+	baseURL    string
+	userAgent  string
+	batchSize  int
+	previewLen int
 }
 
-func NewGithubClient(baseURL, userAgent string, batchSize int) *GithubClient {
+func NewGithubClient(baseURL, userAgent string, batchSize, previewLen int, timeout time.Duration) *GithubClient {
 	return &GithubClient{
-		http:      &http.Client{Timeout: GitHubTimeout},
-		baseURL:   baseURL,
-		userAgent: userAgent,
-		batchSize: batchSize,
+		http:       &http.Client{Timeout: timeout},
+		baseURL:    baseURL,
+		userAgent:  userAgent,
+		batchSize:  batchSize,
+		previewLen: previewLen,
 	}
 }
 
@@ -90,7 +83,7 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 }
 
 func (c *GithubClient) formatPRMessage(pr *PullRequest) string {
-	preview := truncateString(pr.Body)
+	preview := truncateString(pr.Body, c.previewLen)
 	return fmt.Sprintf(
 		"Новый Pull Request в репозитории\n\n Название: %s\n Автор: %s\n Время создания: %s\n Описание:\n%s\n\n [Ссылка](%s)",
 		pr.Title,
@@ -102,7 +95,7 @@ func (c *GithubClient) formatPRMessage(pr *PullRequest) string {
 }
 
 func (c *GithubClient) formatIssueMessage(issue *Issue) string {
-	preview := truncateString(issue.Body)
+	preview := truncateString(issue.Body, c.previewLen)
 	return fmt.Sprintf(
 		"Новый Issue в репозитории\n\n Название: %s\n Автор: %s\n Время создания: %s\n Описание:\n%s\n\n [Ссылка](%s)",
 		issue.Title,
@@ -113,7 +106,7 @@ func (c *GithubClient) formatIssueMessage(issue *Issue) string {
 	)
 }
 
-func truncateString(s string) string {
+func truncateString(s string, previewLen int) string {
 	if len(s) <= previewLen {
 		return s
 	}
