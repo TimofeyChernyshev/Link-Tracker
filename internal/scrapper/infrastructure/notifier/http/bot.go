@@ -1,4 +1,4 @@
-package botclient
+package httpnotifier
 
 import (
 	"bytes"

@@ -15,9 +15,9 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
-	botclient "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/bot_client"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
+	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/scheduler"
 	scrapperhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/server/http"
@@ -54,10 +54,10 @@ func main() {
 	defer repo.Close()
 
 	// HTTP клиенты
-	linkChecker := linkchecker.NewLinkChecker("link-tracker", cfg.APIBatchSize)
+	linkChecker := linkchecker.NewLinkChecker("link-tracker", cfg.APIBatchSize, cfg.GighubBaseURL, cfg.StackBaseURL)
 
 	// Notifier для отправки уведомлений в Bot
-	botNotifier := botclient.NewBotClient(cfg.BotBaseURL)
+	botNotifier := httpnotifier.NewBotClient(cfg.BotBaseURL)
 
 	// Сервис работы с ссылками
 	linkService := application.NewLinkService(linkChecker, botNotifier, repo, cfg.BatchSize, cfg.WorkerCount)
