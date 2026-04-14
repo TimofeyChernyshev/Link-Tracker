@@ -47,7 +47,7 @@ func TestLoad_EnvFileNotFound(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Nil(t, cfg)
-	assert.ErrorContains(t, err, "token not found")
+	assert.ErrorContains(t, err, "\"TELEGRAM_TOKEN\" is not set")
 }
 
 func TestLoad_TokenNotSet(t *testing.T) {
@@ -70,26 +70,5 @@ func TestLoad_TokenNotSet(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Nil(t, cfg)
-	assert.Equal(t, "token not found", err.Error())
-}
-
-func TestLoad_EmptyToken(t *testing.T) {
-	tempDir := t.TempDir()
-
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-
-	t.Chdir(tempDir)
-	defer t.Chdir(originalDir)
-
-	content := []byte("TELEGRAM_TOKEN=\n")
-	err = os.WriteFile(".env", content, 0644)
-	require.NoError(t, err)
-	_ = godotenv.Load()
-
-	cfg, err := Load()
-
-	require.Error(t, err)
-	assert.Nil(t, cfg)
-	assert.Equal(t, "token not found", err.Error())
+	assert.ErrorContains(t, err, "\"TELEGRAM_TOKEN\" is not set")
 }

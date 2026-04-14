@@ -1,38 +1,42 @@
 package config
 
 import (
-	"errors"
-	"log/slog"
-	"os"
+	"fmt"
+	"time"
+
+	"github.com/caarlos0/env/v11"
 )
 
 type Config struct {
-	TelegramToken    string
-	BotPort          string
-	ScrapperBaseURL  string
-	TelegramEndpoint string
+	TelegramToken       string        `env:"TELEGRAM_TOKEN,required"`
+	TelegramEndpoint    string        `env:"TELEGRAM_API_URL"`
+	BotPort             string        `env:"PORT,required"`
+	ScrapperBaseURL     string        `env:"SCRAPPER_BASE_URL,required"`
+	ReceiverType        string        `env:"RECEIVER_TYPE" envDefault:"kafka"`
+	KafkaBrokers        []string      `env:"KAFKA_BROKERS"`
+	KafkaTopic          string        `env:"KAFKA_TOPIC"`
+	KafkaGroupID        string        `env:"KAFKA_GROUP_ID"`
+	KafkaSessionTimeout time.Duration `env:"KAFKA_SESSION_TIMEOUT" envDefault:"30s"`
 }
 
 func Load() (*Config, error) {
-	token := os.Getenv("TELEGRAM_TOKEN")
-	if token == "" {
-		slog.Error("TELEGRAM_TOKEN is not set in .env.bot file")
-		return nil, errors.New("token not found")
+	var cfg Config
+
+	if err := env.Parse(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		slog.Error("PORT is not set in .env.bot file")
-		return nil, errors.New("bot port not found")
+	if cfg.ReceiverType == "kafka" {
+		if cfg.KafkaBrokers == nil {
+			return nil, fmt.Errorf("KAFKA_BROKERS is required when RECEIVER_TYPE=kafka")
+		}
+		if cfg.KafkaTopic == "" {
+			return nil, fmt.Errorf("KAFKA_TOPIC is required when RECEIVER_TYPE=kafka")
+		}
+		if cfg.KafkaGroupID == "" {
+			return nil, fmt.Errorf("KAFKA_GROUP_ID is required when RECEIVER_TYPE=kafka")
+		}
 	}
 
-	scrapperURL := os.Getenv("SCRAPPER_BASE_URL")
-	if scrapperURL == "" {
-		slog.Error("SCRAPPER_BASE_URL is not set in .env.bot file")
-		return nil, errors.New("scrapper base url not found")
-	}
-
-	endpoint := os.Getenv("TELEGRAM_API_URL")
-
-	return &Config{TelegramToken: token, BotPort: port, ScrapperBaseURL: scrapperURL, TelegramEndpoint: endpoint}, nil
+	return &cfg, nil
 }
