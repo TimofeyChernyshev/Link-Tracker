@@ -10,7 +10,7 @@ import (
 )
 
 type LinkChecker interface {
-	CheckUpdates(ctx context.Context)
+	CheckUpdates(ctx context.Context, interval time.Duration)
 }
 
 type Scheduler struct {
@@ -30,7 +30,7 @@ func New(interval time.Duration, checker LinkChecker) (*Scheduler, error) {
 		gocron.DurationJob(interval),
 		gocron.NewTask(func() {
 			slog.Info("scheduler tick: checking links")
-			checker.CheckUpdates(ctx)
+			checker.CheckUpdates(ctx, interval)
 		}),
 	)
 

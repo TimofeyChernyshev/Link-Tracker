@@ -307,7 +307,9 @@ func (s *RepositorySuite) TestGetAllLinks() {
 	s.repo.UpdateLastChecked(s.ctx, "https://github.com/golang/go", time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC))
 	s.repo.UpdateLastChecked(s.ctx, "https://github.com/kubernetes/kubernetes", time.Now())
 
-	links, err := s.repo.GetAllLinks(s.ctx, 10, 0)
+	const testInterval = time.Duration(time.Minute * 10)
+
+	links, err := s.repo.GetLinksWithInterval(s.ctx, 10, 0, testInterval)
 	s.Require().NoError(err)
 
 	s.Len(links, 1)

@@ -15,6 +15,7 @@ import (
 const (
 	testBatchSize   = 10
 	testWorkerCount = 2
+	testInterval    = time.Duration(100000)
 )
 
 type ServiceSuite struct {
@@ -52,9 +53,9 @@ func TestServiceSuite(t *testing.T) {
 }
 
 func (s *ServiceSuite) TestCheckUpdates_NoLinks() {
-	s.mockStorage.EXPECT().GetAllLinks(gomock.Any(), testBatchSize, defaultOffset).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(gomock.Any(), testBatchSize, defaultOffset, testInterval).Return([]domain.Link{}, nil)
 
-	s.service.CheckUpdates(s.ctx)
+	s.service.CheckUpdates(s.ctx, testInterval)
 }
 
 func (s *ServiceSuite) TestCheckUpdates_GotError() {
@@ -63,8 +64,8 @@ func (s *ServiceSuite) TestCheckUpdates_GotError() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 0).Return([]domain.Link{link}, nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, testBatchSize).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, 0, testInterval).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, testBatchSize, testInterval).Return([]domain.Link{}, nil)
 
 	s.mockClient.EXPECT().Check(s.ctx, link).Return(nil, errors.New("some text"))
 
@@ -76,7 +77,7 @@ func (s *ServiceSuite) TestCheckUpdates_GotError() {
 		ChatIDs: []int64{1},
 	}).Return(nil)
 
-	s.service.CheckUpdates(s.ctx)
+	s.service.CheckUpdates(s.ctx, testInterval)
 }
 
 func (s *ServiceSuite) TestCheckUpdates_NoChanges() {
@@ -85,14 +86,14 @@ func (s *ServiceSuite) TestCheckUpdates_NoChanges() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 0).Return([]domain.Link{link}, nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, testBatchSize).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, 0, testInterval).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, testBatchSize, testInterval).Return([]domain.Link{}, nil)
 
 	s.mockClient.EXPECT().Check(s.ctx, link).Return(nil, nil)
 
 	s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, link.URL, gomock.Any()).Return(nil)
 
-	s.service.CheckUpdates(s.ctx)
+	s.service.CheckUpdates(s.ctx, testInterval)
 }
 
 func (s *ServiceSuite) TestCheckUpdates_WithChanges() {
@@ -101,8 +102,8 @@ func (s *ServiceSuite) TestCheckUpdates_WithChanges() {
 		URL: "https://github.com/user/repo",
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 0).Return([]domain.Link{link}, nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, testBatchSize).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, 0, testInterval).Return([]domain.Link{link}, nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, testBatchSize, testInterval).Return([]domain.Link{}, nil)
 
 	description := "New commit added"
 	s.mockClient.EXPECT().Check(s.ctx, link).Return([]domain.Event{{Description: description, OccurredAt: time.Now()}}, nil)
@@ -126,7 +127,7 @@ func (s *ServiceSuite) TestCheckUpdates_WithChanges() {
 	}
 	s.mockNotifier.EXPECT().SendUpdate(s.ctx, expectedUpdate).Return(nil)
 
-	s.service.CheckUpdates(s.ctx)
+	s.service.CheckUpdates(s.ctx, testInterval)
 }
 
 func (s *ServiceSuite) TestCheckUpdates_Pagination() {
@@ -139,17 +140,17 @@ func (s *ServiceSuite) TestCheckUpdates_Pagination() {
 		}
 	}
 
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 0).Return(links[0:10], nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 10).Return(links[10:20], nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 20).Return(links[20:25], nil)
-	s.mockStorage.EXPECT().GetAllLinks(s.ctx, testBatchSize, 30).Return([]domain.Link{}, nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, 0, testInterval).Return(links[0:10], nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, 10, testInterval).Return(links[10:20], nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, 20, testInterval).Return(links[20:25], nil)
+	s.mockStorage.EXPECT().GetLinksWithInterval(s.ctx, testBatchSize, 30, testInterval).Return([]domain.Link{}, nil)
 
 	for i := range linksLen {
 		s.mockClient.EXPECT().Check(s.ctx, links[i]).Return(nil, nil)
 		s.mockStorage.EXPECT().UpdateLastChecked(s.ctx, links[i].URL, gomock.Any()).Return(nil)
 	}
 
-	s.service.CheckUpdates(s.ctx)
+	s.service.CheckUpdates(s.ctx, testInterval)
 }
 
 func (s *ServiceSuite) TestAddLink_Success() {

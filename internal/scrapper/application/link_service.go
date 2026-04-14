@@ -128,12 +128,12 @@ func (s *Service) DeleteChat(ctx context.Context, chatID int64) error {
 	return nil
 }
 
-func (s *Service) CheckUpdates(ctx context.Context) {
+func (s *Service) CheckUpdates(ctx context.Context, interval time.Duration) {
 	offset := defaultOffset
 	var allErrors []domain.CheckResult
 
 	for {
-		links, err := s.storage.GetAllLinks(ctx, s.batchSize, offset)
+		links, err := s.storage.GetLinksWithInterval(ctx, s.batchSize, offset, interval)
 		if err != nil {
 			slog.Error("failed to get links", "error", err)
 			return
