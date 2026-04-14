@@ -16,7 +16,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
-	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/server/http"
+	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/http"
 )
 
 const (
@@ -67,7 +67,7 @@ func main() {
 
 	go func() {
 		slog.Info("http server for bot starting", "port", cfg.BotPort)
-		err = server.Start()
+		err = server.Start(context.Background())
 		if !errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
