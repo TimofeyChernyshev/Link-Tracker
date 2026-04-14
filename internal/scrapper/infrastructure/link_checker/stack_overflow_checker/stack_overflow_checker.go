@@ -28,12 +28,12 @@ type StackOverflowClient struct {
 	batchSize  int
 }
 
-func NewStackOverflowClient(userAgent string, batchSize int) *StackOverflowClient {
+func NewStackOverflowClient(baseURL, userAgent string, batchSize int) *StackOverflowClient {
 	return &StackOverflowClient{
 		httpClient: &http.Client{
 			Timeout: StackOverflowTimeout,
 		},
-		baseURL:   "https://api.stackexchange.com/2.3/questions",
+		baseURL:   baseURL,
 		userAgent: userAgent,
 		batchSize: batchSize,
 	}

@@ -21,11 +21,11 @@ type LinkChecker struct {
 	stackOverflowClient *stackoverflowchecker.StackOverflowClient
 }
 
-func NewLinkChecker(userAgent string, batchSize int) *LinkChecker {
+func NewLinkChecker(userAgent string, batchSize int, githubBaseURL, stackBaseURL string) *LinkChecker {
 	return &LinkChecker{
 		client:              &http.Client{Timeout: timeout},
-		githubClient:        githubchecker.NewGithubClient(userAgent, batchSize),
-		stackOverflowClient: stackoverflowchecker.NewStackOverflowClient(userAgent, batchSize),
+		githubClient:        githubchecker.NewGithubClient(githubBaseURL, userAgent, batchSize),
+		stackOverflowClient: stackoverflowchecker.NewStackOverflowClient(stackBaseURL, userAgent, batchSize),
 	}
 }
 

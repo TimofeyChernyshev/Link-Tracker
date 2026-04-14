@@ -1,39 +1,38 @@
 package config
 
 import (
-	"errors"
+	"fmt"
 	"log/slog"
-	"os"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/caarlos0/env/v11"
 )
 
 const (
-	defaultAPIBatchSize = 100
-	defaultBatchSize    = 20
-	defaultWorkerCount  = 4
-	minAPIBatchSize     = 50
-	maxAPIBatchSize     = 500
-	minBatchSize        = 10
-	maxBatchSize        = 1000
-	minWorkers          = 1
-	maxWorkers          = 20
+	minAPIBatchSize = 50
+	maxAPIBatchSize = 500
+	minBatchSize    = 10
+	maxBatchSize    = 1000
+	minWorkers      = 1
+	maxWorkers      = 20
 )
 
 type Config struct {
-	ScrapperPort  string
-	BotBaseURL    string
-	AccessType    AccessType
-	DBUser        string
-	DBPassword    string
-	DBHost        string
-	DBPort        int
-	DBName        string
-	APIBatchSize  int
-	CheckInterval time.Duration
-	WorkerCount   int
-	BatchSize     int
+	ScrapperPort  string        `env:"PORT,required"`
+	BotBaseURL    string        `env:"BOT_BASE_URL,required"`
+	AccessType    AccessType    `env:"ACCESS_TYPE,required"`
+	DBUser        string        `env:"DB_USER,required"`
+	DBPassword    string        `env:"DB_PASSWORD,required"`
+	DBHost        string        `env:"DB_HOST,required"`
+	DBPort        int           `env:"DB_PORT,required"`
+	DBName        string        `env:"DB_NAME,required"`
+	APIBatchSize  int           `env:"API_BATCH_SIZE" envDefault:"100"`
+	CheckInterval time.Duration `env:"CHECK_INTERVAL" envDefault:"60s"`
+	WorkerCount   int           `env:"WORKER_COUNT" envDefault:"4"`
+	BatchSize     int           `env:"BATCH_SIZE" envDefault:"20"`
+	GighubBaseURL string        `env:"GITHUB_BASE_URL,required"`
+	StackBaseURL  string        `env:"STACK_BASE_URL,required"`
 }
 
 type AccessType string
@@ -44,77 +43,27 @@ const (
 )
 
 func Load() (*Config, error) {
-	port := os.Getenv("PORT")
-	if port == "" {
-		slog.Error("PORT is not set in .env.scrapper file")
-		return nil, errors.New("bot port not found")
-	}
+	var cfg Config
 
-	botURL := os.Getenv("BOT_BASE_URL")
-	if botURL == "" {
-		slog.Warn("BOT_BASE_URL is not set in .env.scrapper file")
-	}
-
-	portString := os.Getenv("DB_PORT")
-	dbPort, err := strconv.Atoi(portString)
+	err := env.Parse(&cfg)
 	if err != nil {
-		slog.Warn("DB_PORT is not int", "error", err)
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	APIBatchSize := getEnvInt("API_BATCH_SIZE", defaultAPIBatchSize)
-	if APIBatchSize < minAPIBatchSize {
-		APIBatchSize = minAPIBatchSize
-	} else if APIBatchSize > maxAPIBatchSize {
-		APIBatchSize = maxAPIBatchSize
+	if cfg.APIBatchSize < minAPIBatchSize || cfg.APIBatchSize > maxAPIBatchSize {
+		return nil, fmt.Errorf("API_BATCH_SIZE must be in range [%v;%v]", minAPIBatchSize, maxAPIBatchSize)
 	}
 
-	var checkInterval time.Duration
-	checkIntervalString := os.Getenv("CHECK_INTERVAL")
-	if checkIntervalString == "" {
-		checkInterval = time.Duration(time.Date(0, 0, 0, 0, 1, 0, 0, time.UTC).Minute())
-	} else {
-		checkInterval, err = time.ParseDuration(checkIntervalString)
-		if err != nil {
-			slog.Warn("cannot parse duration config", "error", err)
-			checkInterval = time.Duration(time.Date(0, 0, 0, 0, 1, 0, 0, time.UTC).Minute())
-		}
+	if cfg.BatchSize < minBatchSize || cfg.BatchSize > maxBatchSize {
+		return nil, fmt.Errorf("BATCH_SIZE must be in range [%v;%v]", minBatchSize, maxBatchSize)
 	}
 
-	batchSize := getEnvInt("BATCH_SIZE", defaultBatchSize)
-	if batchSize < minBatchSize {
-		batchSize = minBatchSize
-	} else if batchSize > maxBatchSize {
-		batchSize = maxBatchSize
+	if cfg.WorkerCount < minWorkers || cfg.WorkerCount > maxWorkers {
+		slog.Error("wc", "wc", cfg.WorkerCount)
+		return nil, fmt.Errorf("WORKER_COUNT must be in range [%v;%v]", minWorkers, maxWorkers)
 	}
 
-	workerCount := getEnvInt("WORKER_COUNT", defaultWorkerCount)
-	if workerCount < minWorkers {
-		workerCount = minWorkers
-	} else if workerCount > maxWorkers {
-		workerCount = maxWorkers
-	}
+	cfg.AccessType = AccessType(strings.ToLower(string(cfg.AccessType)))
 
-	return &Config{
-		ScrapperPort:  port,
-		BotBaseURL:    botURL,
-		AccessType:    AccessType(strings.ToLower(os.Getenv("ACCESS_TYPE"))),
-		DBUser:        os.Getenv("DB_USER"),
-		DBPassword:    os.Getenv("DB_PASSWORD"),
-		DBHost:        os.Getenv("DB_HOST"),
-		DBPort:        dbPort,
-		DBName:        os.Getenv("DB_NAME"),
-		APIBatchSize:  APIBatchSize,
-		CheckInterval: checkInterval,
-		WorkerCount:   workerCount,
-		BatchSize:     batchSize,
-	}, nil
-}
-
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
-		}
-	}
-	return defaultValue
+	return &cfg, nil
 }

@@ -24,7 +24,7 @@ func (s *SOClientSuite) SetupTest() {
 	batchSize := 100
 
 	s.ctx = context.Background()
-	s.client = NewStackOverflowClient("test-bot/1.0", batchSize)
+	s.client = NewStackOverflowClient("stack", "test-bot/1.0", batchSize)
 }
 
 func (s *SOClientSuite) TearDownTest() {

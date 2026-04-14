@@ -15,6 +15,10 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
+// вынести константы в конфиг
+// go-resty/resty
+// вынести в конфиг baseURL "https://api.github.com/repos"
+
 const (
 	GitHubTimeout = 5 * time.Second
 	previewLen    = 200
@@ -27,10 +31,10 @@ type GithubClient struct {
 	batchSize int
 }
 
-func NewGithubClient(userAgent string, batchSize int) *GithubClient {
+func NewGithubClient(baseURL, userAgent string, batchSize int) *GithubClient {
 	return &GithubClient{
 		http:      &http.Client{Timeout: GitHubTimeout},
-		baseURL:   "https://api.github.com/repos",
+		baseURL:   baseURL,
 		userAgent: userAgent,
 		batchSize: batchSize,
 	}
@@ -41,11 +45,6 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 	if err != nil {
 		return nil, fmt.Errorf("invalid GitHub URL: %w", err)
 	}
-
-	// repo, err := c.fetchRepository(ctx, fmt.Sprintf("%s/%s", c.baseURL, repoPath))
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	var prs []PullRequest
 	err = c.fetchItems(ctx, repoPath, "pulls", link.UpdatedAt, &prs)
@@ -82,14 +81,6 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 			})
 		}
 	}
-
-	// обновление в репозитории, но не pr или issue
-	// if repo.UpdatedAt.After(lastUpdated) {
-	// 	events = append(events, domain.Event{
-	// 		Description: fmt.Sprintf("Repository %s was updated", repo.FullName),
-	// 		OccurredAt:  repo.UpdatedAt,
-	// 	})
-	// }
 
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].OccurredAt.Before(events[j].OccurredAt)
@@ -158,47 +149,6 @@ func (c *GithubClient) fetchItems(ctx context.Context, repoPath, itemCategory st
 
 	return nil
 }
-
-// func (c *GithubClient) fetchRepository(ctx context.Context, apiURL string) (*Repository, error) {
-// 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to create request: %w", err)
-// 	}
-
-// 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-// 	req.Header.Set("User-Agent", c.userAgent)
-
-// 	resp, err := c.http.Do(req)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to execute request: %w", err)
-// 	}
-// 	defer func() {
-// 		err = resp.Body.Close()
-// 		if err != nil {
-// 			slog.Warn("cannot close response body", "error", err)
-// 		}
-// 	}()
-
-// 	if resp.StatusCode != http.StatusOK {
-// 		switch resp.StatusCode {
-// 		case http.StatusNotFound:
-// 			return nil, errors.New("repository not found")
-// 		case http.StatusForbidden:
-// 			return nil, errors.New("API rate limit exceeded")
-// 		case http.StatusUnauthorized:
-// 			return nil, errors.New("invalid or missing token")
-// 		default:
-// 			return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
-// 		}
-// 	}
-
-// 	var repo Repository
-// 	if err = json.NewDecoder(resp.Body).Decode(&repo); err != nil {
-// 		return nil, fmt.Errorf("failed to decode response: %w", err)
-// 	}
-
-// 	return &repo, nil
-// }
 
 func (c *GithubClient) extractRepoPath(rawURL string) (string, error) {
 	parsed, err := url.Parse(rawURL)
