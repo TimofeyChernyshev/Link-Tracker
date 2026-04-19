@@ -18,7 +18,7 @@ func TestLoad_Success(t *testing.T) {
 	t.Chdir(tempDir)
 	defer t.Chdir(originalDir)
 
-	content := []byte("TELEGRAM_TOKEN=test_token_12345\nPORT=8080\nSCRAPPER_BASE_URL=http://123\n")
+	content := []byte("TELEGRAM_TOKEN=test_token_12345\nBOT_PORT=8080\nSCRAPPER_BASE_URL=http://123\nRECEIVER_TYPE=http")
 	err = os.WriteFile(".env", content, 0644)
 	require.NoError(t, err)
 	_ = godotenv.Load()
