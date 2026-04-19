@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -19,12 +20,16 @@ func TestLoad_Success(t *testing.T) {
 	require.NoError(t, err)
 	defer t.Chdir(originalDir)
 
-	content := []byte("PORT=8081\nBOT_BASE_URL=http://localhost:8080\n")
+	content := []byte("SCRAPPER_PORT=8081\nBOT_BASE_URL=http://localhost:8080\n" +
+		"ACCESS_TYPE=1\nDB_USER=1\nDB_PASSWORD=1\nDB_HOST=1\nDB_PORT=1\nDB_NAME=1" +
+		"\nGITHUB_BASE_URL=http\nSTACK_BASE_URL=http")
 	err = os.WriteFile(".env", content, 0644)
 	require.NoError(t, err)
 	_ = godotenv.Load()
 
 	cfg, err := Load()
+
+	fmt.Println(cfg)
 
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -44,11 +49,11 @@ func TestLoad_EnvFileNotFound(t *testing.T) {
 
 	os.Remove(".env")
 
-	os.Unsetenv("PORT")
+	os.Unsetenv("SCRAPPER_PORT")
 
 	cfg, err := Load()
 
 	require.Error(t, err)
 	assert.Nil(t, cfg)
-	assert.ErrorContains(t, err, "port not found")
+	assert.ErrorContains(t, err, "is not set")
 }

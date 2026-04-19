@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
@@ -16,13 +15,11 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
-	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/server/http"
+	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/http"
 )
 
 const (
-	shutdownTimeout = 30 * time.Second
-	goroutines      = 2
-	handlerTimeout  = 5 * time.Second
+	goroutines = 2
 )
 
 func main() {
@@ -37,15 +34,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL)
+	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL, cfg.ScrapperTimeout)
 
-	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint)
+	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint, cfg.WorkerCount, cfg.SenderCount, cfg.JobsBufferSize, cfg.OutgoingBufferSize)
 	if err != nil {
 		slog.Error("cannot start bot", "error", err)
 		os.Exit(1)
 	}
 
-	d := setupDispatcher(b, scrapperClient)
+	d := setupDispatcher(b, scrapperClient, cfg)
 
 	b.SetCommands(d.GetCommands())
 
@@ -67,7 +64,7 @@ func main() {
 
 	go func() {
 		slog.Info("http server for bot starting", "port", cfg.BotPort)
-		err = server.Start()
+		err = server.Start(context.Background())
 		if !errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
@@ -83,7 +80,7 @@ func main() {
 		slog.Error("runtime error", "error", err)
 	}
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer shutdownCancel()
 
 	if err = server.Shutdown(shutdownCtx); err != nil {
@@ -104,15 +101,19 @@ func setLogger() {
 	slog.SetDefault(logger)
 }
 
-func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient) *application.CommandDispatcher {
+func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient, cfg *config.Config) *application.CommandDispatcher {
 	d := application.NewCommandDispatcher(handlers.NewUnknownHandler(), bot)
-	start := handlers.NewStartHandler(scrapperClient, handlerTimeout)
+	start := handlers.NewStartHandler(scrapperClient, cfg.TimeoutStartHandler)
 	d.Register(start.Name(), func() application.Command { return start })
 	help := handlers.NewHelpHandler()
 	d.Register(help.Name(), func() application.Command { return help })
-	d.Register("/track", func() application.Command { return handlers.NewTrackHandler(scrapperClient, handlerTimeout) })
-	d.Register("/untrack", func() application.Command { return handlers.NewUntrackHandler(scrapperClient, handlerTimeout) })
-	d.Register("/list", func() application.Command { return handlers.NewListHandler(scrapperClient, handlerTimeout) })
+	d.Register("/track", func() application.Command {
+		return handlers.NewTrackHandler(scrapperClient, cfg.TimeoutSaveLink, cfg.TimeoutCheckLink)
+	})
+	d.Register("/untrack", func() application.Command {
+		return handlers.NewUntrackHandler(scrapperClient, cfg.TimeoutUntrackHandler)
+	})
+	d.Register("/list", func() application.Command { return handlers.NewListHandler(scrapperClient, cfg.TimeoutListHandler) })
 
 	return d
 }

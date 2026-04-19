@@ -1,4 +1,4 @@
-package bothttp
+package httpnotifier
 
 type LinkUpdate struct {
 	ID          int64   `json:"id"`

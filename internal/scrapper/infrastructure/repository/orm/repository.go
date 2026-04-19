@@ -13,10 +13,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-const (
-	linkCheckInterval = "5 minutes"
-)
-
 type OrmRepository struct {
 	sqlDB *sql.DB
 	db    *goqu.Database
@@ -337,13 +333,13 @@ func (r *OrmRepository) GetLinks(ctx context.Context, chatID int64, limit, offse
 	return result, nil
 }
 
-func (r *OrmRepository) GetAllLinks(ctx context.Context, limit, offset int) ([]domain.Link, error) {
+func (r *OrmRepository) GetLinksWithInterval(ctx context.Context, limit, offset int, interval time.Duration) ([]domain.Link, error) {
 	var links []domain.Link
 
 	err := r.db.
 		From("links").
 		Select("id", "url", "updated_at").
-		Where(goqu.L("last_checked_at < now() - interval ?", linkCheckInterval)).
+		Where(goqu.L("last_checked_at < now() - interval ?", fmt.Sprintf("%.0f seconds", interval.Seconds()))).
 		Order(goqu.I("id").Asc()).
 		Limit(uint(limit)).
 		Offset(uint(offset)).

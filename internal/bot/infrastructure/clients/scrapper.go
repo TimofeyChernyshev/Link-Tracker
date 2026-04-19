@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	HeaderChatID    = "Tg-Chat-Id"
-	ScrapperTimeout = 5 * time.Second
+	HeaderChatID = "Tg-Chat-Id"
 )
 
 type ScrapperClient struct {
@@ -24,11 +23,11 @@ type ScrapperClient struct {
 	http    *http.Client
 }
 
-func NewScrapperClient(baseURL string) *ScrapperClient {
+func NewScrapperClient(baseURL string, scrapperTimeout time.Duration) *ScrapperClient {
 	return &ScrapperClient{
 		baseURL: baseURL,
 		http: &http.Client{
-			Timeout: ScrapperTimeout,
+			Timeout: scrapperTimeout,
 		},
 	}
 }
