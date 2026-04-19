@@ -47,6 +47,8 @@ type Config struct {
 	// HTTP пагинация
 	DefaultLimit int `env:"HTTP_DEFAULT_LIMIT" envDefault:"50"`
 	MaxLimit     int `env:"HTTP_MAX_LIMIT" envDefault:"100"`
+
+	ShutdonwTimeout time.Duration `env:"SCRAPPER_SHUTDOWN_TIMEOUT" envDefault:"30s"`
 }
 
 type AccessType string
