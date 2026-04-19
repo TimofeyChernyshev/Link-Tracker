@@ -8,10 +8,13 @@ import (
 )
 
 type Config struct {
-	TelegramToken       string        `env:"TELEGRAM_TOKEN,required"`
-	TelegramEndpoint    string        `env:"TELEGRAM_API_URL"`
-	BotPort             string        `env:"PORT,required"`
-	ScrapperBaseURL     string        `env:"SCRAPPER_BASE_URL,required"`
+	TelegramToken    string `env:"TELEGRAM_TOKEN,required"`
+	TelegramEndpoint string `env:"TELEGRAM_API_URL"`
+
+	BotPort         string        `env:"BOT_PORT,required"`
+	ScrapperBaseURL string        `env:"SCRAPPER_BASE_URL,required"`
+	ScrapperTimeout time.Duration `env:"BOT_TO_SCRAPPER_TIMEOUT" envDefault:"5s"`
+
 	ReceiverType        string        `env:"RECEIVER_TYPE" envDefault:"kafka"`
 	KafkaBrokers        []string      `env:"KAFKA_BROKERS"`
 	KafkaTopic          string        `env:"KAFKA_TOPIC"`
@@ -28,8 +31,6 @@ type Config struct {
 	SenderCount        int `env:"BOT_SENDER_COUNT" envDefault:"4"`
 	JobsBufferSize     int `env:"BOT_JOBS_BUFFER_SIZE" envDefault:"100"`
 	OutgoingBufferSize int `env:"BOT_OUTGOING_BUFFER_SIZE" envDefault:"100"`
-
-	ScrapperTimeout time.Duration `env:"BOT_SCRAPPER_TIMEOUT" envDefault:"5s"`
 
 	ShutdownTimeout time.Duration `env:"BOT_SHUTDOWN_TIMEOUT" envDefault:"30s"`
 }

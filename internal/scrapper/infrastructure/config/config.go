@@ -19,9 +19,9 @@ const (
 )
 
 type Config struct {
-	ScrapperPort string        `env:"PORT,required"`
+	ScrapperPort string        `env:"SCRAPPER_PORT,required"`
 	BotBaseURL   string        `env:"BOT_BASE_URL,required"`
-	BotTimeout   time.Duration `env:"BOT_TIMEOUT" envDefault:"5s"`
+	BotTimeout   time.Duration `env:"SCRAPPER_TO_BOT_TIMEOUT" envDefault:"5s"`
 
 	AccessType AccessType `env:"ACCESS_TYPE,required"`
 	DBUser     string     `env:"DB_USER,required"`
@@ -32,8 +32,8 @@ type Config struct {
 
 	CheckInterval time.Duration `env:"CHECK_INTERVAL" envDefault:"60s"`
 
-	WorkerCount int `env:"WORKER_COUNT" envDefault:"4"`
-	BatchSize   int `env:"BATCH_SIZE" envDefault:"20"`
+	WorkerCount int `env:"SCRAPPER_WORKER_COUNT" envDefault:"4"`
+	BatchSize   int `env:"SCRAPPER_BATCH_SIZE" envDefault:"20"`
 
 	APIBatchSize       int           `env:"API_BATCH_SIZE" envDefault:"100"`
 	LinkCheckerTimeout time.Duration `env:"LINK_CHECKER_TIMEOUT" envDefault:"5s"`
@@ -48,7 +48,7 @@ type Config struct {
 	DefaultLimit int `env:"HTTP_DEFAULT_LIMIT" envDefault:"50"`
 	MaxLimit     int `env:"HTTP_MAX_LIMIT" envDefault:"100"`
 
-	ShutdonwTimeout time.Duration `env:"SCRAPPER_SHUTDOWN_TIMEOUT" envDefault:"30s"`
+	ShutdownTimeout time.Duration `env:"SCRAPPER_SHUTDOWN_TIMEOUT" envDefault:"30s"`
 }
 
 type AccessType string

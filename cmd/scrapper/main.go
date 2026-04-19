@@ -94,7 +94,7 @@ func main() {
 		slog.Error("scheduler stop error", "error", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdonwTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
 	if err = server.Shutdown(ctx); err != nil {
