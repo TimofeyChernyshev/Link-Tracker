@@ -24,6 +24,13 @@ type Config struct {
 	TimeoutUntrackHandler time.Duration `env:"TIMEOUT_UNTRACK_HANDLER" envDefault:"5s"`
 	TimeoutListHandler    time.Duration `env:"TIMEOUT_LIST_HANDLER" envDefault:"5s"`
 
+	WorkerCount        int `env:"BOT_WORKER_COUNT" envDefault:"8"`
+	SenderCount        int `env:"BOT_SENDER_COUNT" envDefault:"4"`
+	JobsBufferSize     int `env:"BOT_JOBS_BUFFER_SIZE" envDefault:"100"`
+	OutgoingBufferSize int `env:"BOT_OUTGOING_BUFFER_SIZE" envDefault:"100"`
+
+	ScrapperTimeout time.Duration `env:"BOT_SCRAPPER_TIMEOUT" envDefault:"5s"`
+
 	ShutdownTimeout time.Duration `env:"BOT_SHUTDOWN_TIMEOUT" envDefault:"30s"`
 }
 

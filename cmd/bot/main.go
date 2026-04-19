@@ -34,9 +34,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL)
+	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL, cfg.ScrapperTimeout)
 
-	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint)
+	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint, cfg.WorkerCount, cfg.SenderCount, cfg.JobsBufferSize, cfg.OutgoingBufferSize)
 	if err != nil {
 		slog.Error("cannot start bot", "error", err)
 		os.Exit(1)
