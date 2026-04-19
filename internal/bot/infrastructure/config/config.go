@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -44,13 +45,13 @@ func Load() (*Config, error) {
 
 	if cfg.ReceiverType == "kafka" {
 		if cfg.KafkaBrokers == nil {
-			return nil, fmt.Errorf("KAFKA_BROKERS is required when RECEIVER_TYPE=kafka")
+			return nil, errors.New("KAFKA_BROKERS is required when RECEIVER_TYPE=kafka")
 		}
 		if cfg.KafkaTopic == "" {
-			return nil, fmt.Errorf("KAFKA_TOPIC is required when RECEIVER_TYPE=kafka")
+			return nil, errors.New("KAFKA_TOPIC is required when RECEIVER_TYPE=kafka")
 		}
 		if cfg.KafkaGroupID == "" {
-			return nil, fmt.Errorf("KAFKA_GROUP_ID is required when RECEIVER_TYPE=kafka")
+			return nil, errors.New("KAFKA_GROUP_ID is required when RECEIVER_TYPE=kafka")
 		}
 	}
 
