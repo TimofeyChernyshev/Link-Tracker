@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/application"
@@ -20,9 +19,7 @@ import (
 )
 
 const (
-	shutdownTimeout = 30 * time.Second
-	goroutines      = 2
-	handlerTimeout  = 5 * time.Second
+	goroutines = 2
 )
 
 func main() {
@@ -45,7 +42,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	d := setupDispatcher(b, scrapperClient)
+	d := setupDispatcher(b, scrapperClient, cfg)
 
 	b.SetCommands(d.GetCommands())
 
@@ -83,7 +80,7 @@ func main() {
 		slog.Error("runtime error", "error", err)
 	}
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer shutdownCancel()
 
 	if err = server.Shutdown(shutdownCtx); err != nil {
@@ -104,15 +101,19 @@ func setLogger() {
 	slog.SetDefault(logger)
 }
 
-func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient) *application.CommandDispatcher {
+func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient, cfg *config.Config) *application.CommandDispatcher {
 	d := application.NewCommandDispatcher(handlers.NewUnknownHandler(), bot)
-	start := handlers.NewStartHandler(scrapperClient, handlerTimeout)
+	start := handlers.NewStartHandler(scrapperClient, cfg.TimeoutStartHandler)
 	d.Register(start.Name(), func() application.Command { return start })
 	help := handlers.NewHelpHandler()
 	d.Register(help.Name(), func() application.Command { return help })
-	d.Register("/track", func() application.Command { return handlers.NewTrackHandler(scrapperClient, handlerTimeout) })
-	d.Register("/untrack", func() application.Command { return handlers.NewUntrackHandler(scrapperClient, handlerTimeout) })
-	d.Register("/list", func() application.Command { return handlers.NewListHandler(scrapperClient, handlerTimeout) })
+	d.Register("/track", func() application.Command {
+		return handlers.NewTrackHandler(scrapperClient, cfg.TimeoutSaveLink, cfg.TimeoutCheckLink)
+	})
+	d.Register("/untrack", func() application.Command {
+		return handlers.NewUntrackHandler(scrapperClient, cfg.TimeoutUntrackHandler)
+	})
+	d.Register("/list", func() application.Command { return handlers.NewListHandler(scrapperClient, cfg.TimeoutListHandler) })
 
 	return d
 }

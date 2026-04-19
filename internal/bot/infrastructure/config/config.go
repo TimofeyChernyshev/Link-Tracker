@@ -17,6 +17,14 @@ type Config struct {
 	KafkaTopic          string        `env:"KAFKA_TOPIC"`
 	KafkaGroupID        string        `env:"KAFKA_GROUP_ID"`
 	KafkaSessionTimeout time.Duration `env:"KAFKA_SESSION_TIMEOUT" envDefault:"30s"`
+
+	TimeoutCheckLink      time.Duration `env:"TIMEOUT_CHECK_LINK" envDefault:"10s"`
+	TimeoutSaveLink       time.Duration `env:"TIMEOUT_SAVE_LINK" envDefault:"5s"`
+	TimeoutStartHandler   time.Duration `env:"TIMEOUT_START_HANDLER" envDefault:"5s"`
+	TimeoutUntrackHandler time.Duration `env:"TIMEOUT_UNTRACK_HANDLER" envDefault:"5s"`
+	TimeoutListHandler    time.Duration `env:"TIMEOUT_LIST_HANDLER" envDefault:"5s"`
+
+	ShutdownTimeout time.Duration `env:"BOT_SHUTDOWN_TIMEOUT" envDefault:"30s"`
 }
 
 func Load() (*Config, error) {
