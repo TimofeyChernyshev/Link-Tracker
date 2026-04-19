@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg"
 )
 
 type StackOverflowClient struct {
@@ -84,7 +85,7 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) ([]do
 }
 
 func (c *StackOverflowClient) formatAnswerMessage(answer *Answer) string {
-	preview := truncateString(answer.Body, c.previewLen)
+	preview := pkg.TruncateString(answer.Body, c.previewLen)
 	return fmt.Sprintf(
 		"Новый ответ на вопрос\n\n Вопрос: %s\n Автор: %s\n Время создания: %s\n Текст ответа:\n%s\n\n"+
 			"[Ссылка](https://stackoverflow.com/q/%d#answer-%d)",
@@ -98,7 +99,7 @@ func (c *StackOverflowClient) formatAnswerMessage(answer *Answer) string {
 }
 
 func (c *StackOverflowClient) formatCommentMessage(comment *Comment, questionTitle string) string {
-	preview := truncateString(comment.Body, c.previewLen)
+	preview := pkg.TruncateString(comment.Body, c.previewLen)
 	return fmt.Sprintf(
 		"Новый комментарий к вопросу\n\n Вопрос: %s\n Автор: %s\n Время создания: %s\n Текст комментария:\n%s",
 		questionTitle,
@@ -106,13 +107,6 @@ func (c *StackOverflowClient) formatCommentMessage(comment *Comment, questionTit
 		time.Unix(comment.CreationDate, 0).Format("2006-01-02 15:04:05"),
 		preview,
 	)
-}
-
-func truncateString(s string, previewLen int) string {
-	if len(s) <= previewLen {
-		return s
-	}
-	return s[:previewLen] + "..."
 }
 
 func (c *StackOverflowClient) fetchQuestion(ctx context.Context, questionID int64, site string) (*Question, error) {

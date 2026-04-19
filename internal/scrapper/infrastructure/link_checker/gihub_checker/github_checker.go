@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg"
 )
 
 type GithubClient struct {
@@ -83,7 +84,7 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 }
 
 func (c *GithubClient) formatPRMessage(pr *PullRequest) string {
-	preview := truncateString(pr.Body, c.previewLen)
+	preview := pkg.TruncateString(pr.Body, c.previewLen)
 	return fmt.Sprintf(
 		"Новый Pull Request в репозитории\n\n Название: %s\n Автор: %s\n Время создания: %s\n Описание:\n%s\n\n [Ссылка](%s)",
 		pr.Title,
@@ -95,7 +96,7 @@ func (c *GithubClient) formatPRMessage(pr *PullRequest) string {
 }
 
 func (c *GithubClient) formatIssueMessage(issue *Issue) string {
-	preview := truncateString(issue.Body, c.previewLen)
+	preview := pkg.TruncateString(issue.Body, c.previewLen)
 	return fmt.Sprintf(
 		"Новый Issue в репозитории\n\n Название: %s\n Автор: %s\n Время создания: %s\n Описание:\n%s\n\n [Ссылка](%s)",
 		issue.Title,
@@ -104,13 +105,6 @@ func (c *GithubClient) formatIssueMessage(issue *Issue) string {
 		preview,
 		issue.HTMLURL,
 	)
-}
-
-func truncateString(s string, previewLen int) string {
-	if len(s) <= previewLen {
-		return s
-	}
-	return s[:previewLen] + "..."
 }
 
 func (c *GithubClient) fetchItems(ctx context.Context, repoPath, itemCategory string, since time.Time, result interface{}) error {
