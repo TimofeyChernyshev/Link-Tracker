@@ -13,17 +13,15 @@ import (
 	stackoverflowchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker/stack_overflow_checker"
 )
 
-const timeout = 10 * time.Second
-
 type LinkChecker struct {
 	client              *http.Client
 	githubClient        *githubchecker.GithubClient
 	stackOverflowClient *stackoverflowchecker.StackOverflowClient
 }
 
-func NewLinkChecker(userAgent string, batchSize, previewLen int, githubBaseURL, stackBaseURL string, githubTimeout, stackTimeout time.Duration) *LinkChecker {
+func NewLinkChecker(userAgent string, batchSize, previewLen int, githubBaseURL, stackBaseURL string, basicTimeout, githubTimeout, stackTimeout time.Duration) *LinkChecker {
 	return &LinkChecker{
-		client:              &http.Client{Timeout: timeout},
+		client:              &http.Client{Timeout: basicTimeout},
 		githubClient:        githubchecker.NewGithubClient(githubBaseURL, userAgent, batchSize, previewLen, githubTimeout),
 		stackOverflowClient: stackoverflowchecker.NewStackOverflowClient(stackBaseURL, userAgent, batchSize, previewLen, stackTimeout),
 	}

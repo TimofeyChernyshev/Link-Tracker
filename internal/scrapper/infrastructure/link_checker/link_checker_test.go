@@ -25,7 +25,8 @@ func (s *LinkCheckerSuite) SetupTest() {
 	previewLen := 200
 	githubTimeout := time.Second * 5
 	stackTimeout := time.Second * 5
-	s.client = NewLinkChecker("test-bot/1.0", s.batchSize, previewLen, "github", "stack", githubTimeout, stackTimeout)
+	basicTimeout := time.Second * 5
+	s.client = NewLinkChecker("test-bot/1.0", s.batchSize, previewLen, "github", "stack", basicTimeout, githubTimeout, stackTimeout)
 }
 
 func (s *LinkCheckerSuite) TearDownTest() {

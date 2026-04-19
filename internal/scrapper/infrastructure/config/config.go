@@ -35,11 +35,12 @@ type Config struct {
 	WorkerCount int `env:"WORKER_COUNT" envDefault:"4"`
 	BatchSize   int `env:"BATCH_SIZE" envDefault:"20"`
 
-	APIBatchSize  int           `env:"API_BATCH_SIZE" envDefault:"100"`
-	GighubBaseURL string        `env:"GITHUB_BASE_URL,required"`
-	GithubTimeout time.Duration `env:"GITHUB_TIMEOUT" envDefault:"5s"`
-	StackBaseURL  string        `env:"STACK_BASE_URL,required"`
-	StackTimeout  time.Duration `env:"STACK_TIMEOUT" envDefault:"5s"`
+	APIBatchSize       int           `env:"API_BATCH_SIZE" envDefault:"100"`
+	LinkCheckerTimeout time.Duration `env:"LINK_CHECKER_TIMEOUT" envDefault:"5s"`
+	GighubBaseURL      string        `env:"GITHUB_BASE_URL,required"`
+	GithubTimeout      time.Duration `env:"GITHUB_TIMEOUT" envDefault:"5s"`
+	StackBaseURL       string        `env:"STACK_BASE_URL,required"`
+	StackTimeout       time.Duration `env:"STACK_TIMEOUT" envDefault:"5s"`
 
 	CheckerPreviewLen int `env:"CHECKER_PREVIEW_LEN" envDefault:"200"`
 }

@@ -54,7 +54,11 @@ func main() {
 	defer repo.Close()
 
 	// HTTP клиенты
-	linkChecker := linkchecker.NewLinkChecker("link-tracker", cfg.APIBatchSize, cfg.CheckerPreviewLen, cfg.GighubBaseURL, cfg.StackBaseURL, cfg.GithubTimeout, cfg.StackTimeout)
+	linkChecker := linkchecker.NewLinkChecker(
+		"link-tracker", cfg.APIBatchSize, cfg.CheckerPreviewLen,
+		cfg.GighubBaseURL, cfg.StackBaseURL,
+		cfg.LinkCheckerTimeout, cfg.GithubTimeout, cfg.StackTimeout,
+	)
 
 	// Notifier для отправки уведомлений в Bot
 	botNotifier := httpnotifier.NewBotClient(cfg.BotBaseURL)
