@@ -43,6 +43,10 @@ type Config struct {
 	StackTimeout       time.Duration `env:"STACK_TIMEOUT" envDefault:"5s"`
 
 	CheckerPreviewLen int `env:"CHECKER_PREVIEW_LEN" envDefault:"200"`
+
+	// HTTP пагинация
+	DefaultLimit int `env:"HTTP_DEFAULT_LIMIT" envDefault:"50"`
+	MaxLimit     int `env:"HTTP_MAX_LIMIT" envDefault:"100"`
 }
 
 type AccessType string

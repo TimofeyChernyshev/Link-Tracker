@@ -61,7 +61,7 @@ func main() {
 	)
 
 	// Notifier для отправки уведомлений в Bot
-	botNotifier := httpnotifier.NewBotClient(cfg.BotBaseURL)
+	botNotifier := httpnotifier.NewBotClient(cfg.BotBaseURL, cfg.BotTimeout)
 
 	// Сервис работы с ссылками
 	linkService := application.NewLinkService(linkChecker, botNotifier, repo, cfg.BatchSize, cfg.WorkerCount)
@@ -70,7 +70,7 @@ func main() {
 	sched, err := scheduler.New(cfg.CheckInterval, linkService)
 
 	// HTTP сервер для API Scrapper
-	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService)
+	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, cfg.DefaultLimit, cfg.MaxLimit)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)

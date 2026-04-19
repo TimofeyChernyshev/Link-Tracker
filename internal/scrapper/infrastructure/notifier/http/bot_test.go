@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,8 @@ func TestBotClient_SendUpdate_OK(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c := NewBotClient(ts.URL)
+	timeout := 5 * time.Second
+	c := NewBotClient(ts.URL, timeout)
 
 	upd := domain.LinkUpdate{
 		ID:          1,
@@ -56,7 +58,8 @@ func TestBotClient_SendUpdate_Error(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c := NewBotClient(ts.URL)
+	timeout := 5 * time.Second
+	c := NewBotClient(ts.URL, timeout)
 
 	err := c.SendUpdate(context.Background(), domain.LinkUpdate{})
 	require.Error(t, err)
