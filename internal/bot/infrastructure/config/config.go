@@ -2,37 +2,58 @@ package config
 
 import (
 	"errors"
-	"log/slog"
-	"os"
+	"fmt"
+	"time"
+
+	"github.com/caarlos0/env/v11"
 )
 
 type Config struct {
-	TelegramToken    string
-	BotPort          string
-	ScrapperBaseURL  string
-	TelegramEndpoint string
+	TelegramToken    string `env:"TELEGRAM_TOKEN,required"`
+	TelegramEndpoint string `env:"TELEGRAM_API_URL"`
+
+	BotPort         string        `env:"BOT_PORT,required"`
+	ScrapperBaseURL string        `env:"SCRAPPER_BASE_URL,required"`
+	ScrapperTimeout time.Duration `env:"BOT_TO_SCRAPPER_TIMEOUT" envDefault:"5s"`
+
+	ReceiverType        string        `env:"RECEIVER_TYPE" envDefault:"kafka"`
+	KafkaBrokers        []string      `env:"KAFKA_BROKERS"`
+	KafkaTopic          string        `env:"KAFKA_TOPIC"`
+	KafkaGroupID        string        `env:"KAFKA_GROUP_ID"`
+	KafkaSessionTimeout time.Duration `env:"KAFKA_SESSION_TIMEOUT" envDefault:"30s"`
+
+	TimeoutCheckLink      time.Duration `env:"TIMEOUT_CHECK_LINK" envDefault:"10s"`
+	TimeoutSaveLink       time.Duration `env:"TIMEOUT_SAVE_LINK" envDefault:"5s"`
+	TimeoutStartHandler   time.Duration `env:"TIMEOUT_START_HANDLER" envDefault:"5s"`
+	TimeoutUntrackHandler time.Duration `env:"TIMEOUT_UNTRACK_HANDLER" envDefault:"5s"`
+	TimeoutListHandler    time.Duration `env:"TIMEOUT_LIST_HANDLER" envDefault:"5s"`
+
+	WorkerCount        int `env:"BOT_WORKER_COUNT" envDefault:"8"`
+	SenderCount        int `env:"BOT_SENDER_COUNT" envDefault:"4"`
+	JobsBufferSize     int `env:"BOT_JOBS_BUFFER_SIZE" envDefault:"100"`
+	OutgoingBufferSize int `env:"BOT_OUTGOING_BUFFER_SIZE" envDefault:"100"`
+
+	ShutdownTimeout time.Duration `env:"BOT_SHUTDOWN_TIMEOUT" envDefault:"30s"`
 }
 
 func Load() (*Config, error) {
-	token := os.Getenv("TELEGRAM_TOKEN")
-	if token == "" {
-		slog.Error("TELEGRAM_TOKEN is not set in .env.bot file")
-		return nil, errors.New("token not found")
+	var cfg Config
+
+	if err := env.Parse(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		slog.Error("PORT is not set in .env.bot file")
-		return nil, errors.New("bot port not found")
+	if cfg.ReceiverType == "kafka" {
+		if cfg.KafkaBrokers == nil {
+			return nil, errors.New("KAFKA_BROKERS is required when RECEIVER_TYPE=kafka")
+		}
+		if cfg.KafkaTopic == "" {
+			return nil, errors.New("KAFKA_TOPIC is required when RECEIVER_TYPE=kafka")
+		}
+		if cfg.KafkaGroupID == "" {
+			return nil, errors.New("KAFKA_GROUP_ID is required when RECEIVER_TYPE=kafka")
+		}
 	}
 
-	scrapperURL := os.Getenv("SCRAPPER_BASE_URL")
-	if scrapperURL == "" {
-		slog.Error("SCRAPPER_BASE_URL is not set in .env.bot file")
-		return nil, errors.New("scrapper base url not found")
-	}
-
-	endpoint := os.Getenv("TELEGRAM_API_URL")
-
-	return &Config{TelegramToken: token, BotPort: port, ScrapperBaseURL: scrapperURL, TelegramEndpoint: endpoint}, nil
+	return &cfg, nil
 }

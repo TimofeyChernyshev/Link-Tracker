@@ -12,9 +12,7 @@ import (
 )
 
 const (
-	defaultLimit  = 50
 	defaultOffset = 0
-	maxLimit      = 100
 )
 
 type Service interface {
@@ -26,15 +24,21 @@ type Service interface {
 }
 
 type Server struct {
-	srv     *http.Server
-	service Service
+	srv           *http.Server
+	service       Service
+	defaultLimit  int
+	defaultOffset int
+	maxLimit      int
 }
 
-func NewServer(port string, service Service) *Server {
+func NewServer(port string, service Service, defaultLimit, maxLimit int) *Server {
 	mux := http.NewServeMux()
 
 	server := &Server{
-		service: service,
+		service:       service,
+		defaultLimit:  defaultLimit,
+		defaultOffset: defaultOffset,
+		maxLimit:      maxLimit,
 	}
 
 	mux.HandleFunc("/tg-chat/{id}", server.updateChat)
@@ -129,7 +133,7 @@ func (s *Server) links(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) linksGet(r *http.Request, w http.ResponseWriter, id int64) {
-	limit, offset := parsePaginationParams(r)
+	limit, offset := s.parsePaginationParams(r)
 
 	links, err := s.service.GetLinks(r.Context(), id, limit, offset)
 	if err != nil {
@@ -152,15 +156,15 @@ func (s *Server) linksGet(r *http.Request, w http.ResponseWriter, id int64) {
 	}
 }
 
-func parsePaginationParams(r *http.Request) (limit, offset int) {
-	limit = defaultLimit
-	offset = defaultOffset
+func (s *Server) parsePaginationParams(r *http.Request) (limit, offset int) {
+	limit = s.defaultLimit
+	offset = s.defaultOffset
 
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
 			limit = parsed
-			if limit > maxLimit {
-				limit = maxLimit
+			if limit > s.maxLimit {
+				limit = s.maxLimit
 			}
 		}
 	}

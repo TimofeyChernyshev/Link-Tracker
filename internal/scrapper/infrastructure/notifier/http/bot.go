@@ -1,4 +1,4 @@
-package botclient
+package httpnotifier
 
 import (
 	"bytes"
@@ -12,17 +12,15 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-const BotTimeout = 5 * time.Second
-
 type BotClient struct {
 	baseURL string
 	http    *http.Client
 }
 
-func NewBotClient(baseURL string) *BotClient {
+func NewBotClient(baseURL string, timeout time.Duration) *BotClient {
 	return &BotClient{
 		baseURL: baseURL,
-		http:    &http.Client{Timeout: BotTimeout},
+		http:    &http.Client{Timeout: timeout},
 	}
 }
 

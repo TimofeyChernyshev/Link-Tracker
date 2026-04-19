@@ -13,7 +13,8 @@ import (
 )
 
 type TrackHandler struct {
-	timeout time.Duration
+	timeoutSaving    time.Duration
+	timeoutCheckLink time.Duration
 
 	linkService LinkService
 
@@ -21,8 +22,8 @@ type TrackHandler struct {
 	url  string
 }
 
-func NewTrackHandler(l LinkService, t time.Duration) *TrackHandler {
-	return &TrackHandler{linkService: l, timeout: t}
+func NewTrackHandler(l LinkService, timeoutSaving, timeoutCheckLink time.Duration) *TrackHandler {
+	return &TrackHandler{linkService: l, timeoutSaving: timeoutSaving, timeoutCheckLink: timeoutCheckLink}
 }
 
 func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, error) {
@@ -44,7 +45,7 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 			}, true, nil
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), timeoutCheckLink)
+		ctx, cancel := context.WithTimeout(context.Background(), th.timeoutCheckLink)
 		defer cancel()
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodHead, msg.Text, nil)
@@ -55,7 +56,7 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 			}, true, nil
 		}
 
-		client := &http.Client{Timeout: timeoutCheckLink}
+		client := &http.Client{Timeout: th.timeoutCheckLink}
 		resp, err := client.Do(req)
 		if err != nil {
 			return &domain.Response{
@@ -87,7 +88,7 @@ func (th *TrackHandler) Execute(msg *domain.Message) (*domain.Response, bool, er
 		tags := parseTags(msg.Text)
 		slog.Debug("parsed tags", "tags", tags)
 
-		context, cancel := context.WithTimeout(context.Background(), th.timeout)
+		context, cancel := context.WithTimeout(context.Background(), th.timeoutSaving)
 		defer cancel()
 
 		err := th.linkService.AddLink(context, msg.ChatID, th.url, tags)

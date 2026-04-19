@@ -15,3 +15,15 @@ type LinkUpdate struct {
 	Description string
 	ChatIDs     []int64
 }
+
+type Event struct {
+	OccurredAt  time.Time
+	Description string
+}
+
+type CheckResult struct {
+	Link        Link
+	Events      []Event
+	Error       error
+	ProcessedAt time.Time
+}

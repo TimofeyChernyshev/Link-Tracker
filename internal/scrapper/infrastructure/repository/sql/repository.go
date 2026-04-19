@@ -12,10 +12,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
-const (
-	linkCheckInterval = "5 minutes"
-)
-
 type SQLRepository struct {
 	db    *pgxpool.Pool
 	sqlDB *sql.DB
@@ -33,7 +29,10 @@ func NewRepository(connString string) (*SQLRepository, error) {
 		return nil, fmt.Errorf("open sql db: %w", err)
 	}
 
-	return &SQLRepository{db: db, sqlDB: sqlDB}, nil
+	return &SQLRepository{
+		db:    db,
+		sqlDB: sqlDB,
+	}, nil
 }
 
 func (r *SQLRepository) Close() {
@@ -296,12 +295,12 @@ func (r *SQLRepository) GetLinks(ctx context.Context, chatID int64, limit, offse
 	return links, nil
 }
 
-func (r *SQLRepository) GetAllLinks(ctx context.Context, limit, offset int) ([]domain.Link, error) {
+func (r *SQLRepository) GetLinksWithInterval(ctx context.Context, limit, offset int, interval time.Duration) ([]domain.Link, error) {
 	rows, err := r.db.Query(ctx, `
         SELECT id, url, updated_at FROM links 
 		WHERE last_checked_at < NOW() - $1::interval
 		ORDER BY id LIMIT $2 OFFSET $3
-    `, linkCheckInterval, limit, offset)
+    `, fmt.Sprintf("%.0f seconds", interval.Seconds()), limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("query all links: %w", err)
 	}

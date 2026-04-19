@@ -8,7 +8,7 @@ import (
 )
 
 type Client interface {
-	Check(ctx context.Context, link domain.Link) (changed bool, description string, err error)
+	Check(ctx context.Context, link domain.Link) (updates []domain.Event, err error)
 }
 
 type Notifier interface {
@@ -24,7 +24,7 @@ type Storage interface {
 	AddLink(ctx context.Context, chatID int64, URL string, tags []string) (domain.Link, error)
 	RemoveLink(ctx context.Context, chatID int64, URL string) (domain.Link, error)
 	GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error)
-	GetAllLinks(ctx context.Context, limit, offset int) ([]domain.Link, error)
+	GetLinksWithInterval(ctx context.Context, limit, offset int, interval time.Duration) ([]domain.Link, error)
 	GetSubscribers(ctx context.Context, url string) ([]int64, error)
 	UpdateTimestamp(ctx context.Context, url string, t time.Time) error
 	UpdateLastChecked(ctx context.Context, url string, t time.Time) error

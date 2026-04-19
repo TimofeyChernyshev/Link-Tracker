@@ -24,7 +24,9 @@ func (s *ServerSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.service = NewMockService(s.ctrl)
 
-	s.server = NewServer("0", s.service)
+	defaultLimit := 50
+	maxLimit := 100
+	s.server = NewServer("0", s.service, defaultLimit, maxLimit)
 }
 
 func (s *ServerSuite) TearDownTest() {
@@ -99,7 +101,7 @@ func (s *ServerSuite) TestLinks_Get() {
 }
 
 func (s *ServerSuite) TestLinks_GetDefaultValues() {
-	s.service.EXPECT().GetLinks(gomock.Any(), int64(2), defaultLimit, defaultOffset).Return(nil, nil)
+	s.service.EXPECT().GetLinks(gomock.Any(), int64(2), s.server.defaultLimit, defaultOffset).Return(nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/links", nil)
 	req.Header["Tg-Chat-Id"] = []string{"2"}

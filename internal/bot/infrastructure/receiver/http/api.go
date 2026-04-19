@@ -1,11 +1,4 @@
-package botclient
-
-type LinkUpdate struct {
-	ID          int64   `json:"id"`
-	URL         string  `json:"url"`
-	Description string  `json:"description"`
-	TgChatIDs   []int64 `json:"tgChatIds"`
-}
+package bothttp
 
 type APIErrorResponse struct {
 	Description      string   `json:"description"`

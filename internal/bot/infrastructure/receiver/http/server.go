@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
 type Service interface {
@@ -26,7 +28,7 @@ func NewServer(service Service, port string) *Server {
 			return
 		}
 
-		var upd LinkUpdate
+		var upd domain.LinkUpdate
 		if err := json.NewDecoder(r.Body).Decode(&upd); err != nil {
 			slog.Error("cannot parse request", "error", err)
 			writeError(w, http.StatusBadRequest, "invalid json")
@@ -46,17 +48,7 @@ func NewServer(service Service, port string) *Server {
 	}
 }
 
-func writeError(w http.ResponseWriter, code int, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-
-	_ = json.NewEncoder(w).Encode(APIErrorResponse{
-		Description: msg,
-		Code:        http.StatusText(code),
-	})
-}
-
-func (s *Server) Start() error {
+func (s *Server) Start(_ context.Context) error {
 	err := s.srv.ListenAndServe()
 	if err != nil {
 		return fmt.Errorf("cannot start server: %w", err)
@@ -72,4 +64,14 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func writeError(w http.ResponseWriter, code int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+
+	_ = json.NewEncoder(w).Encode(APIErrorResponse{
+		Description: msg,
+		Code:        http.StatusText(code),
+	})
 }

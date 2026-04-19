@@ -1,22 +1,54 @@
 package config
 
 import (
-	"errors"
+	"fmt"
 	"log/slog"
-	"os"
-	"strconv"
 	"strings"
+	"time"
+
+	"github.com/caarlos0/env/v11"
+)
+
+const (
+	minAPIBatchSize = 50
+	maxAPIBatchSize = 500
+	minBatchSize    = 10
+	maxBatchSize    = 1000
+	minWorkers      = 1
+	maxWorkers      = 20
 )
 
 type Config struct {
-	ScrapperPort string
-	BotBaseURL   string
-	AccessType   AccessType
-	DBUser       string
-	DBPassword   string
-	DBHost       string
-	DBPort       int
-	DBName       string
+	ScrapperPort string        `env:"SCRAPPER_PORT,required"`
+	BotBaseURL   string        `env:"BOT_BASE_URL,required"`
+	BotTimeout   time.Duration `env:"SCRAPPER_TO_BOT_TIMEOUT" envDefault:"5s"`
+
+	AccessType AccessType `env:"ACCESS_TYPE,required"`
+	DBUser     string     `env:"DB_USER,required"`
+	DBPassword string     `env:"DB_PASSWORD,required"`
+	DBHost     string     `env:"DB_HOST,required"`
+	DBPort     int        `env:"DB_PORT,required"`
+	DBName     string     `env:"DB_NAME,required"`
+
+	CheckInterval time.Duration `env:"CHECK_INTERVAL" envDefault:"60s"`
+
+	WorkerCount int `env:"SCRAPPER_WORKER_COUNT" envDefault:"4"`
+	BatchSize   int `env:"SCRAPPER_BATCH_SIZE" envDefault:"20"`
+
+	APIBatchSize       int           `env:"API_BATCH_SIZE" envDefault:"100"`
+	LinkCheckerTimeout time.Duration `env:"LINK_CHECKER_TIMEOUT" envDefault:"5s"`
+	GighubBaseURL      string        `env:"GITHUB_BASE_URL,required"`
+	GithubTimeout      time.Duration `env:"GITHUB_TIMEOUT" envDefault:"5s"`
+	StackBaseURL       string        `env:"STACK_BASE_URL,required"`
+	StackTimeout       time.Duration `env:"STACK_TIMEOUT" envDefault:"5s"`
+
+	CheckerPreviewLen int `env:"CHECKER_PREVIEW_LEN" envDefault:"200"`
+
+	// HTTP пагинация
+	DefaultLimit int `env:"HTTP_DEFAULT_LIMIT" envDefault:"50"`
+	MaxLimit     int `env:"HTTP_MAX_LIMIT" envDefault:"100"`
+
+	ShutdownTimeout time.Duration `env:"SCRAPPER_SHUTDOWN_TIMEOUT" envDefault:"30s"`
 }
 
 type AccessType string
@@ -27,31 +59,27 @@ const (
 )
 
 func Load() (*Config, error) {
-	port := os.Getenv("PORT")
-	if port == "" {
-		slog.Error("PORT is not set in .env.scrapper file")
-		return nil, errors.New("bot port not found")
-	}
+	var cfg Config
 
-	botURL := os.Getenv("BOT_BASE_URL")
-	if botURL == "" {
-		slog.Warn("BOT_BASE_URL is not set in .env.scrapper file")
-	}
-
-	portString := os.Getenv("DB_PORT")
-	dbPort, err := strconv.Atoi(portString)
+	err := env.Parse(&cfg)
 	if err != nil {
-		slog.Warn("DB_PORT is not int", "error", err)
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	return &Config{
-		ScrapperPort: port,
-		BotBaseURL:   botURL,
-		AccessType:   AccessType(strings.ToLower(os.Getenv("ACCESS_TYPE"))),
-		DBUser:       os.Getenv("DB_USER"),
-		DBPassword:   os.Getenv("DB_PASSWORD"),
-		DBHost:       os.Getenv("DB_HOST"),
-		DBPort:       dbPort,
-		DBName:       os.Getenv("DB_NAME"),
-	}, nil
+	if cfg.APIBatchSize < minAPIBatchSize || cfg.APIBatchSize > maxAPIBatchSize {
+		return nil, fmt.Errorf("API_BATCH_SIZE must be in range [%v;%v]", minAPIBatchSize, maxAPIBatchSize)
+	}
+
+	if cfg.BatchSize < minBatchSize || cfg.BatchSize > maxBatchSize {
+		return nil, fmt.Errorf("BATCH_SIZE must be in range [%v;%v]", minBatchSize, maxBatchSize)
+	}
+
+	if cfg.WorkerCount < minWorkers || cfg.WorkerCount > maxWorkers {
+		slog.Error("wc", "wc", cfg.WorkerCount)
+		return nil, fmt.Errorf("WORKER_COUNT must be in range [%v;%v]", minWorkers, maxWorkers)
+	}
+
+	cfg.AccessType = AccessType(strings.ToLower(string(cfg.AccessType)))
+
+	return &cfg, nil
 }

@@ -27,8 +27,9 @@ func (s *TrackHandlerSuite) SetupTest() {
 	s.linkService = NewMockLinkService(s.ctrl)
 	s.testServer = httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 
-	timeout := time.Second
-	s.handler = NewTrackHandler(s.linkService, timeout)
+	timeoutSaving := time.Second
+	timeoutCheckLink := 10 * time.Second
+	s.handler = NewTrackHandler(s.linkService, timeoutSaving, timeoutCheckLink)
 	s.msg = &domain.Message{
 		Text:      "/track",
 		ChatID:    12345,

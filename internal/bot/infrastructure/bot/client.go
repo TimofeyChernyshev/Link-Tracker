@@ -11,14 +11,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-const (
-	workers = 8
-	senders = 4
-
-	jobsBufferSize     = 100
-	outgoingBufferSize = 100
-)
-
 type Client struct {
 	api *tgbotapi.BotAPI
 
@@ -30,9 +22,14 @@ type Client struct {
 	outgoing chan *domain.Response
 
 	incoming chan *domain.Message
+
+	workers            int
+	senders            int
+	jobsBufferSize     int
+	outgoingBufferSize int
 }
 
-func NewClient(token string, endpoint string) (*Client, error) {
+func NewClient(token string, endpoint string, workers, senders, jobsBufferSize, outgoingBufferSize int) (*Client, error) {
 	var (
 		api *tgbotapi.BotAPI
 		err error
@@ -49,8 +46,12 @@ func NewClient(token string, endpoint string) (*Client, error) {
 	}
 
 	return &Client{
-		api:      api,
-		incoming: make(chan *domain.Message, jobsBufferSize),
+		api:                api,
+		incoming:           make(chan *domain.Message, jobsBufferSize),
+		workers:            workers,
+		senders:            senders,
+		jobsBufferSize:     jobsBufferSize,
+		outgoingBufferSize: outgoingBufferSize,
 	}, nil
 }
 
@@ -69,15 +70,15 @@ func (c *Client) SetCommands(cmds []domain.BotCommand) {
 
 func (c *Client) Start() error {
 	c.stopChan = make(chan struct{})
-	c.jobs = make(chan tgbotapi.Update, jobsBufferSize)
-	c.outgoing = make(chan *domain.Response, outgoingBufferSize)
+	c.jobs = make(chan tgbotapi.Update, c.jobsBufferSize)
+	c.outgoing = make(chan *domain.Response, c.outgoingBufferSize)
 
-	for range workers {
+	for range c.workers {
 		c.workerWg.Add(1)
 		go c.worker()
 	}
 
-	for range senders {
+	for range c.senders {
 		c.senderWg.Add(1)
 		go c.sender()
 	}

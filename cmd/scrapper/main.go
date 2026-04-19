@@ -1,7 +1,5 @@
 package main
 
-// предотвращение, обнаружение, обход,
-
 import (
 	"context"
 	"errors"
@@ -10,24 +8,18 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
-	botclient "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/bot_client"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
+	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/scheduler"
 	scrapperhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/server/http"
-)
-
-const (
-	shutdownTimeout = 30 * time.Second
-	checkInterval   = 5 * time.Minute
 )
 
 func main() {
@@ -57,26 +49,30 @@ func main() {
 	defer repo.Close()
 
 	// HTTP клиенты
-	linkChecker := linkchecker.NewLinkChecker()
+	linkChecker := linkchecker.NewLinkChecker(
+		"link-tracker", cfg.APIBatchSize, cfg.CheckerPreviewLen,
+		cfg.GighubBaseURL, cfg.StackBaseURL,
+		cfg.LinkCheckerTimeout, cfg.GithubTimeout, cfg.StackTimeout,
+	)
 
 	// Notifier для отправки уведомлений в Bot
-	botNotifier := botclient.NewBotClient(cfg.BotBaseURL)
+	botNotifier := httpnotifier.NewBotClient(cfg.BotBaseURL, cfg.BotTimeout)
 
 	// Сервис работы с ссылками
-	linkService := application.NewLinkService(linkChecker, botNotifier, repo)
+	linkService := application.NewLinkService(linkChecker, botNotifier, repo, cfg.BatchSize, cfg.WorkerCount)
 
 	// Планировщик
-	sched, err := scheduler.New(checkInterval, linkService)
+	sched, err := scheduler.New(cfg.CheckInterval, linkService)
 
 	// HTTP сервер для API Scrapper
-	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService)
+	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, cfg.DefaultLimit, cfg.MaxLimit)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	errChan := make(chan error, 1)
 
 	sched.Start()
-	slog.Info("scheduler started", "interval", checkInterval)
+	slog.Info("scheduler started", "interval", cfg.CheckInterval)
 
 	go func() {
 		slog.Info("starting scrapper server", "port", cfg.ScrapperPort)
@@ -98,7 +94,7 @@ func main() {
 		slog.Error("scheduler stop error", "error", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
 	if err = server.Shutdown(ctx); err != nil {

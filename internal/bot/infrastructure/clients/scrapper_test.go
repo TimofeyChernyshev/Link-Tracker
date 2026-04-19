@@ -16,6 +16,10 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
+const (
+	testScrapperTimeout = 5 * time.Second
+)
+
 func TestAddLink_Success(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assertCommonHeaders(t, r, http.MethodPost, 123123)
@@ -36,7 +40,7 @@ func TestAddLink_Success(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	err := client.AddLink(t.Context(), 123123, "https://github.com/test", []string{"tag1", "tag2"})
 	require.NoError(t, err)
@@ -48,7 +52,7 @@ func TestAddLink_Error(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	err := client.AddLink(t.Context(), 12345, "invalid", []string{"tag1"})
 
@@ -75,7 +79,7 @@ func TestRemoveLink_Success(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	err := client.RemoveLink(t.Context(), 12345, "https://github.com/test")
 	require.NoError(t, err)
@@ -101,7 +105,7 @@ func TestGetLinks_Success(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	links, err := client.GetLinks(t.Context(), 12345, 50, 0)
 
@@ -121,7 +125,7 @@ func TestGetLinks_Empty(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	links, err := client.GetLinks(t.Context(), 12345, 10, 20)
 
@@ -139,7 +143,7 @@ func TestRegisterChat_Success(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	err := client.RegisterChat(t.Context(), 12345)
 	require.NoError(t, err)
@@ -151,7 +155,7 @@ func TestRegisterChat_AlreadyExists(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	err := client.RegisterChat(t.Context(), 12345)
 
@@ -168,7 +172,7 @@ func TestDeleteChat_Success(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	err := client.DeleteChat(t.Context(), 12345)
 	require.NoError(t, err)
@@ -180,7 +184,7 @@ func TestDeleteChat_NotFound(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	err := client.DeleteChat(t.Context(), 12345)
 
@@ -195,7 +199,7 @@ func TestTimeout(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	client.http.Timeout = 50 * time.Millisecond
 
@@ -210,7 +214,7 @@ func TestContextCancel(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -226,7 +230,7 @@ func TestInvalidJSON(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	_, err := client.GetLinks(t.Context(), 12345, 10, 20)
 
@@ -244,7 +248,7 @@ func TestConcurrent(t *testing.T) {
 	})
 
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL)
+	client := NewScrapperClient(server.URL, testScrapperTimeout)
 
 	wgCount := 10
 
