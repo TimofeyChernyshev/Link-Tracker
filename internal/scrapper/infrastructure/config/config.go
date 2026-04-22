@@ -99,13 +99,5 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("unknown notification type: %s", cfg.NotificationType)
 	}
 
-	if cfg.NotificationType == NotifierTypeKafka {
-		var notifierConfig KafkaNotifierConfig
-		err = env.Parse(&notifierConfig)
-		if err != nil {
-			return nil, fmt.Errorf("cannot load kafka notifier config: %w", err)
-		}
-	}
-
 	return &cfg, nil
 }
