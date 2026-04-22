@@ -16,10 +16,10 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
-	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/http"
+	scrappernotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier"
+	scrapperhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/receiver/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/scheduler"
-	scrapperhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/server/http"
 )
 
 func main() {
@@ -56,7 +56,11 @@ func main() {
 	)
 
 	// Notifier для отправки уведомлений в Bot
-	botNotifier := httpnotifier.NewBotClient(cfg.BotBaseURL, cfg.BotTimeout)
+	botNotifier, err := scrappernotifier.NewNotifier(cfg.NotifierConfig)
+	if err != nil {
+		slog.Error("failed to create bot notifier", "error", err)
+		os.Exit(1)
+	}
 
 	// Сервис работы с ссылками
 	linkService := application.NewLinkService(linkChecker, botNotifier, repo, cfg.BatchSize, cfg.WorkerCount)
