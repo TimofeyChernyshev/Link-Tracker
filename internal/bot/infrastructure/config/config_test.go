@@ -28,6 +28,7 @@ func TestLoad_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, "test_token_12345", cfg.TelegramToken)
+	assert.Equal(t, "8080", cfg.ReceiverConfig.(*HTTPReceiverConfig).Port)
 }
 
 func TestLoad_EnvFileNotFound(t *testing.T) {

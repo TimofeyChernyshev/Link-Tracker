@@ -3,8 +3,8 @@ package receiver
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
 	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/http"
 	botkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/kafka"
 )
@@ -14,23 +14,16 @@ type Receiver interface {
 	Shutdown(ctx context.Context) error
 }
 
-type ReceiverFactory struct {
-}
-
-func NewReceiverFactory() *ReceiverFactory {
-	return &ReceiverFactory{}
-}
-
-func CreateReceiver(receiverType string,
-	service bothttp.Service, brokers []string, topic string, groupID string, sessionTimeout time.Duration,
-	minBytes, maxBytes int, httpPort string,
-) (Receiver, error) {
-	switch receiverType {
-	case "kafka":
-		return botkafka.NewConsumer(service, brokers, topic, groupID, sessionTimeout, minBytes, maxBytes), nil
-	case "http":
-		return bothttp.NewServer(service, httpPort), nil
+func NewReceiver(receiverConfig config.ReceiverConfig, service bothttp.Service) (Receiver, error) {
+	switch cfg := receiverConfig.(type) {
+	case *config.HTTPReceiverConfig:
+		return bothttp.NewServer(service, cfg.Port), nil
+	case *config.KafkaReceiverConfig:
+		return botkafka.NewConsumer(
+			service, cfg.Brokers, cfg.Topic, cfg.GroupID,
+			cfg.SessionTimeout, cfg.MinBytes, cfg.MaxBytes,
+		), nil
 	default:
-		return nil, fmt.Errorf("unknown receiver type: %s", receiverType)
+		return nil, fmt.Errorf("unknown receiver type: %s", receiverConfig.Type())
 	}
 }

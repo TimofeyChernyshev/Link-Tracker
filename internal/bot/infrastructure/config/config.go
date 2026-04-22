@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -12,15 +11,11 @@ type Config struct {
 	TelegramToken    string `env:"TELEGRAM_TOKEN,required"`
 	TelegramEndpoint string `env:"TELEGRAM_API_URL"`
 
-	BotPort         string        `env:"BOT_PORT,required"`
 	ScrapperBaseURL string        `env:"SCRAPPER_BASE_URL,required"`
 	ScrapperTimeout time.Duration `env:"BOT_TO_SCRAPPER_TIMEOUT" envDefault:"5s"`
 
-	ReceiverType        string        `env:"RECEIVER_TYPE" envDefault:"kafka"`
-	KafkaBrokers        []string      `env:"KAFKA_BROKERS"`
-	KafkaTopic          string        `env:"KAFKA_TOPIC"`
-	KafkaGroupID        string        `env:"KAFKA_GROUP_ID"`
-	KafkaSessionTimeout time.Duration `env:"KAFKA_SESSION_TIMEOUT" envDefault:"30s"`
+	ReceiverType   ReceiverType `env:"RECEIVER_TYPE" envDefault:"kafka"`
+	ReceiverConfig ReceiverConfig
 
 	TimeoutCheckLink      time.Duration `env:"TIMEOUT_CHECK_LINK" envDefault:"10s"`
 	TimeoutSaveLink       time.Duration `env:"TIMEOUT_SAVE_LINK" envDefault:"5s"`
@@ -43,16 +38,23 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	if cfg.ReceiverType == "kafka" {
-		if cfg.KafkaBrokers == nil {
-			return nil, errors.New("KAFKA_BROKERS is required when RECEIVER_TYPE=kafka")
+	switch cfg.ReceiverType {
+	case ReceiverTypeKafka:
+		var kafkaCfg KafkaReceiverConfig
+		if err := env.Parse(&kafkaCfg); err != nil {
+			return nil, fmt.Errorf("failed to parse kafka receiver config: %w", err)
 		}
-		if cfg.KafkaTopic == "" {
-			return nil, errors.New("KAFKA_TOPIC is required when RECEIVER_TYPE=kafka")
+		cfg.ReceiverConfig = &kafkaCfg
+
+	case ReceiverTypeHTTP:
+		var httpCfg HTTPReceiverConfig
+		if err := env.Parse(&httpCfg); err != nil {
+			return nil, fmt.Errorf("failed to parse http receiver config: %w", err)
 		}
-		if cfg.KafkaGroupID == "" {
-			return nil, errors.New("KAFKA_GROUP_ID is required when RECEIVER_TYPE=kafka")
-		}
+		cfg.ReceiverConfig = &httpCfg
+
+	default:
+		return nil, fmt.Errorf("unknown receiver type: %s", cfg.ReceiverType)
 	}
 
 	return &cfg, nil
