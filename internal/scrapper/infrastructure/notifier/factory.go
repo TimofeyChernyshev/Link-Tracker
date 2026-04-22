@@ -3,9 +3,9 @@ package scrappernotifier
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/http"
 	kafkanotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/kafka"
 )
@@ -14,20 +14,16 @@ type Notifier interface {
 	SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 }
 
-func NewNotifier(notifierType string,
-	botBaseURL string, botTimeout time.Duration,
-	kafkaTopic, kafkaCompression string, kafkaBrokers []string,
-	kafkaBatchSize, kafkaRequiredAcks int, kafkaBatchTimeout time.Duration,
-) (Notifier, error) {
-	switch notifierType {
-	case "http":
-		return httpnotifier.NewBotClient(botBaseURL, botTimeout), nil
-	case "kafka":
+func NewNotifier(notifierConfig config.NotifierConfig) (Notifier, error) {
+	switch cfg := notifierConfig.(type) {
+	case *config.HTTPNotifierConfig:
+		return httpnotifier.NewBotClient(cfg.BotBaseURL, cfg.BotTimeout), nil
+	case *config.KafkaNotifierConfig:
 		return kafkanotifier.NewKafkaNotifier(
-			kafkaTopic, kafkaCompression, kafkaBrokers,
-			kafkaBatchSize, kafkaRequiredAcks, kafkaBatchTimeout,
+			cfg.Topic, cfg.Compression, cfg.Brokers,
+			cfg.BatchSize, cfg.RequiredAcks, cfg.BatchTimeout,
 		), nil
 	default:
-		return nil, fmt.Errorf("unknown notifier type: %s", notifierType)
+		return nil, fmt.Errorf("unknown notifier type: %s", notifierConfig.Type())
 	}
 }
