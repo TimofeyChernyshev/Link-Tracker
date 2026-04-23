@@ -19,6 +19,146 @@ services:
       timeout: 5s
       retries: 5
 
+  kafka1:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: linktracker-kafka1
+    restart: unless-stopped
+    ports:
+      - "9092:19092"
+      - "9093:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:9093,2@kafka2:9093,3@kafka3:9093"
+      
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka1:9092,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka1_data:/var/lib/kafka/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: linktracker-kafka2
+    restart: unless-stopped
+    ports:
+      - "9094:19092"
+      - "9095:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 2
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:9093,2@kafka2:9093,3@kafka3:9093"
+      
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka2:9092,EXTERNAL://localhost:9094"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka2_data:/var/lib/kafka/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: linktracker-kafka3
+    restart: unless-stopped
+    ports:
+      - "9096:19092"
+      - "9097:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 3
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:9093,2@kafka2:9093,3@kafka3:9093"
+      
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka3:9092,EXTERNAL://localhost:9096"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka3_data:/var/lib/kafka/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: linktracker-kafka-init
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    networks:
+      - linktracker-net
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+
+      KAFKA_TOPIC_UPDATES: ${KAFKA_UPDATES_TOPIC:-link-updates}
+
+      # =3, чтобы параллельно обрабатывать сообщения и распределять нагрузку по 3 брокерам
+      KAFKA_TOPIC_UPDATES_PARTITIONS: "3"
+
+      # =3, каждая партиция хранится на всех брокерах, чтобы не терять данные при падении до 2 брокеров
+      KAFKA_TOPIC_UPDATES_RF: "3"
+
+      # время хранения сообщений =7 дней
+      KAFKA_TOPIC_UPDATES_RETENTION_MS: "604800000"
+    command: |
+      bash -c "
+        cub kafka-ready -b $$KAFKA_BOOTSTRAP_SERVERS 1 30 &&
+
+        kafka-topics --create --if-not-exists --topic $$KAFKA_TOPIC_UPDATES --partitions $$KAFKA_TOPIC_UPDATES_PARTITIONS --replication-factor $$KAFKA_TOPIC_UPDATES_RF --config retention.ms=$$KAFKA_TOPIC_UPDATES_RETENTION_MS --config cleanup.policy=delete --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS &&
+
+        echo 'Topics created:' &&
+        kafka-topics --list --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+      "
+
   scrapper:
     build:
       context: .
@@ -27,6 +167,10 @@ services:
     restart: unless-stopped
     ports:
       - "${SCRAPPER_PORT:-8081}:${SCRAPPER_PORT:-8081}"
+    environment:
+      - NOTIFICATION_TYPE=${NOTIFICATION_TYPE:-kafka}
+      - KAFKA_UPDATES_TOPIC=${KAFKA_UPDATES_TOPIC:-link-updates}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
     env_file:
       - .env.scrapper
     networks:
@@ -40,6 +184,10 @@ services:
     restart: unless-stopped
     ports:
       - "${BOT_PORT:-8080}:${BOT_PORT:-8080}"
+    environment:
+      - NOTIFICATION_TYPE=${NOTIFICATION_TYPE:-kafka}
+      - KAFKA_UPDATES_TOPIC=${KAFKA_UPDATES_TOPIC}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
     env_file:
       - .env.bot
     networks:
@@ -47,6 +195,9 @@ services:
 
 volumes:
   postgres_data:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
 
 networks:
   linktracker-net:
