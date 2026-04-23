@@ -45,8 +45,6 @@ type BotScrapperKafkaSuite struct {
 	topic          string
 	kafkaContainer *kafka.KafkaContainer
 
-	postgresHost      string
-	postgresPort      string
 	postgresContainer testcontainers.Container
 }
 
@@ -95,13 +93,6 @@ func (s *BotScrapperKafkaSuite) SetupSuite() {
 	})
 	s.Require().NoError(err)
 	s.postgresContainer = postgresContainer
-
-	postgresHost, err := postgresContainer.Host(s.ctx)
-	s.Require().NoError(err)
-	postgresMappedPort, err := postgresContainer.MappedPort(s.ctx, "5432")
-	s.Require().NoError(err)
-	s.postgresHost = postgresHost
-	s.postgresPort = postgresMappedPort.Port()
 
 	kafkaContainer, err := kafka.Run(
 		s.ctx,
