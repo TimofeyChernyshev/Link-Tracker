@@ -35,7 +35,7 @@ func NewConsumer(service Service, brokers []string, topic string, groupID string
 		MinBytes:       minBytes,
 		MaxBytes:       maxBytes,
 		SessionTimeout: sessionTimeout,
-		StartOffset:    kafka.LastOffset,
+		StartOffset:    kafka.FirstOffset,
 	})
 
 	return &Consumer{service: service, reader: reader, stopCh: make(chan struct{})}
