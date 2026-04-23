@@ -14,8 +14,8 @@ type Config struct {
 	ScrapperBaseURL string        `env:"SCRAPPER_BASE_URL,required"`
 	ScrapperTimeout time.Duration `env:"BOT_TO_SCRAPPER_TIMEOUT" envDefault:"5s"`
 
-	ReceiverType   ReceiverType `env:"RECEIVER_TYPE" envDefault:"kafka"`
-	ReceiverConfig ReceiverConfig
+	NotificationType ReceiverType `env:"NOTIFICATION_TYPE" envDefault:"kafka"`
+	ReceiverConfig   ReceiverConfig
 
 	TimeoutCheckLink      time.Duration `env:"TIMEOUT_CHECK_LINK" envDefault:"10s"`
 	TimeoutSaveLink       time.Duration `env:"TIMEOUT_SAVE_LINK" envDefault:"5s"`
@@ -38,7 +38,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	switch cfg.ReceiverType {
+	switch cfg.NotificationType {
 	case ReceiverTypeKafka:
 		var kafkaCfg KafkaReceiverConfig
 		if err := env.Parse(&kafkaCfg); err != nil {
@@ -54,7 +54,7 @@ func Load() (*Config, error) {
 		cfg.ReceiverConfig = &httpCfg
 
 	default:
-		return nil, fmt.Errorf("unknown receiver type: %s", cfg.ReceiverType)
+		return nil, fmt.Errorf("unknown notification type: %s", cfg.NotificationType)
 	}
 
 	return &cfg, nil
