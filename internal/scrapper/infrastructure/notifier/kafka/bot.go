@@ -47,7 +47,7 @@ func (n *KafkaNotifier) SendUpdate(ctx context.Context, upd domain.LinkUpdate) e
 		Time:  time.Now(),
 	}
 
-	if err := n.writer.WriteMessages(ctx, msg); err != nil {
+	if err = n.writer.WriteMessages(ctx, msg); err != nil {
 		slog.Error("cannot send message to kafka", "error", err)
 		return fmt.Errorf("cannot send message: %w", err)
 	}

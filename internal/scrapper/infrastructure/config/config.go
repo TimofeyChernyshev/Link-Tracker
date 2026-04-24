@@ -83,14 +83,14 @@ func Load() (*Config, error) {
 	switch cfg.NotificationType {
 	case NotifierTypeKafka:
 		var kafkaCfg KafkaNotifierConfig
-		if err := env.Parse(&kafkaCfg); err != nil {
+		if err = env.Parse(&kafkaCfg); err != nil {
 			return nil, fmt.Errorf("failed to parse kafka config: %w", err)
 		}
 		cfg.NotifierConfig = &kafkaCfg
 
 	case NotifierTypeHTTP:
 		var httpCfg HTTPNotifierConfig
-		if err := env.Parse(&httpCfg); err != nil {
+		if err = env.Parse(&httpCfg); err != nil {
 			return nil, fmt.Errorf("failed to parse http config: %w", err)
 		}
 		cfg.NotifierConfig = &httpCfg

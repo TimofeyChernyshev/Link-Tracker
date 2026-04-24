@@ -50,7 +50,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := app.run(); err != nil {
+	if err = app.run(); err != nil {
 		slog.Error("app runtime error", "error", err)
 		os.Exit(1)
 	}

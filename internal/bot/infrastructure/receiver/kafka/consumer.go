@@ -60,7 +60,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 			}
 
 			var update domain.LinkUpdate
-			if err := json.Unmarshal(msg.Value, &update); err != nil {
+			if err = json.Unmarshal(msg.Value, &update); err != nil {
 				slog.Error("failed to unmarshal message", "error", err, "key", string(msg.Key))
 				continue
 			}
