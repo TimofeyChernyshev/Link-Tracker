@@ -143,9 +143,9 @@ func (a *ScrapperApp) shutdown() error {
 	return nil
 }
 
-func (app *ScrapperApp) cleanup() {
-	if app.repo != nil {
-		app.repo.Close()
+func (a *ScrapperApp) cleanup() {
+	if a.repo != nil {
+		a.repo.Close()
 	}
 }
 
