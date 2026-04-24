@@ -57,7 +57,12 @@ func (n *KafkaNotifier) SendUpdate(ctx context.Context, upd domain.LinkUpdate) e
 }
 
 func (n *KafkaNotifier) Close() error {
-	return n.writer.Close()
+	err := n.writer.Close()
+	if err != nil {
+		return fmt.Errorf("cannot close kafka notifier: %w", err)
+	}
+
+	return nil
 }
 
 func getCompression(c string) kafka.Compression {
