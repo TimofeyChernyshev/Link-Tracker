@@ -52,7 +52,7 @@ func TestConsumer_HandleUpdate(t *testing.T) {
 		TgChatIDs:   []int64{1, 2},
 	}
 
-	mockService.EXPECT().HandleUpdate(upd.TgChatIDs, upd.Description).Do(func(chatIDs []int64, desc string) {
+	mockService.EXPECT().HandleUpdate(upd.TgChatIDs, upd.Description).Do(func(_ []int64, _ string) {
 		called <- struct{}{}
 	}).Times(1)
 
