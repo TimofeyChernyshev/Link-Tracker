@@ -9,12 +9,15 @@ import (
 	"github.com/golang/mock/gomock"
 	kafkago "github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
 func TestConsumer_HandleUpdate(t *testing.T) {
 	ctx := context.Background()
+
+	testcontainers.SkipIfProviderIsNotHealthy(t)
 
 	kafkaContainer, err := kafka.Run(ctx, "confluentinc/cp-kafka:7.5.0", kafka.WithClusterID("test-cluster"))
 	require.NoError(t, err)
