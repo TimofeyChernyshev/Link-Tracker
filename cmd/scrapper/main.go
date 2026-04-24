@@ -22,6 +22,15 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/scheduler"
 )
 
+type ScrapperApp struct {
+	cfg         *config.Config
+	repo        repository.Repository
+	notifier    scrappernotifier.Notifier
+	linkService *application.Service
+	scheduler   *scheduler.Scheduler
+	server      *scrapperhttp.Server
+}
+
 func main() {
 	setLogger()
 
@@ -35,52 +44,73 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = runMigrations(cfg); err != nil {
-		slog.Error("failed to run migrations", "error", err)
+	app, err := buildApp(cfg)
+	if err != nil {
+		slog.Error("failed to build app", "error", err)
 		os.Exit(1)
+	}
+
+	if err := app.run(); err != nil {
+		slog.Error("app runtime error", "error", err)
+		os.Exit(1)
+	}
+}
+
+func buildApp(cfg *config.Config) (*ScrapperApp, error) {
+	if err := runMigrations(cfg); err != nil {
+		return nil, fmt.Errorf("migrations failed: %w", err)
 	}
 
 	repo, err := repository.NewRepository(cfg, fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName))
 	if err != nil {
-		slog.Error("failed to create repository", "error", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to create repository: %w", err)
 	}
-	defer repo.Close()
 
-	// HTTP клиенты
 	linkChecker := linkchecker.NewLinkChecker(
 		"link-tracker", cfg.APIBatchSize, cfg.CheckerPreviewLen,
 		cfg.GighubBaseURL, cfg.StackBaseURL,
 		cfg.LinkCheckerTimeout, cfg.GithubTimeout, cfg.StackTimeout,
 	)
 
-	// Notifier для отправки уведомлений в Bot
-	botNotifier, err := scrappernotifier.NewNotifier(cfg.NotifierConfig)
+	notifier, err := scrappernotifier.NewNotifier(cfg.NotifierConfig)
 	if err != nil {
-		slog.Error("failed to create bot notifier", "error", err)
-		os.Exit(1)
+		repo.Close()
+		return nil, fmt.Errorf("failed to create notifier: %w", err)
 	}
 
-	// Сервис работы с ссылками
-	linkService := application.NewLinkService(linkChecker, botNotifier, repo, cfg.BatchSize, cfg.WorkerCount)
+	linkService := application.NewLinkService(linkChecker, notifier, repo, cfg.BatchSize, cfg.WorkerCount)
 
-	// Планировщик
 	sched, err := scheduler.New(cfg.CheckInterval, linkService)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scheduler: %w", err)
+	}
 
-	// HTTP сервер для API Scrapper
 	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, cfg.DefaultLimit, cfg.MaxLimit)
+
+	return &ScrapperApp{
+		cfg:         cfg,
+		repo:        repo,
+		notifier:    notifier,
+		linkService: linkService,
+		scheduler:   sched,
+		server:      server,
+	}, nil
+}
+
+func (a *ScrapperApp) run() error {
+	defer a.cleanup()
+
+	a.scheduler.Start()
+	slog.Info("scheduler started", "interval", a.cfg.CheckInterval)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	errChan := make(chan error, 1)
 
-	sched.Start()
-	slog.Info("scheduler started", "interval", cfg.CheckInterval)
-
 	go func() {
-		slog.Info("starting scrapper server", "port", cfg.ScrapperPort)
-		if err = server.Start(); err != nil {
+		slog.Info("starting scrapper server", "port", a.cfg.ScrapperPort)
+		if err := a.server.Start(); err != nil {
 			errChan <- err
 		}
 	}()
@@ -88,24 +118,35 @@ func main() {
 	select {
 	case sig := <-sigChan:
 		slog.Info("received signal", "signal", sig)
-	case err = <-errChan:
+	case err := <-errChan:
 		slog.Error("server error", "error", err)
 	}
 
+	return a.shutdown()
+}
+
+func (a *ScrapperApp) shutdown() error {
 	slog.Info("shutting down scrapper")
 
-	if err = sched.Stop(); err != nil {
+	if err := a.scheduler.Stop(); err != nil {
 		slog.Error("scheduler stop error", "error", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
 	defer cancel()
 
-	if err = server.Shutdown(ctx); err != nil {
+	if err := a.server.Shutdown(ctx); err != nil {
 		slog.Error("server stop error", "error", err)
 	}
 
 	slog.Info("scrapper stopped")
+	return nil
+}
+
+func (app *ScrapperApp) cleanup() {
+	if app.repo != nil {
+		app.repo.Close()
+	}
 }
 
 func setLogger() {
