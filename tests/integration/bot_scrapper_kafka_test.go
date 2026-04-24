@@ -282,12 +282,28 @@ func (s *BotScrapperKafkaSuite) TestScrapperToKafkaToBot_LinkUpdate() {
 }
 
 func (s *BotScrapperKafkaSuite) TestFullCycle_UserAddsLink_ScrapperSendsUpdate() {
+	waitTime := 10 * time.Second
+	tickTime := 500 * time.Millisecond
+
 	s.SendUserMessage("/start")
-	time.Sleep(500 * time.Millisecond)
+	s.Eventually(func() bool {
+		return strings.Contains(s.lastBotMessage, "Добро пожаловать")
+	}, waitTime, tickTime)
 
 	s.SendUserMessage("/track")
+	s.Eventually(func() bool {
+		return strings.Contains(s.lastBotMessage, "Введите ссылку для отслеживания")
+	}, waitTime, tickTime)
+
 	s.SendUserMessage("https://github.com/golang/go")
+	s.Eventually(func() bool {
+		return strings.Contains(s.lastBotMessage, "Введите теги")
+	}, waitTime, tickTime)
+
 	s.SendUserMessage("golang")
+	s.Eventually(func() bool {
+		return strings.Contains(s.lastBotMessage, "Ссылка добавлена")
+	}, waitTime, tickTime)
 
 	req, err := http.NewRequest(http.MethodGet, s.scrapperURL+"/links", nil)
 	s.Require().NoError(err)
@@ -334,8 +350,8 @@ func (s *BotScrapperKafkaSuite) TestFullCycle_UserAddsLink_ScrapperSendsUpdate()
 	})
 	s.Require().NoError(err)
 
-	waitTime := 10 * time.Second
-	tickTime := 500 * time.Millisecond
+	waitTime = 10 * time.Second
+	tickTime = 500 * time.Millisecond
 	s.Eventually(func() bool {
 		return strings.Contains(s.lastBotMessage, "update")
 	}, waitTime, tickTime, "Message not received within timeout")
