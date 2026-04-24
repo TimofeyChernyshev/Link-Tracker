@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -42,7 +43,7 @@ func (n *KafkaNotifier) SendUpdate(ctx context.Context, upd domain.LinkUpdate) e
 	}
 
 	msg := kafka.Message{
-		Key:   []byte(fmt.Sprintf("%d", linkUpdate.ID)),
+		Key:   []byte(strconv.FormatInt(linkUpdate.ID, 10)),
 		Value: data,
 		Time:  time.Now(),
 	}

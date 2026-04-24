@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -345,7 +345,7 @@ func (s *BotScrapperKafkaSuite) TestFullCycle_UserAddsLink_ScrapperSendsUpdate()
 	s.Require().NoError(err)
 
 	err = writer.WriteMessages(s.ctx, kafkago.Message{
-		Key:   []byte(fmt.Sprintf("%d", update.ID)),
+		Key:   []byte(strconv.FormatInt(update.ID, 10)),
 		Value: data,
 	})
 	s.Require().NoError(err)
