@@ -68,7 +68,7 @@ func TestKafkaNotifier_SendUpdate(t *testing.T) {
 	msg, err := reader.ReadMessage(ctx)
 	require.NoError(t, err)
 
-	var actual domain.LinkUpdate
+	var actual LinkUpdate
 	err = json.Unmarshal(msg.Value, &actual)
 	require.NoError(t, err)
 
