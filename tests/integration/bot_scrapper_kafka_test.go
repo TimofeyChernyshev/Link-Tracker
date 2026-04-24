@@ -22,13 +22,6 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
 
-/*
-Перед запуском необходимо собрать образы с такими именами
-
-linktracker-bot
-linktracker-scrapper
-*/
-
 type BotScrapperKafkaSuite struct {
 	suite.Suite
 	ctx          context.Context
