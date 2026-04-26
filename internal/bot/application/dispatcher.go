@@ -49,15 +49,22 @@ func (cd *CommandDispatcher) HandleMessage(msg *domain.Message) {
 	if err != nil {
 		slog.Error("dispatch error", "error", err)
 
-		cd.bot.SendMessage(&domain.Response{
+		sendErr := cd.bot.SendMessage(&domain.Response{
 			ChatID: msg.ChatID,
 			Text:   "Произошла ошибка: " + err.Error(),
 		})
+		if sendErr != nil {
+			slog.Error("Failed to send error message to user", "error", sendErr, "chat_id", msg.ChatID, "original_error", err)
+		}
+
 		return
 	}
 
 	if resp != nil {
-		cd.bot.SendMessage(resp)
+		sendErr := cd.bot.SendMessage(resp)
+		if sendErr != nil {
+			slog.Error("failed to send response to user", "error", sendErr, "chat_id", resp.ChatID, "text", resp.Text)
+		}
 	}
 }
 
