@@ -44,7 +44,7 @@ type Consumer struct {
 
 func NewConsumer(service Service, brokers []string, topic string, groupID string,
 	sessionTimeout time.Duration, minBytes, maxBytes int,
-	maxRetries, batchSize int, retryDelay, batchTimeout time.Duration, DLQTopic string) *Consumer {
+	maxRetries, batchSize int, retryDelay, batchTimeout time.Duration, dlqTopic string) *Consumer {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        brokers,
 		Topic:          topic,
@@ -56,10 +56,10 @@ func NewConsumer(service Service, brokers []string, topic string, groupID string
 	})
 
 	var DLQWriter *kafka.Writer
-	if DLQTopic != "" {
+	if dlqTopic != "" {
 		DLQWriter = &kafka.Writer{
 			Addr:         kafka.TCP(brokers...),
-			Topic:        DLQTopic,
+			Topic:        dlqTopic,
 			Balancer:     &kafka.LeastBytes{},
 			RequiredAcks: kafka.RequireAll,
 			BatchSize:    batchSize,
