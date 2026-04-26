@@ -30,6 +30,12 @@ type KafkaReceiverConfig struct {
 	SessionTimeout time.Duration `env:"KAFKA_SESSION_TIMEOUT" envDefault:"10s"`
 	MinBytes       int           `env:"KAFKA_MIN_BYTES" envDefault:"1"`
 	MaxBytes       int           `env:"KAFKA_MAX_BYTES" envDefault:"10485760"`
+
+	DLQTopic     string        `env:"KAFKA_DLQ_TOPIC,required"`
+	MaxRetries   int           `env:"KAFKA_MAX_RETRIES" envDefault:"3"`
+	RetryDelay   time.Duration `env:"KAFKA_RETRY_DELAY" envDefault:"1s"`
+	BatchSize    int           `env:"KAFKA_DLQ_BATCH_SIZE" envDefault:"1"`
+	BatchTimeout time.Duration `env:"KAFKA_DLQ_BATCH_TIMEOUT" envDefault:"1s"`
 }
 
 func (c *KafkaReceiverConfig) Type() ReceiverType {

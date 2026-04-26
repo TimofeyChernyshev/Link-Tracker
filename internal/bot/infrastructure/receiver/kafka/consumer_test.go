@@ -3,6 +3,7 @@ package botkafka
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -54,7 +55,12 @@ func TestConsumer_HandleUpdate(t *testing.T) {
 
 	mockService.EXPECT().HandleUpdate(upd.TgChatIDs, upd.Description).Do(func(_ []int64, _ string) {
 		called <- struct{}{}
-	}).Times(1)
+	}).Return(errors.New("some error")).Times(1)
+
+	// для retry
+	mockService.EXPECT().HandleUpdate(upd.TgChatIDs, upd.Description).Do(func(_ []int64, _ string) {
+		called <- struct{}{}
+	}).Return(nil).Times(1)
 
 	consumer := NewConsumer(
 		mockService,
@@ -64,6 +70,7 @@ func TestConsumer_HandleUpdate(t *testing.T) {
 		10*time.Second,
 		1,
 		1e6,
+		3, 1, time.Second, time.Second, "dlq-topic",
 	)
 
 	err = consumer.Start(ctx)

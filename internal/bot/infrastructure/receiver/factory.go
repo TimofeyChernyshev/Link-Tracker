@@ -22,6 +22,7 @@ func NewReceiver(receiverConfig config.ReceiverConfig, service bothttp.Service) 
 		return botkafka.NewConsumer(
 			service, cfg.Brokers, cfg.Topic, cfg.GroupID,
 			cfg.SessionTimeout, cfg.MinBytes, cfg.MaxBytes,
+			cfg.MaxRetries, cfg.BatchSize, cfg.RetryDelay, cfg.BatchTimeout, cfg.DLQTopic,
 		), nil
 	default:
 		return nil, fmt.Errorf("unknown receiver type: %s", receiverConfig.Type())
