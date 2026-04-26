@@ -36,6 +36,7 @@ type BotScrapperKafkaSuite struct {
 
 	lastBotMessage string
 	topic          string
+	DLQTopic       string
 	kafkaContainer *kafka.KafkaContainer
 
 	postgresContainer testcontainers.Container
@@ -53,6 +54,7 @@ func (s *BotScrapperKafkaSuite) SetupSuite() {
 	s.userMessages = make([]map[string]interface{}, 0)
 	s.lastUpdateID = 0
 	s.topic = "link-updates"
+	s.DLQTopic = "dlq-topic"
 
 	s.fakeTelegram = s.StartFakeTelegram()
 
@@ -111,11 +113,18 @@ func (s *BotScrapperKafkaSuite) SetupSuite() {
 	s.Require().NoError(err)
 	defer conn.Close()
 
-	err = conn.CreateTopics(kafkago.TopicConfig{
-		Topic:             s.topic,
-		NumPartitions:     3,
-		ReplicationFactor: 1,
-	})
+	err = conn.CreateTopics(
+		kafkago.TopicConfig{
+			Topic:             s.topic,
+			NumPartitions:     3,
+			ReplicationFactor: 1,
+		},
+		kafkago.TopicConfig{
+			Topic:             s.DLQTopic,
+			NumPartitions:     3, // подумать над этим
+			ReplicationFactor: 1,
+		},
+	)
 	s.Require().NoError(err)
 
 	scrapper, scrapperURL, err := StartScrapperWithKafka(s.ctx, net.Name, s.topic, []string{internalBroker})
@@ -123,7 +132,7 @@ func (s *BotScrapperKafkaSuite) SetupSuite() {
 	s.scrapper = scrapper
 	s.scrapperURL = scrapperURL
 
-	bot, botURL, err := StartBotWithKafka(s.ctx, net.Name, telegramURL, s.topic, []string{internalBroker})
+	bot, botURL, err := StartBotWithKafka(s.ctx, net.Name, telegramURL, s.topic, s.DLQTopic, []string{internalBroker})
 	s.Require().NoError(err)
 	s.bot = bot
 	s.botURL = botURL

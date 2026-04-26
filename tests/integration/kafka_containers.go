@@ -52,7 +52,7 @@ func StartScrapperWithKafka(ctx context.Context, networkName, topic string, brok
 	return container, url, nil
 }
 
-func StartBotWithKafka(ctx context.Context, networkName, telegramURL, topic string, brokers []string) (testcontainers.Container, string, error) {
+func StartBotWithKafka(ctx context.Context, networkName, telegramURL, topic, DLQTopic string, brokers []string) (testcontainers.Container, string, error) {
 	brokersStr := strings.Join(brokers, ",")
 
 	req := testcontainers.ContainerRequest{
@@ -70,6 +70,7 @@ func StartBotWithKafka(ctx context.Context, networkName, telegramURL, topic stri
 			"KAFKA_SESSION_TIMEOUT": "10s",
 			"KAFKA_MIN_BYTES":       "1",
 			"KAFKA_MAX_BYTES":       "10485760",
+			"KAFKA_DLQ_TOPIC":       DLQTopic,
 		},
 		Networks: []string{networkName},
 		NetworkAliases: map[string][]string{
