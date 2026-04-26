@@ -24,5 +24,5 @@ type Command interface {
 
 type Bot interface {
 	Receive(ctx context.Context) (*domain.Message, error)
-	SendMessage(response *domain.Response)
+	SendMessage(response *domain.Response) error
 }

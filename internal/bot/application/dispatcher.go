@@ -61,15 +61,26 @@ func (cd *CommandDispatcher) HandleMessage(msg *domain.Message) {
 	}
 }
 
-func (cd *CommandDispatcher) HandleUpdate(chatIDs []int64, desc string) {
+func (cd *CommandDispatcher) HandleUpdate(chatIDs []int64, desc string) error {
 	slog.Debug("got update", "description", desc, "chatIds", chatIDs)
 
+	var errors []error
+
 	for _, chatID := range chatIDs {
-		cd.bot.SendMessage(&domain.Response{
+		err := cd.bot.SendMessage(&domain.Response{
 			ChatID: chatID,
 			Text:   desc,
 		})
+		if err != nil {
+			errors = append(errors, fmt.Errorf("sending message to chat (%d) error: %w", chatID, err))
+		}
 	}
+
+	if len(errors) != 0 {
+		return fmt.Errorf("got errors while sending update to chats: %v", errors)
+	}
+
+	return nil
 }
 
 func (cd *CommandDispatcher) Register(name string, cmd func() Command) {

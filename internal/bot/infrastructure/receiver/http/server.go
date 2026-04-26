@@ -11,7 +11,7 @@ import (
 )
 
 type Service interface {
-	HandleUpdate(chatIDs []int64, desc string)
+	HandleUpdate(chatIDs []int64, desc string) error
 }
 
 type Server struct {
@@ -35,7 +35,12 @@ func NewServer(service Service, port string) *Server {
 			return
 		}
 
-		service.HandleUpdate(upd.TgChatIDs, upd.Description)
+		err := service.HandleUpdate(upd.TgChatIDs, upd.Description)
+		if err != nil {
+			slog.Error("cannot hadle update", "error", err)
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 	})

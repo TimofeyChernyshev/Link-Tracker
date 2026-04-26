@@ -34,13 +34,15 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // HandleUpdate mocks base method.
-func (m *MockService) HandleUpdate(chatIds []int64, desc string) {
+func (m *MockService) HandleUpdate(chatIDs []int64, desc string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "HandleUpdate", chatIds, desc)
+	ret := m.ctrl.Call(m, "HandleUpdate", chatIDs, desc)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandleUpdate indicates an expected call of HandleUpdate.
-func (mr *MockServiceMockRecorder) HandleUpdate(chatIds, desc interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) HandleUpdate(chatIDs, desc interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleUpdate", reflect.TypeOf((*MockService)(nil).HandleUpdate), chatIds, desc)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleUpdate", reflect.TypeOf((*MockService)(nil).HandleUpdate), chatIDs, desc)
 }
