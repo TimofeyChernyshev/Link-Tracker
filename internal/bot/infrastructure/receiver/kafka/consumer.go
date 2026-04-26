@@ -186,7 +186,7 @@ func (c *Consumer) sendToDLQ(msg kafka.Message, reason error, errorType string, 
 		},
 	}
 
-	if err := c.dlqWriter.WriteMessages(context.Background(), dlqKafkaMsg); err != nil {
+	if err = c.dlqWriter.WriteMessages(context.Background(), dlqKafkaMsg); err != nil {
 		slog.Error("cannot send to DLQ", "error", err)
 		return
 	}
