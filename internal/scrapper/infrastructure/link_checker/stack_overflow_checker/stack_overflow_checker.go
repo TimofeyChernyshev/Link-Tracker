@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -58,7 +57,7 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) ([]do
 		slog.Warn("cannot fetch comments", "error", err)
 	}
 
-	var events []domain.Event
+	var events domain.Events
 
 	for _, answer := range answers {
 		answer.Title = question.Title
@@ -76,10 +75,7 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) ([]do
 		})
 	}
 
-	// Сортируем по времени
-	sort.Slice(events, func(i, j int) bool {
-		return events[i].OccurredAt.Before(events[j].OccurredAt)
-	})
+	events.Sort()
 
 	return events, nil
 }

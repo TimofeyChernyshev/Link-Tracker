@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
 	"time"
 
@@ -52,7 +51,7 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 		slog.Warn("cannot fetch issues", "error", err)
 	}
 
-	var events []domain.Event
+	var events domain.Events
 	lastUpdated := link.UpdatedAt
 
 	for _, pr := range prs {
@@ -76,9 +75,7 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 		}
 	}
 
-	sort.Slice(events, func(i, j int) bool {
-		return events[i].OccurredAt.Before(events[j].OccurredAt)
-	})
+	events.Sort()
 
 	return events, nil
 }
