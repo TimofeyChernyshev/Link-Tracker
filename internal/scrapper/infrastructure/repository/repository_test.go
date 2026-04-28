@@ -181,7 +181,7 @@ func (s *RepositorySuite) TestAddLink() {
 	s.NotZero(link.UpdatedAt)
 }
 
-func (s *RepositorySuite) TestAddLink_AlreadyTracked() {
+func (s *RepositorySuite) TestIsSubscribed() {
 	defer s.Cleanup()
 
 	err := s.repo.RegisterChat(s.ctx, 12345)
@@ -190,9 +190,9 @@ func (s *RepositorySuite) TestAddLink_AlreadyTracked() {
 	_, err = s.repo.AddLink(s.ctx, 12345, "https://github.com/golang/go", []string{"go"})
 	s.Require().NoError(err)
 
-	_, err = s.repo.AddLink(s.ctx, 12345, "https://github.com/golang/go", []string{"go"})
-	s.Require().Error(err)
-	s.Equal("link already tracked", err.Error())
+	tracked, err := s.repo.IsSubscribed(s.ctx, 12345, "https://github.com/golang/go")
+	s.Require().NoError(err)
+	s.True(tracked)
 }
 
 func (s *RepositorySuite) TestRemoveLink() {

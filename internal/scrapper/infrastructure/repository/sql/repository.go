@@ -127,6 +127,28 @@ func (r *SQLRepository) ChatExists(ctx context.Context, chatID int64) (bool, err
 	return exists, nil
 }
 
+func (r *SQLRepository) IsSubscribed(ctx context.Context, chatID int64, url string) (bool, error) {
+	var linkID int64
+	err := r.db.QueryRow(ctx, `
+        INSERT INTO links (url, updated_at) VALUES ($1, $2) 
+        ON CONFLICT (url) DO UPDATE SET url = EXCLUDED.url
+        RETURNING id
+    `, url, time.Now()).Scan(&linkID)
+	if err != nil {
+		return false, fmt.Errorf("upsert link: %w", err)
+	}
+
+	var alreadySubscribed bool
+	err = r.db.QueryRow(ctx, `
+        SELECT EXISTS(SELECT 1 FROM link_chat WHERE chat_id = $1 AND link_id = $2)
+    `, chatID, linkID).Scan(&alreadySubscribed)
+	if err != nil {
+		return false, fmt.Errorf("check subscription: %w", err)
+	}
+
+	return alreadySubscribed, nil
+}
+
 func (r *SQLRepository) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -145,18 +167,6 @@ func (r *SQLRepository) AddLink(ctx context.Context, chatID int64, url string, t
     `, url, time.Now()).Scan(&linkID)
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("upsert link: %w", err)
-	}
-
-	// проверка отслеживает ли уже пользователь ссылку
-	var alreadySubscribed bool
-	err = tx.QueryRow(ctx, `
-        SELECT EXISTS(SELECT 1 FROM link_chat WHERE chat_id = $1 AND link_id = $2)
-    `, chatID, linkID).Scan(&alreadySubscribed)
-	if err != nil {
-		return domain.Link{}, fmt.Errorf("check subscription: %w", err)
-	}
-	if alreadySubscribed {
-		return domain.Link{}, errors.New("link already tracked")
 	}
 
 	// подписывание пользователя на ссылку

@@ -117,6 +117,32 @@ func (r *OrmRepository) ChatExists(ctx context.Context, chatID int64) (bool, err
 	return exists, nil
 }
 
+func (r *OrmRepository) IsSubscribed(ctx context.Context, chatID int64, url string) (bool, error) {
+	var linkID int64
+
+	_, err := r.db.Insert("links").
+		Rows(goqu.Record{
+			"url":        url,
+			"updated_at": time.Now(),
+		}).
+		OnConflict(goqu.DoUpdate("url", goqu.Record{"url": goqu.I("links.url")})).
+		Returning("id").
+		Executor().ScanValContext(ctx, &linkID)
+	if err != nil {
+		return false, fmt.Errorf("upsert link: %w", err)
+	}
+
+	var alreadySubscribed bool
+	_, err = r.db.From("link_chat").
+		Select(goqu.L("EXISTS (SELECT 1 FROM link_chat WHERE chat_id=? AND link_id=?)", chatID, linkID)).
+		ScanValContext(ctx, &alreadySubscribed)
+	if err != nil {
+		return false, fmt.Errorf("check subscription: %w", err)
+	}
+
+	return alreadySubscribed, nil
+}
+
 func (r *OrmRepository) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -138,17 +164,6 @@ func (r *OrmRepository) AddLink(ctx context.Context, chatID int64, url string, t
 		Executor().ScanValContext(ctx, &linkID)
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("upsert link: %w", err)
-	}
-
-	var exists bool
-	_, err = tx.From("link_chat").
-		Select(goqu.L("EXISTS (SELECT 1 FROM link_chat WHERE chat_id=? AND link_id=?)", chatID, linkID)).
-		ScanValContext(ctx, &exists)
-	if err != nil {
-		return domain.Link{}, fmt.Errorf("check subscription: %w", err)
-	}
-	if exists {
-		return domain.Link{}, errors.New("link already tracked")
 	}
 
 	_, err = tx.Insert("link_chat").
