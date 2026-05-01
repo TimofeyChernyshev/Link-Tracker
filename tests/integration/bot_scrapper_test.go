@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type BotScrapperSuite struct {
@@ -32,6 +31,9 @@ type BotScrapperSuite struct {
 	lastBotMessage string
 
 	postgresContainer testcontainers.Container
+
+	valkeyNodes []testcontainers.Container
+	valkeyInit  testcontainers.Container
 }
 
 func TestBotScrapperSuite(t *testing.T) {
@@ -55,29 +57,21 @@ func (s *BotScrapperSuite) SetupSuite() {
 	s.Require().NoError(err)
 	s.network = network
 
-	postgresReq := testcontainers.ContainerRequest{
-		Image:        "postgres:15-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     "postgres",
-			"POSTGRES_PASSWORD": "postgres",
-			"POSTGRES_DB":       "linktracker",
-		},
-		Networks: []string{network.Name},
-		NetworkAliases: map[string][]string{
-			network.Name: {"postgres"},
-		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).
-			WithStartupTimeout(60 * time.Second),
-	}
-
-	postgresContainer, err := testcontainers.GenericContainer(s.ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: postgresReq,
-		Started:          true,
-	})
+	postgresContainer, err := StartPostgres(s.ctx, network.Name)
 	s.Require().NoError(err)
 	s.postgresContainer = postgresContainer
+
+	valkeyNodes, err := StartValkeyNode(s.ctx, network.Name)
+	s.Require().NoError(err)
+	s.valkeyNodes = valkeyNodes
+
+	valkeyInit, err := InitValkeyCluster(s.ctx, network.Name)
+	s.Require().NoError(err)
+	s.valkeyInit = valkeyInit
+
+	s.Eventually(func() bool {
+		return IsValkeyClusterReady(s.ctx, network.Name)
+	}, 20*time.Second, 500*time.Millisecond)
 
 	scrapper, scrapperURL, err := StartScrapper(s.ctx, network.Name)
 	s.Require().NoError(err)
@@ -96,6 +90,12 @@ func (s *BotScrapperSuite) TearDownSuite() {
 	}
 	if s.scrapper != nil {
 		s.scrapper.Terminate(s.ctx)
+	}
+	if s.valkeyInit != nil {
+		s.valkeyInit.Terminate(s.ctx)
+	}
+	for _, n := range s.valkeyNodes {
+		n.Terminate(s.ctx)
 	}
 	if s.network != nil {
 		s.network.Remove(s.ctx)
@@ -194,10 +194,23 @@ func (s *BotScrapperSuite) TestBotScrapperIntegration() {
 		s.Contains(s.lastBotMessage, "Добро пожаловать")
 	})
 
+	waitTime := 10 * time.Second
+	tickTime := 500 * time.Millisecond
 	// Отправка /track в зарегестрированный чат
 	s.SendUserMessage("/track")
+	s.Eventually(func() bool {
+		return strings.Contains(s.lastBotMessage, "Введите ссылку для отслеживания")
+	}, waitTime, tickTime)
+
 	s.SendUserMessage("https://github.com/golang/go")
+	s.Eventually(func() bool {
+		return strings.Contains(s.lastBotMessage, "Введите теги")
+	}, waitTime, tickTime)
+
 	s.SendUserMessage("1, 2, 3")
+	s.Eventually(func() bool {
+		return strings.Contains(s.lastBotMessage, "Ссылка добавлена")
+	}, waitTime, tickTime)
 
 	s.Run("list links", func() {
 		// Проверка, что ссылка сохранена правильно в Scrapper
@@ -217,7 +230,7 @@ func (s *BotScrapperSuite) TestBotScrapperIntegration() {
 		err = json.NewDecoder(resp.Body).Decode(&response)
 		s.Require().NoError(err)
 
-		s.Len(response.Links, 1)
+		s.Require().Len(response.Links, 1)
 		s.Equal("https://github.com/golang/go", response.Links[0].URL)
 		s.ElementsMatch([]string{"3", "1", "2"}, response.Links[0].Tags)
 
