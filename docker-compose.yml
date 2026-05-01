@@ -4,11 +4,11 @@ services:
     container_name: linktracker-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: linktracker
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-linktracker}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -156,17 +156,177 @@ services:
       KAFKA_TOPIC_UPDATES_RETENTION_MS: "604800000"
       # время для хранения DLQ нужно чуть больше (30 дней)
       KAFKA_TOPIC_UPDATES_DLQ_RETENTION_MS: "2592000000"
-    command: |
-      bash -c "
-        cub kafka-ready -b $$KAFKA_BOOTSTRAP_SERVERS 1 30 &&
+    command:
+      - sh
+      - -c
+      - |
+        cub kafka-ready -b $$KAFKA_BOOTSTRAP_SERVERS 1 30
 
-        kafka-topics --create --if-not-exists --topic $$KAFKA_TOPIC_UPDATES --partitions $$KAFKA_TOPIC_UPDATES_PARTITIONS --replication-factor $$KAFKA_TOPIC_UPDATES_RF --config retention.ms=$$KAFKA_TOPIC_UPDATES_RETENTION_MS --config cleanup.policy=delete --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS &&
+        kafka-topics --create --if-not-exists \
+          --topic $$KAFKA_TOPIC_UPDATES \
+          --partitions $$KAFKA_TOPIC_UPDATES_PARTITIONS \
+          --replication-factor $$KAFKA_TOPIC_UPDATES_RF \
+          --config retention.ms=$$KAFKA_TOPIC_UPDATES_RETENTION_MS \
+          --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
 
-        kafka-topics --create --if-not-exists --topic $$KAFKA_TOPIC_UPDATES_DLQ --partitions $$KAFKA_TOPIC_UPDATES_DLQ_PARTITIONS --replication-factor $$KAFKA_TOPIC_UPDATES_DLQ_RF --config retention.ms=$$KAFKA_TOPIC_UPDATES_DLQ_RETENTION_MS --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS &&
+        kafka-topics --create --if-not-exists \
+          --topic $$KAFKA_TOPIC_UPDATES_DLQ \
+          --partitions $$KAFKA_TOPIC_UPDATES_DLQ_PARTITIONS \
+          --replication-factor $$KAFKA_TOPIC_UPDATES_DLQ_RF \
+          --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
 
-        echo 'Topics created:' &&
-        kafka-topics --list --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
-      "
+        echo 'Topics created:' && kafka-topics --list --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+
+  valkey-node-1:
+    image: valkey/valkey:8.0-alpine
+    container_name: linktracker-valkey-1
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_NODE_1_PORT:-6379}:6379"
+      - "${VALKEY_NODE_1_BUS_PORT:-16379}:16379"
+    command:
+      - valkey-server
+      - --cluster-enabled
+      - "${VALKEY_CLUSTER_ENABLED:-yes}"
+      - --cluster-config-file
+      - "${VALKEY_NODE_1_CONF:-/data/nodes-1.conf}"
+      - --cluster-node-timeout
+      - "${VALKEY_CLUSTER_NODE_TIMEOUT:-5000}"
+      - --appendonly
+      - "${VALKEY_APPENDONLY:-yes}"
+      - --appendfsync
+      - "${VALKEY_APPENDFSYNC:-everysec}"
+      - --port
+      - "6379"
+      - --cluster-announce-port
+      - "6379"
+      - --cluster-announce-bus-port
+      - "16379"
+      - --cluster-announce-ip
+      - valkey-node-1
+      - --maxmemory
+      - "${VALKEY_MAXMEMORY:-256mb}"
+      - --maxmemory-policy
+      - "${VALKEY_MAXMEMORY_POLICY:-allkeys-lru}"
+    volumes:
+      - valkey_data_1:/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  valkey-node-2:
+    image: valkey/valkey:8.0-alpine
+    container_name: linktracker-valkey-2
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_NODE_2_PORT:-6380}:6379"
+      - "${VALKEY_NODE_2_BUS_PORT:-16380}:16379"
+    command:
+      - valkey-server
+      - --cluster-enabled
+      - "${VALKEY_CLUSTER_ENABLED:-yes}"
+      - --cluster-config-file
+      - "${VALKEY_NODE_2_CONF:-/data/nodes-2.conf}"
+      - --cluster-node-timeout
+      - "${VALKEY_CLUSTER_NODE_TIMEOUT:-5000}"
+      - --appendonly
+      - "${VALKEY_APPENDONLY:-yes}"
+      - --appendfsync
+      - "${VALKEY_APPENDFSYNC:-everysec}"
+      - --port
+      - "6379"
+      - --cluster-announce-port
+      - "6379"
+      - --cluster-announce-bus-port
+      - "16379"
+      - --cluster-announce-ip
+      - valkey-node-2
+      - --maxmemory
+      - "${VALKEY_MAXMEMORY:-256mb}"
+      - --maxmemory-policy
+      - "${VALKEY_MAXMEMORY_POLICY:-allkeys-lru}"
+    volumes:
+      - valkey_data_2:/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  valkey-node-3:
+    image: valkey/valkey:8.0-alpine
+    container_name: linktracker-valkey-3
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_NODE_3_PORT:-6381}:6379"
+      - "${VALKEY_NODE_3_BUS_PORT:-16381}:16379"
+    command:
+      - valkey-server
+      - --cluster-enabled
+      - "${VALKEY_CLUSTER_ENABLED:-yes}"
+      - --cluster-config-file
+      - "${VALKEY_NODE_3_CONF:-/data/nodes-3.conf}"
+      - --cluster-node-timeout
+      - "${VALKEY_CLUSTER_NODE_TIMEOUT:-5000}"
+      - --appendonly
+      - "${VALKEY_APPENDONLY:-yes}"
+      - --appendfsync
+      - "${VALKEY_APPENDFSYNC:-everysec}"
+      - --port
+      - "6379"
+      - --cluster-announce-port
+      - "6379"
+      - --cluster-announce-bus-port
+      - "16379"
+      - --cluster-announce-ip
+      - valkey-node-3
+      - --maxmemory
+      - "${VALKEY_MAXMEMORY:-256mb}"
+      - --maxmemory-policy
+      - "${VALKEY_MAXMEMORY_POLICY:-allkeys-lru}"
+    volumes:
+      - valkey_data_3:/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  valkey-cluster-init:
+    image: valkey/valkey:8.0-alpine
+    container_name: linktracker-valkey-init
+    depends_on:
+      valkey-node-1:
+        condition: service_healthy
+      valkey-node-2:
+        condition: service_healthy
+      valkey-node-3:
+        condition: service_healthy
+    networks:
+      - linktracker-net
+    environment:
+      VALKEY_CLUSTER_REPLICAS: ${VALKEY_CLUSTER_REPLICAS:-0}
+    command:
+      - sh
+      - -c
+      - |
+        valkey-cli --cluster create \
+          valkey-node-1:6379 \
+          valkey-node-2:6379 \
+          valkey-node-3:6379 \
+          --cluster-replicas ${VALKEY_CLUSTER_REPLICAS:-0} \
+          --cluster-yes
+
+        echo "Cluster ready"
+    restart: "no"
 
   scrapper:
     build:
@@ -174,6 +334,8 @@ services:
       dockerfile: Dockerfile.scrapper
     container_name: linktracker-scrapper
     restart: unless-stopped
+    depends_on:
+      - valkey-cluster-init
     ports:
       - "${SCRAPPER_PORT:-8081}:${SCRAPPER_PORT:-8081}"
     environment:
@@ -207,6 +369,9 @@ volumes:
   kafka1_data:
   kafka2_data:
   kafka3_data:
+  valkey_data_1:
+  valkey_data_2:
+  valkey_data_3:
 
 networks:
   linktracker-net:
