@@ -14,6 +14,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/application"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/cache"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
 	scrappernotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier"
@@ -29,6 +30,7 @@ type ScrapperApp struct {
 	linkService *application.Service
 	scheduler   *scheduler.Scheduler
 	server      *scrapperhttp.Server
+	cache       *cache.ValkeyClient
 }
 
 func main() {
@@ -79,7 +81,14 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		return nil, fmt.Errorf("failed to create notifier: %w", err)
 	}
 
-	linkService := application.NewLinkService(linkChecker, notifier, repo, cfg.BatchSize, cfg.WorkerCount)
+	cache, err := cache.NewValkeyClient(cfg.ValkeyAddresses, cfg.ValkeyPassword, cfg.ValkeyTTL,
+		cfg.ValkeyPoolSize, cfg.ValkeyMaxRetries, cfg.ValkeyMinRetryBackoff,
+		cfg.ValkeyMaxRetryBackoff, cfg.ValkeyPingTime, cfg.ValkeyClusterMode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cache client: %w", err)
+	}
+
+	linkService := application.NewLinkService(linkChecker, notifier, repo, cache, cfg.BatchSize, cfg.WorkerCount, cfg.DefaultLimit)
 
 	sched, err := scheduler.New(cfg.CheckInterval, linkService)
 	if err != nil {
@@ -95,6 +104,7 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		linkService: linkService,
 		scheduler:   sched,
 		server:      server,
+		cache:       cache,
 	}, nil
 }
 
@@ -137,6 +147,10 @@ func (a *ScrapperApp) shutdown() error {
 
 	if err := a.server.Shutdown(ctx); err != nil {
 		slog.Error("server stop error", "error", err)
+	}
+
+	if err := a.cache.Close(); err != nil {
+		slog.Error("cache stop error", "error", err)
 	}
 
 	slog.Info("scrapper stopped")
