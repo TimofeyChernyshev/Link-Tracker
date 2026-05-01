@@ -121,7 +121,7 @@ func (s *BotScrapperKafkaSuite) SetupSuite() {
 		},
 		kafkago.TopicConfig{
 			Topic:             s.DLQTopic,
-			NumPartitions:     3, // подумать над этим
+			NumPartitions:     3,
 			ReplicationFactor: 1,
 		},
 	)
