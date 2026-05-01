@@ -19,15 +19,17 @@ var (
 )
 
 type Service struct {
-	client      Client
-	notifier    Notifier
-	storage     Storage
-	batchSize   int
-	workerCount int
+	client       Client
+	notifier     Notifier
+	cache        Cache
+	storage      Storage
+	batchSize    int
+	workerCount  int
+	defaultLimit int
 }
 
-func NewLinkService(c Client, n Notifier, s Storage, bs, wk int) *Service {
-	return &Service{client: c, notifier: n, storage: s, batchSize: bs, workerCount: wk}
+func NewLinkService(c Client, n Notifier, s Storage, cache Cache, bs, wk, dl int) *Service {
+	return &Service{client: c, notifier: n, storage: s, cache: cache, batchSize: bs, workerCount: wk, defaultLimit: dl}
 }
 
 func (s *Service) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
@@ -55,6 +57,10 @@ func (s *Service) AddLink(ctx context.Context, chatID int64, url string, tags []
 		return domain.Link{}, fmt.Errorf("adding link: %w", err)
 	}
 
+	if err := s.cache.InvalidateLinks(ctx, chatID); err != nil {
+		slog.Warn("failed to invalidate cache on add", "error", err)
+	}
+
 	return link, nil
 }
 
@@ -75,6 +81,10 @@ func (s *Service) RemoveLink(ctx context.Context, chatID int64, url string) (dom
 		return domain.Link{}, fmt.Errorf("removing link: %w", err)
 	}
 
+	if err := s.cache.InvalidateLinks(ctx, chatID); err != nil {
+		slog.Warn("failed to invalidate cache on remove", "error", err)
+	}
+
 	return link, nil
 }
 
@@ -90,9 +100,29 @@ func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int)
 		return nil, errChatInstRegistered
 	}
 
+	// кэшируется только 1я страница, т.к. иначе нужно было бы
+	// создавать ключи под разные комбинации параметров limit и offset,
+	// а это противоречит пункту 1.1 условия ДЗ 6.
+	// в ДЗ 3 указано, что нужно использовать пагинацию для обработки данных из таблиц
+	if offset == 0 && limit == s.defaultLimit {
+		cached, err := s.cache.GetLinks(ctx, chatID)
+		if err != nil {
+			slog.Warn("cannot get links from cache", "error", err)
+		}
+		if len(cached) != 0 {
+			return cached, nil
+		}
+	}
+
 	links, err := s.storage.GetLinks(ctx, chatID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("getting links: %w", err)
+	}
+
+	if offset == 0 && limit == s.defaultLimit && len(links) > 0 {
+		if err = s.cache.SetLinks(ctx, chatID, links); err != nil {
+			slog.Warn("failed to set cache", "error", err)
+		}
 	}
 
 	return links, nil
@@ -131,6 +161,10 @@ func (s *Service) DeleteChat(ctx context.Context, chatID int64) error {
 
 	if err = s.storage.DeleteChat(ctx, chatID); err != nil {
 		return fmt.Errorf("delete chat: %w", err)
+	}
+
+	if err := s.cache.InvalidateLinks(ctx, chatID); err != nil {
+		slog.Warn("failed to invalidate cache on delete chat", "error", err)
 	}
 
 	return nil

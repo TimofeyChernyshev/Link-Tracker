@@ -271,3 +271,69 @@ func (mr *MockStorageMockRecorder) UpdateTimestamp(ctx, url, t interface{}) *gom
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTimestamp", reflect.TypeOf((*MockStorage)(nil).UpdateTimestamp), ctx, url, t)
 }
+
+// MockCache is a mock of Cache interface.
+type MockCache struct {
+	ctrl     *gomock.Controller
+	recorder *MockCacheMockRecorder
+}
+
+// MockCacheMockRecorder is the mock recorder for MockCache.
+type MockCacheMockRecorder struct {
+	mock *MockCache
+}
+
+// NewMockCache creates a new mock instance.
+func NewMockCache(ctrl *gomock.Controller) *MockCache {
+	mock := &MockCache{ctrl: ctrl}
+	mock.recorder = &MockCacheMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockCache) EXPECT() *MockCacheMockRecorder {
+	return m.recorder
+}
+
+// GetLinks mocks base method.
+func (m *MockCache) GetLinks(ctx context.Context, chatID int64) ([]domain.Link, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLinks", ctx, chatID)
+	ret0, _ := ret[0].([]domain.Link)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLinks indicates an expected call of GetLinks.
+func (mr *MockCacheMockRecorder) GetLinks(ctx, chatID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockCache)(nil).GetLinks), ctx, chatID)
+}
+
+// InvalidateLinks mocks base method.
+func (m *MockCache) InvalidateLinks(ctx context.Context, chatID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InvalidateLinks", ctx, chatID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InvalidateLinks indicates an expected call of InvalidateLinks.
+func (mr *MockCacheMockRecorder) InvalidateLinks(ctx, chatID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InvalidateLinks", reflect.TypeOf((*MockCache)(nil).InvalidateLinks), ctx, chatID)
+}
+
+// SetLinks mocks base method.
+func (m *MockCache) SetLinks(ctx context.Context, chatID int64, data []domain.Link) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetLinks", ctx, chatID, data)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetLinks indicates an expected call of SetLinks.
+func (mr *MockCacheMockRecorder) SetLinks(ctx, chatID, data interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLinks", reflect.TypeOf((*MockCache)(nil).SetLinks), ctx, chatID, data)
+}
