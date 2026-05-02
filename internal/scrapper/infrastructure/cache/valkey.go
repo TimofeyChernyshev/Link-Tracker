@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -57,7 +58,7 @@ func (c *ValkeyClient) GetLinks(ctx context.Context, chatID int64) ([]domain.Lin
 
 	data, err := c.client.Get(ctx, key).Bytes()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return []domain.Link{}, nil
 		}
 		return nil, fmt.Errorf("failed to get from cache: %w", err)
