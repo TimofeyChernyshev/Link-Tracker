@@ -192,13 +192,17 @@ func IsValkeyClusterReady(ctx context.Context, networkName string) bool {
 	if err != nil {
 		return false
 	}
-	defer c.Terminate(ctx)
+	defer func() {
+		_ = c.Terminate(ctx)
+	}()
 
 	logs, err := c.Logs(ctx)
 	if err != nil {
 		return false
 	}
-	defer logs.Close()
+	defer func() {
+		_ = logs.Close()
+	}()
 
 	buf := new(strings.Builder)
 	_, _ = io.Copy(buf, logs)
