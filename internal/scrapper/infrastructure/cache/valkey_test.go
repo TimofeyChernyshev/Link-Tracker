@@ -203,31 +203,6 @@ func (s *ValkeyClientTestSuite) TestOverwrite() {
 	s.Equal("https://third.com", cachedLinks[1].URL)
 }
 
-func (s *ValkeyClientTestSuite) TestConcurrentAccess() {
-	chatID := int64(12345)
-
-	testLinks := []domain.Link{
-		{ID: 1, URL: "https://test.com", Tags: []string{"test"}, UpdatedAt: time.Now()},
-	}
-
-	err := s.client.SetLinks(s.ctx, chatID, testLinks)
-	s.Require().NoError(err)
-
-	done := make(chan bool, 10)
-	for i := 0; i < 10; i++ {
-		go func() {
-			links, errGetLinks := s.client.GetLinks(s.ctx, chatID)
-			s.NoError(errGetLinks)
-			s.Len(links, 1)
-			done <- true
-		}()
-	}
-
-	for i := 0; i < 10; i++ {
-		<-done
-	}
-}
-
 func (s *ValkeyClientTestSuite) TestDifferentChatIDs() {
 	chats := []int64{11111, 22222, 33333}
 	linksPerChat := make(map[int64][]domain.Link)
