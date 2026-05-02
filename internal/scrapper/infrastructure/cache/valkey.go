@@ -105,5 +105,10 @@ func (c *ValkeyClient) getKey(chatID int64) string {
 }
 
 func (c *ValkeyClient) Close() error {
-	return c.client.Close()
+	err := c.client.Close()
+	if err != nil {
+		return fmt.Errorf("cannot close valkey client: %w", err)
+	}
+
+	return nil
 }
