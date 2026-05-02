@@ -22,6 +22,10 @@ import (
 	sqlrepo "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository/sql"
 )
 
+var (
+	linksLen = 1000
+)
+
 func BenchmarkGetLinks_CacheVsNoCache(b *testing.B) {
 	ctx := context.Background()
 
@@ -60,7 +64,7 @@ func BenchmarkGetLinks_CacheVsNoCache(b *testing.B) {
 	err = repo.RegisterChat(ctx, chatID)
 	require.NoError(b, err)
 
-	for i := 0; i < 1000; i++ {
+	for i := range linksLen {
 		_, err = serviceNoCache.AddLink(
 			ctx,
 			chatID,
