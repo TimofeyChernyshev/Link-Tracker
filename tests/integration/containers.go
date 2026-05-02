@@ -100,9 +100,10 @@ func StartBot(ctx context.Context, networkName string, telegramURL string) (test
 }
 
 func StartValkeyNode(ctx context.Context, networkName string) ([]testcontainers.Container, error) {
-	nodes := make([]testcontainers.Container, 0, 3)
+	nodesInCluster := 3
+	nodes := make([]testcontainers.Container, 0, nodesInCluster)
 
-	for i := 1; i <= 3; i++ {
+	for i := 1; i <= nodesInCluster; i++ {
 		name := fmt.Sprintf("valkey-node-%d", i)
 
 		req := testcontainers.ContainerRequest{
@@ -211,6 +212,9 @@ func IsValkeyClusterReady(ctx context.Context, networkName string) bool {
 }
 
 func StartPostgres(ctx context.Context, networkName string) (testcontainers.Container, error) {
+	occurrence := 2 // 1 - БД инициализируется, 2 - БД готова к подключению
+	startupTimeout := 60 * time.Second
+
 	postgresReq := testcontainers.ContainerRequest{
 		Image:        "postgres:15-alpine",
 		ExposedPorts: []string{"5432/tcp"},
@@ -224,8 +228,8 @@ func StartPostgres(ctx context.Context, networkName string) (testcontainers.Cont
 			networkName: {"postgres"},
 		},
 		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).
-			WithStartupTimeout(60 * time.Second),
+			WithOccurrence(occurrence).
+			WithStartupTimeout(startupTimeout),
 	}
 
 	postgresContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
