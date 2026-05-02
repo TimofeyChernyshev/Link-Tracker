@@ -213,7 +213,7 @@ func IsValkeyClusterReady(ctx context.Context, networkName string) bool {
 
 func StartPostgres(ctx context.Context, networkName string) (testcontainers.Container, error) {
 	occurrence := 2 // 1 - БД инициализируется, 2 - БД готова к подключению
-	startupTimeout := 60 * time.Second
+	const startupTimeout = 60 * time.Second
 
 	postgresReq := testcontainers.ContainerRequest{
 		Image:        "postgres:15-alpine",
