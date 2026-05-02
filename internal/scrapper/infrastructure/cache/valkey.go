@@ -64,6 +64,9 @@ func (c *ValkeyClient) GetLinks(ctx context.Context, chatID int64) ([]domain.Lin
 		return nil, fmt.Errorf("failed to get from cache: %w", err)
 	}
 
+	// Для кэша быстрее использовать сразу доменную модель
+	// иначе придется создавать промежуточную и переносить данные, на это уходит много ресурсов
+	//nolint:musttag
 	var links []domain.Link
 	if err = json.Unmarshal(data, &links); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal data: %w", err)
@@ -76,6 +79,9 @@ func (c *ValkeyClient) GetLinks(ctx context.Context, chatID int64) ([]domain.Lin
 func (c *ValkeyClient) SetLinks(ctx context.Context, chatID int64, links []domain.Link) error {
 	key := c.getKey(chatID)
 
+	// Для кэша быстрее использовать сразу доменную модель
+	// иначе придется создавать промежуточную и переносить данные, на это уходит много ресурсов
+	//nolint:musttag
 	dataBytes, err := json.Marshal(links)
 	if err != nil {
 		return fmt.Errorf("cannot unmarshal data: %w", err)
