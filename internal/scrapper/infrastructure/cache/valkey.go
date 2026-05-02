@@ -101,10 +101,6 @@ func (c *ValkeyClient) InvalidateLinks(ctx context.Context, chatID int64) error 
 	return nil
 }
 
-func (c *ValkeyClient) getKey(chatID int64) string {
-	return strconv.FormatInt(chatID, 10)
-}
-
 func (c *ValkeyClient) Close() error {
 	err := c.client.Close()
 	if err != nil {
@@ -112,4 +108,8 @@ func (c *ValkeyClient) Close() error {
 	}
 
 	return nil
+}
+
+func (c *ValkeyClient) getKey(chatID int64) string {
+	return strconv.FormatInt(chatID, 10)
 }
