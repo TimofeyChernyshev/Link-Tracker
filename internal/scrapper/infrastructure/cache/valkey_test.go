@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -46,14 +44,14 @@ func (s *ValkeyClientTestSuite) SetupSuite() {
 		ContainerRequest: req,
 		Started:          true,
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	s.valkeyContainer = container
 
 	host, err := container.Host(s.ctx)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	port, err := container.MappedPort(s.ctx, "6379")
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	address := fmt.Sprintf("%s:%s", host, port.Port())
 
@@ -62,7 +60,7 @@ func (s *ValkeyClientTestSuite) SetupSuite() {
 	})
 
 	err = redisClient.Ping(s.ctx).Err()
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	s.client = &ValkeyClient{
 		client: redisClient,
@@ -219,8 +217,8 @@ func (s *ValkeyClientTestSuite) TestConcurrentAccess() {
 	for i := 0; i < 10; i++ {
 		go func() {
 			links, err := s.client.GetLinks(s.ctx, chatID)
-			assert.NoError(s.T(), err)
-			assert.Len(s.T(), links, 1)
+			s.NoError(err)
+			s.Len(links, 1)
 			done <- true
 		}()
 	}
