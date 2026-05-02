@@ -216,8 +216,8 @@ func (s *ValkeyClientTestSuite) TestConcurrentAccess() {
 	done := make(chan bool, 10)
 	for i := 0; i < 10; i++ {
 		go func() {
-			links, err := s.client.GetLinks(s.ctx, chatID)
-			s.NoError(err)
+			links, errGetLinks := s.client.GetLinks(s.ctx, chatID)
+			s.NoError(errGetLinks)
 			s.Len(links, 1)
 			done <- true
 		}()

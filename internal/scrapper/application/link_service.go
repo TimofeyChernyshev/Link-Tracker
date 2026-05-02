@@ -57,7 +57,7 @@ func (s *Service) AddLink(ctx context.Context, chatID int64, url string, tags []
 		return domain.Link{}, fmt.Errorf("adding link: %w", err)
 	}
 
-	if err := s.cache.InvalidateLinks(ctx, chatID); err != nil {
+	if err = s.cache.InvalidateLinks(ctx, chatID); err != nil {
 		slog.Warn("failed to invalidate cache on add", "error", err)
 	}
 
@@ -81,7 +81,7 @@ func (s *Service) RemoveLink(ctx context.Context, chatID int64, url string) (dom
 		return domain.Link{}, fmt.Errorf("removing link: %w", err)
 	}
 
-	if err := s.cache.InvalidateLinks(ctx, chatID); err != nil {
+	if err = s.cache.InvalidateLinks(ctx, chatID); err != nil {
 		slog.Warn("failed to invalidate cache on remove", "error", err)
 	}
 
@@ -105,9 +105,9 @@ func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int)
 	// а это противоречит пункту 1.1 условия ДЗ 6.
 	// в ДЗ 3 указано, что нужно использовать пагинацию для обработки данных из таблиц
 	if offset == 0 && limit == s.defaultLimit {
-		cached, err := s.cache.GetLinks(ctx, chatID)
-		if err != nil {
-			slog.Warn("cannot get links from cache", "error", err)
+		cached, errGetCache := s.cache.GetLinks(ctx, chatID)
+		if errGetCache != nil {
+			slog.Warn("cannot get links from cache", "error", errGetCache)
 		}
 		if len(cached) != 0 {
 			return cached, nil
@@ -163,7 +163,7 @@ func (s *Service) DeleteChat(ctx context.Context, chatID int64) error {
 		return fmt.Errorf("delete chat: %w", err)
 	}
 
-	if err := s.cache.InvalidateLinks(ctx, chatID); err != nil {
+	if err = s.cache.InvalidateLinks(ctx, chatID); err != nil {
 		slog.Warn("failed to invalidate cache on delete chat", "error", err)
 	}
 

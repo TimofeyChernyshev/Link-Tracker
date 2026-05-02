@@ -61,7 +61,7 @@ func BenchmarkGetLinks_CacheVsNoCache(b *testing.B) {
 	require.NoError(b, err)
 
 	for i := 0; i < 1000; i++ {
-		_, err := serviceNoCache.AddLink(
+		_, err = serviceNoCache.AddLink(
 			ctx,
 			chatID,
 			"https://example.com/"+strconv.Itoa(i),
@@ -72,7 +72,7 @@ func BenchmarkGetLinks_CacheVsNoCache(b *testing.B) {
 
 	b.Run("no_cache", func(b *testing.B) {
 		for range b.N {
-			_, err := serviceNoCache.GetLinks(ctx, chatID, 100, 0)
+			_, err = serviceNoCache.GetLinks(ctx, chatID, 100, 0)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -81,13 +81,13 @@ func BenchmarkGetLinks_CacheVsNoCache(b *testing.B) {
 
 	b.Run("with_cache", func(b *testing.B) {
 		// сохранение результата операции в кэш
-		_, err := serviceCache.GetLinks(ctx, chatID, 100, 0)
+		_, err = serviceCache.GetLinks(ctx, chatID, 100, 0)
 		require.NoError(b, err)
 
 		b.ResetTimer()
 
 		for range b.N {
-			_, err := serviceCache.GetLinks(ctx, chatID, 100, 0)
+			_, err = serviceCache.GetLinks(ctx, chatID, 100, 0)
 			if err != nil {
 				b.Fatal(err)
 			}
