@@ -81,7 +81,7 @@ func TestLoad(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// serviceNoCache := application.NewLinkService(nil, nil, repo, &NoopCache{}, 100, 1, linkServiceLimit)
+	serviceNoCache := application.NewLinkService(nil, nil, repo, &NoopCache{}, 100, 1, linkServiceLimit)
 	serviceCache := application.NewLinkService(nil, nil, repo, valkeyClient, 100, 1, linkServiceLimit)
 
 	for u := range users {
@@ -96,9 +96,9 @@ func TestLoad(t *testing.T) {
 		}
 	}
 
-	// t.Run("no_cache", func(t *testing.T) {
-	// 	RunLoadTest(serviceNoCache)
-	// })
+	t.Run("no_cache", func(t *testing.T) {
+		RunLoadTest(serviceNoCache)
+	})
 
 	t.Run("with_cache", func(t *testing.T) {
 		RunLoadTest(serviceCache)
