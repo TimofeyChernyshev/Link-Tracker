@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,25 +26,46 @@ import (
 )
 
 var (
-	linksLen = 1000
+	getRequests  = 100
+	postRequests = 1
+	users        = 1000
+	linksPerUser = 100
+
+	linkServiceLimit = 100
+
+	testDuration = 5 * time.Minute
+	rampUp       = time.Minute
 )
 
-func BenchmarkGetLinks_CacheVsNoCache(b *testing.B) {
+type Metrics struct {
+	mu sync.Mutex
+
+	getLatencies  []time.Duration
+	postLatencies []time.Duration
+
+	getSuccess  int
+	postSuccess int
+
+	postErr500 int
+	getErr500  int
+}
+
+func TestLoad(t *testing.T) {
 	ctx := context.Background()
 
 	postgresContainer, connString, err := startPostgresContainer(ctx)
-	require.NoError(b, err)
+	require.NoError(t, err)
 	defer postgresContainer.Terminate(ctx)
 
 	err = runMigrations(connString)
-	require.NoError(b, err)
+	require.NoError(t, err)
 
 	repo, err := sqlrepo.NewRepository(connString)
-	require.NoError(b, err)
+	require.NoError(t, err)
 	defer repo.Close()
 
 	valkeyContainer, valkeyAddr, err := startValkeySingleNode(ctx)
-	require.NoError(b, err)
+	require.NoError(t, err)
 	defer valkeyContainer.Terminate(ctx)
 
 	valkeyClient, err := cache.NewValkeyClient(
@@ -55,48 +79,140 @@ func BenchmarkGetLinks_CacheVsNoCache(b *testing.B) {
 		time.Second,
 		false,
 	)
-	require.NoError(b, err)
+	require.NoError(t, err)
 
-	serviceNoCache := application.NewLinkService(nil, nil, repo, &NoopCache{}, 100, 1, 100)
-	serviceCache := application.NewLinkService(nil, nil, repo, valkeyClient, 100, 1, 100)
+	// serviceNoCache := application.NewLinkService(nil, nil, repo, &NoopCache{}, 100, 1, linkServiceLimit)
+	serviceCache := application.NewLinkService(nil, nil, repo, valkeyClient, 100, 1, linkServiceLimit)
 
-	chatID := int64(1)
-	err = repo.RegisterChat(ctx, chatID)
-	require.NoError(b, err)
+	for u := range users {
+		chatID := int64(u)
 
-	for i := range linksLen {
-		_, err = serviceNoCache.AddLink(
-			ctx,
-			chatID,
-			"https://example.com/"+strconv.Itoa(i),
-			[]string{"tag1", "tag2"},
-		)
-		require.NoError(b, err)
+		err := repo.RegisterChat(ctx, chatID)
+		require.NoError(t, err)
+
+		for i := range linksPerUser {
+			_, err = repo.AddLink(ctx, chatID, "https://"+strconv.Itoa(i), []string{"tag"})
+			require.NoError(t, err)
+		}
 	}
 
-	b.Run("no_cache", func(b *testing.B) {
-		for range b.N {
-			_, err = serviceNoCache.GetLinks(ctx, chatID, 100, 0)
-			if err != nil {
-				b.Fatal(err)
-			}
+	// t.Run("no_cache", func(t *testing.T) {
+	// 	RunLoadTest(serviceNoCache)
+	// })
+
+	t.Run("with_cache", func(t *testing.T) {
+		RunLoadTest(serviceCache)
+	})
+}
+
+func RunLoadTest(svc *application.Service) {
+	ctx, cancel := context.WithTimeout(context.Background(), testDuration)
+	defer cancel()
+
+	workers := runtime.NumCPU() * 2
+
+	metrics := &Metrics{
+		getLatencies:  make([]time.Duration, 0, 100000),
+		postLatencies: make([]time.Duration, 0, 100000),
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(workers)
+
+	for i := range workers {
+		go func(i int) {
+			defer wg.Done()
+
+			delay := time.Duration(i) * rampUp / time.Duration(workers)
+			time.Sleep(delay)
+
+			worker(ctx, svc, metrics)
+		}(i)
+	}
+
+	<-ctx.Done()
+	wg.Wait()
+
+	printStats("GET /list", metrics.getLatencies, metrics.getSuccess, metrics.getErr500)
+	printStats("POST /list", metrics.postLatencies, metrics.postSuccess, metrics.postErr500)
+}
+
+func worker(ctx context.Context, svc *application.Service, m *Metrics) {
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
 		}
+
+		for range getRequests {
+			chatID := int64(rnd.Intn(users))
+
+			start := time.Now()
+			_, err := svc.GetLinks(ctx, chatID, linkServiceLimit, 0)
+			duration := time.Since(start)
+
+			m.mu.Lock()
+			m.getLatencies = append(m.getLatencies, duration)
+			if err != nil {
+				m.getErr500++
+			} else {
+				m.getSuccess++
+			}
+			m.mu.Unlock()
+		}
+
+		for range postRequests {
+			chatID := int64(rnd.Intn(users))
+
+			start := time.Now()
+			_, err := svc.AddLink(ctx, chatID, "https://test", nil)
+			duration := time.Since(start)
+
+			m.mu.Lock()
+			m.postLatencies = append(m.postLatencies, duration)
+			if err != nil {
+				m.postErr500++
+			} else {
+				m.postSuccess++
+			}
+			m.mu.Unlock()
+		}
+	}
+}
+
+func printStats(name string, latencies []time.Duration, success, err500 int) {
+	if len(latencies) == 0 {
+		fmt.Println(name, "no data")
+		return
+	}
+
+	sort.Slice(latencies, func(i, j int) bool {
+		return latencies[i] < latencies[j]
 	})
 
-	b.Run("with_cache", func(b *testing.B) {
-		// сохранение результата операции в кэш
-		_, err = serviceCache.GetLinks(ctx, chatID, 100, 0)
-		require.NoError(b, err)
+	total := len(latencies)
 
-		b.ResetTimer()
+	p50 := latencies[total/2]
+	p99 := latencies[int(float64(total)*0.99)]
 
-		for range b.N {
-			_, err = serviceCache.GetLinks(ctx, chatID, 100, 0)
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
+	var sum time.Duration
+	for _, l := range latencies {
+		sum += l
+	}
+
+	avg := sum / time.Duration(total)
+	rps := float64(total) / testDuration.Seconds()
+
+	fmt.Println(name)
+	fmt.Println("Total:", total)
+	fmt.Println("Success:", success)
+	fmt.Println("Errors 500:", err500)
+	fmt.Println("Avg:", avg)
+	fmt.Println("P50:", p50)
+	fmt.Println("P99:", p99)
+	fmt.Println("RPS:", rps)
 }
 
 func startPostgresContainer(ctx context.Context) (testcontainers.Container, string, error) {
