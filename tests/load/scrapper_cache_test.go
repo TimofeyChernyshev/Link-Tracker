@@ -51,6 +51,8 @@ type Metrics struct {
 }
 
 func TestLoad(t *testing.T) {
+	testcontainers.SkipIfProviderIsNotHealthy(t)
+
 	ctx := context.Background()
 
 	postgresContainer, connString, err := startPostgresContainer(ctx)
