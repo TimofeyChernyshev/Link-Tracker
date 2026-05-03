@@ -87,7 +87,7 @@ func TestLoad(t *testing.T) {
 	for u := range users {
 		chatID := int64(u)
 
-		err := repo.RegisterChat(ctx, chatID)
+		err = repo.RegisterChat(ctx, chatID)
 		require.NoError(t, err)
 
 		for i := range linksPerUser {
@@ -96,11 +96,11 @@ func TestLoad(t *testing.T) {
 		}
 	}
 
-	t.Run("no_cache", func(t *testing.T) {
+	t.Run("no_cache", func(_ *testing.T) {
 		RunLoadTest(serviceNoCache)
 	})
 
-	t.Run("with_cache", func(t *testing.T) {
+	t.Run("with_cache", func(_ *testing.T) {
 		RunLoadTest(serviceCache)
 	})
 }
