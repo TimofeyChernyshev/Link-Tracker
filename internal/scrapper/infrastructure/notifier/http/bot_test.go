@@ -11,6 +11,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
+)
+
+var (
+	retryCfg = resilience.RetryConfig{
+		MaxAttempts:   1,
+		InitialDelay:  10 * time.Millisecond,
+		MaxDelay:      100 * time.Millisecond,
+		BackoffFactor: 1.0,
+		RetryableHTTP: []int{500, 502, 503, 504},
+	}
+	cbConfig = resilience.CircuitBreakerConfig{
+		Name:        "test-cb",
+		MaxRequests: 5,
+		Timeout:     1 * time.Second,
+	}
+	rateLimit = 100
+	timeout   = 5 * time.Second
 )
 
 func TestBotClient_SendUpdate_OK(t *testing.T) {
@@ -28,8 +46,9 @@ func TestBotClient_SendUpdate_OK(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	timeout := 5 * time.Second
-	c := NewBotClient(ts.URL, timeout)
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
+
+	c := NewBotClient(ts.URL, resilientClient)
 
 	upd := domain.LinkUpdate{
 		ID:          1,
@@ -58,8 +77,8 @@ func TestBotClient_SendUpdate_Error(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	timeout := 5 * time.Second
-	c := NewBotClient(ts.URL, timeout)
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
+	c := NewBotClient(ts.URL, resilientClient)
 
 	err := c.SendUpdate(context.Background(), domain.LinkUpdate{})
 	require.Error(t, err)

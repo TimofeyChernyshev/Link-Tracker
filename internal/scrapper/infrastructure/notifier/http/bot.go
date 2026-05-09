@@ -7,20 +7,20 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 type BotClient struct {
-	baseURL string
-	http    *http.Client
+	baseURL    string
+	httpClient *resilience.ResilientHTTPClient
 }
 
-func NewBotClient(baseURL string, timeout time.Duration) *BotClient {
+func NewBotClient(baseURL string, httpClient *resilience.ResilientHTTPClient) *BotClient {
 	return &BotClient{
-		baseURL: baseURL,
-		http:    &http.Client{Timeout: timeout},
+		baseURL:    baseURL,
+		httpClient: httpClient,
 	}
 }
 
@@ -46,7 +46,7 @@ func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.http.Do(req)
+	resp, err := c.httpClient.Do(ctx, req)
 	if err != nil {
 		slog.Error("cannot send request", "request", req, "error", err)
 		return fmt.Errorf("cannot send request: %w", err)
@@ -60,11 +60,19 @@ func (c *BotClient) SendUpdate(ctx context.Context, upd domain.LinkUpdate) error
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
 		var apiErr APIErrorResponse
-		_ = json.NewDecoder(resp.Body).Decode(&apiErr)
+		err = json.NewDecoder(resp.Body).Decode(&apiErr)
+		if err != nil {
+			slog.Error("cannot decode api error response", "error", err)
+			return fmt.Errorf("cannot decode api error response: %w", err)
+		}
 
 		slog.Error("got not OK status code", "statusCode", resp.StatusCode, "description", apiErr.Description)
 		return fmt.Errorf("scrapper error (code: %s): %s", apiErr.Code, apiErr.Description)
 	}
 
+	return nil
+}
+
+func (c *BotClient) Close() error {
 	return nil
 }
