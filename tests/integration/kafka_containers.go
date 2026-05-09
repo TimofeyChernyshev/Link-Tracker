@@ -16,7 +16,6 @@ func StartScrapperWithKafka(ctx context.Context, networkName, topic string, brok
 		ExposedPorts: []string{"8081/tcp"},
 		Env: map[string]string{
 			"SCRAPPER_PORT":       "8081",
-			"NOTIFICATION_TYPE":   "kafka",
 			"KAFKA_UPDATES_TOPIC": topic,
 			"KAFKA_BROKERS":       brokersStr,
 			"KAFKA_COMPRESSION":   "snappy",
@@ -33,6 +32,8 @@ func StartScrapperWithKafka(ctx context.Context, networkName, topic string, brok
 
 			"VALKEY_ADDRESSES":    "valkey-node-1:6379,valkey-node-2:6379,valkey-node-3:6379",
 			"VALKEY_CLUSTER_MODE": "true",
+
+			"BOT_BASE_URL": "123",
 		},
 		Networks: []string{networkName},
 		NetworkAliases: map[string][]string{
@@ -66,7 +67,6 @@ func StartBotWithKafka(ctx context.Context, networkName, telegramURL, topic, dlq
 			"TELEGRAM_API_URL":      telegramURL,
 			"SCRAPPER_BASE_URL":     "http://scrapper:8081",
 			"BOT_PORT":              "8080",
-			"RECEIVER_TYPE":         "kafka",
 			"KAFKA_UPDATES_TOPIC":   topic,
 			"KAFKA_BROKERS":         brokersStr,
 			"KAFKA_GROUP_ID":        "bot-test-group",

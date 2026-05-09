@@ -53,32 +53,32 @@ func (s *BotScrapperSuite) SetupSuite() {
 	u, _ := url.Parse(s.fakeTelegram.URL)
 	telegramURL := strings.Replace(s.fakeTelegram.URL, u.Hostname(), "host.docker.internal", 1)
 
-	network, err := network.New(s.ctx)
+	net, err := network.New(s.ctx)
 	s.Require().NoError(err)
-	s.network = network
+	s.network = net
 
-	postgresContainer, err := StartPostgres(s.ctx, network.Name)
+	postgresContainer, err := StartPostgres(s.ctx, net.Name)
 	s.Require().NoError(err)
 	s.postgresContainer = postgresContainer
 
-	valkeyNodes, err := StartValkeyNode(s.ctx, network.Name)
+	valkeyNodes, err := StartValkeyNode(s.ctx, net.Name)
 	s.Require().NoError(err)
 	s.valkeyNodes = valkeyNodes
 
-	valkeyInit, err := InitValkeyCluster(s.ctx, network.Name)
+	valkeyInit, err := InitValkeyCluster(s.ctx, net.Name)
 	s.Require().NoError(err)
 	s.valkeyInit = valkeyInit
 
 	s.Eventually(func() bool {
-		return IsValkeyClusterReady(s.ctx, network.Name)
+		return IsValkeyClusterReady(s.ctx, net.Name)
 	}, 20*time.Second, 500*time.Millisecond)
 
-	scrapper, scrapperURL, err := StartScrapper(s.ctx, network.Name)
+	scrapper, scrapperURL, err := StartScrapper(s.ctx, net.Name)
 	s.Require().NoError(err)
 	s.scrapper = scrapper
 	s.scrapperURL = scrapperURL
 
-	bot, botURL, err := StartBot(s.ctx, network.Name, telegramURL)
+	bot, botURL, err := StartBot(s.ctx, net.Name, telegramURL)
 	s.Require().NoError(err)
 	s.bot = bot
 	s.botURL = botURL
