@@ -151,7 +151,7 @@ func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 
 	resilientClient := NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, testTimeout)
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
 		_, err := resilientClient.Do(context.Background(), req)
 		require.Error(t, err)
@@ -194,7 +194,7 @@ func TestRateLimiting_ExceedsLimit(t *testing.T) {
 
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		go func() {
 			_, err := resilientClient.Do(context.Background(), req)
 			_ = err
@@ -202,7 +202,7 @@ func TestRateLimiting_ExceedsLimit(t *testing.T) {
 	}
 
 	assert.NotPanics(t, func() {
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			resilientClient.rateLimiter.Allow()
 		}
 	})

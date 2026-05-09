@@ -29,7 +29,7 @@ func TestRateLimiterMiddleware_AllowRequestsWithinLimit(t *testing.T) {
 
 	ip := "192.168.1.100"
 
-	for i := 0; i < burst; i++ {
+	for range burst {
 		req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
 		req.Header.Set("X-Forwarded-For", ip)
 		resp, err := http.DefaultClient.Do(req)
@@ -56,7 +56,7 @@ func TestRateLimiterMiddleware_ExceedLimit(t *testing.T) {
 
 	ip := "192.168.1.101"
 
-	for i := 0; i < burst; i++ {
+	for range burst {
 		req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
 		req.Header.Set("X-Forwarded-For", ip)
 		resp, err := http.DefaultClient.Do(req)
@@ -98,7 +98,7 @@ func TestRateLimiterMiddleware_DifferentIPs(t *testing.T) {
 	ip1 := "192.168.1.200"
 	ip2 := "192.168.1.201"
 
-	for i := 0; i < burst; i++ {
+	for range burst {
 		req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
 		req.Header.Set("X-Forwarded-For", ip1)
 		resp, err := http.DefaultClient.Do(req)
