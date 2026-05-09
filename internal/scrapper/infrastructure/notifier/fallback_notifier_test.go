@@ -7,6 +7,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
 
@@ -26,7 +27,7 @@ func TestFallbackNotifier_SendUpdate_FirstSuccess(t *testing.T) {
 
 	err := fallback.SendUpdate(context.Background(), upd)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestFallbackNotifier_SendUpdate_FirstFails_SecondSuccess(t *testing.T) {
@@ -46,7 +47,7 @@ func TestFallbackNotifier_SendUpdate_FirstFails_SecondSuccess(t *testing.T) {
 
 	err := fallback.SendUpdate(context.Background(), upd)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestFallbackNotifier_SendUpdate_AllFail(t *testing.T) {
@@ -70,7 +71,7 @@ func TestFallbackNotifier_SendUpdate_AllFail(t *testing.T) {
 
 	err := fallback.SendUpdate(context.Background(), upd)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "all notifiers failed")
 	assert.Contains(t, err.Error(), "third error")
 }
@@ -80,7 +81,7 @@ func TestFallbackNotifier_SendUpdate_EmptyNotifiers(t *testing.T) {
 
 	err := fallback.SendUpdate(context.Background(), domain.LinkUpdate{ID: 1})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "all notifiers failed")
 }
 
@@ -98,7 +99,7 @@ func TestFallbackNotifier_Close_AllSuccess(t *testing.T) {
 
 	err := fallback.Close()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestFallbackNotifier_Close_WithErrors(t *testing.T) {
@@ -120,7 +121,7 @@ func TestFallbackNotifier_Close_WithErrors(t *testing.T) {
 
 	err := fallback.Close()
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), err1.Error())
 	assert.Contains(t, err.Error(), err3.Error())
 }
@@ -130,5 +131,5 @@ func TestFallbackNotifier_Close_EmptyNotifiers(t *testing.T) {
 
 	err := fallback.Close()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
