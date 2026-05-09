@@ -14,7 +14,7 @@ import (
 
 func TestResilientHTTPClient_RetryOn5xx(t *testing.T) {
 	var attempts int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&attempts, 1)
 		attempt := atomic.LoadInt32(&attempts)
 
@@ -58,7 +58,7 @@ func TestResilientHTTPClient_RetryOn5xx(t *testing.T) {
 // TestResilientHTTPClient_NoRetry - нет ретрая, если кода ошибки нет в списке ошибок, которые можно ретраить
 func TestResilientHTTPClient_NoRetry(t *testing.T) {
 	var attempts int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&attempts, 1)
 		w.WriteHeader(http.StatusBadRequest)
 	}))
@@ -92,7 +92,7 @@ func TestResilientHTTPClient_NoRetry(t *testing.T) {
 }
 
 func TestResilientHTTPClient_Timeout(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(2 * time.Second)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -124,7 +124,7 @@ func TestResilientHTTPClient_Timeout(t *testing.T) {
 
 func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 	var attempts int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&attempts, 1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -170,7 +170,7 @@ func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 }
 
 func TestRateLimiting_ExceedsLimit(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -210,7 +210,7 @@ func TestRateLimiting_ExceedsLimit(t *testing.T) {
 
 func TestResilientHTTPClient_ContextCancellationDuringRetry(t *testing.T) {
 	var attempts int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&attempts, 1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -248,7 +248,7 @@ func TestResilientHTTPClient_ContextCancellationDuringRetry(t *testing.T) {
 func TestResilientHTTPClient_RetryOnNetworkError(t *testing.T) {
 	var attempts int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		attempt := atomic.AddInt32(&attempts, 1)
 		if attempt < 3 {
 			hijacker, ok := w.(http.Hijacker)
