@@ -56,7 +56,7 @@ func (c *ResilientHTTPClient) Do(ctx context.Context, req *http.Request) (*http.
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("circuit breaker execute: %w", err)
 	}
 
 	resp, ok := result.(*http.Response)
@@ -77,7 +77,7 @@ func (c *ResilientHTTPClient) doWithRetry(ctx context.Context, req *http.Request
 		if attempt > 1 {
 			select {
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
 			case <-time.After(backoff):
 				// constant backoff (Factor = 1.0)
 				if c.retryConfig.BackoffFactor > 1.0 {
