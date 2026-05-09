@@ -50,6 +50,7 @@ func (c *ResilientHTTPClient) Do(ctx context.Context, req *http.Request) (*http.
 	}
 
 	// Circuit Breaker + Retry
+	// nolint:bodyclose // тело ответа закрывается внутри doWithRetry или вызывающей функцией
 	result, err := c.circuitBreaker.Execute(func() (interface{}, error) {
 		return c.doWithRetry(ctx, req)
 	})
