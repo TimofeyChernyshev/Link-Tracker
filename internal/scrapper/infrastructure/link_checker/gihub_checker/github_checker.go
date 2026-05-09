@@ -13,19 +13,20 @@ import (
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 type GithubClient struct {
-	http       *http.Client
+	httpClient *resilience.ResilientHTTPClient
 	baseURL    string
 	userAgent  string
 	batchSize  int
 	previewLen int
 }
 
-func NewGithubClient(baseURL, userAgent string, batchSize, previewLen int, timeout time.Duration) *GithubClient {
+func NewGithubClient(baseURL, userAgent string, batchSize, previewLen int, resilientClient *resilience.ResilientHTTPClient) *GithubClient {
 	return &GithubClient{
-		http:       &http.Client{Timeout: timeout},
+		httpClient: resilientClient,
 		baseURL:    baseURL,
 		userAgent:  userAgent,
 		batchSize:  batchSize,
@@ -112,7 +113,7 @@ func (c *GithubClient) fetchItems(ctx context.Context, repoPath, itemCategory st
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	req.Header.Set("User-Agent", c.userAgent)
 
-	resp, err := c.http.Do(req)
+	resp, err := c.httpClient.Do(ctx, req)
 	if err != nil {
 		return fmt.Errorf("cannot do http request: %w", err)
 	}
