@@ -18,7 +18,7 @@ func TestRateLimiterMiddleware_AllowRequestsWithinLimit(t *testing.T) {
 	rateLimiter := NewRateLimiterMiddleware(rps, burst)
 
 	var requestCount int32
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&requestCount, 1)
 		w.WriteHeader(http.StatusOK)
 	})
@@ -46,7 +46,7 @@ func TestRateLimiterMiddleware_ExceedLimit(t *testing.T) {
 	burst := 3
 	rateLimiter := NewRateLimiterMiddleware(rps, burst)
 
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -87,7 +87,7 @@ func TestRateLimiterMiddleware_DifferentIPs(t *testing.T) {
 	burst := 2
 	rateLimiter := NewRateLimiterMiddleware(rps, burst)
 
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -127,7 +127,7 @@ func TestRateLimiterMiddleware_RecoveryAfterTime(t *testing.T) {
 	burst := 1
 	rateLimiter := NewRateLimiterMiddleware(rps, burst)
 
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
