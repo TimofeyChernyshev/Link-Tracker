@@ -58,7 +58,12 @@ func (c *ResilientHTTPClient) Do(ctx context.Context, req *http.Request) (*http.
 		return nil, err
 	}
 
-	return result.(*http.Response), nil
+	resp, ok := result.(*http.Response)
+	if !ok {
+		return nil, fmt.Errorf("unexpected result type: %T", result)
+	}
+
+	return resp, nil
 }
 
 func (c *ResilientHTTPClient) doWithRetry(ctx context.Context, req *http.Request) (*http.Response, error) {
