@@ -97,7 +97,10 @@ func (c *ResilientHTTPClient) doWithRetry(ctx context.Context, req *http.Request
 		}
 
 		if slices.Contains(c.retryConfig.RetryableHTTP, resp.StatusCode) {
-			resp.Body.Close()
+			closeErr := resp.Body.Close()
+			if closeErr != nil {
+				slog.Warn("failed to close response body", "error", closeErr)
+			}
 			slog.Warn("retryable status", "attempt", attempt, "status", resp.StatusCode)
 			continue
 		}
@@ -106,7 +109,10 @@ func (c *ResilientHTTPClient) doWithRetry(ctx context.Context, req *http.Request
 	}
 
 	if resp != nil {
-		resp.Body.Close()
+		closeErr := resp.Body.Close()
+		if closeErr != nil {
+			slog.Warn("failed to close response body", "error", closeErr)
+		}
 	}
 	if lastErr != nil {
 		return nil, fmt.Errorf("failed after %d attempts: %w", c.retryConfig.MaxAttempts, lastErr)
