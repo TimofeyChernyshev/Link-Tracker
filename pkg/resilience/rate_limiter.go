@@ -23,18 +23,6 @@ func NewRateLimiterMiddleware(rps, burst int) *RateLimiterMiddleware {
 	}
 }
 
-func (rl *RateLimiterMiddleware) getLimiter(ip string) *rate.Limiter {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	limiter, exists := rl.limiters[ip]
-	if !exists {
-		limiter = rate.NewLimiter(rate.Limit(rl.rps), rl.burst)
-		rl.limiters[ip] = limiter
-	}
-	return limiter
-}
-
 // Middleware возвращает HTTP 429 при превышении лимита
 func (rl *RateLimiterMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,4 +42,16 @@ func (rl *RateLimiterMiddleware) Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (rl *RateLimiterMiddleware) getLimiter(ip string) *rate.Limiter {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	limiter, exists := rl.limiters[ip]
+	if !exists {
+		limiter = rate.NewLimiter(rate.Limit(rl.rps), rl.burst)
+		rl.limiters[ip] = limiter
+	}
+	return limiter
 }
