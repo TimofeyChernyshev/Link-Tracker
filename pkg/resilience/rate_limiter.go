@@ -1,6 +1,7 @@
 package resilience
 
 import (
+	"log/slog"
 	"net/http"
 	"sync"
 
@@ -36,7 +37,11 @@ func (rl *RateLimiterMiddleware) Middleware(next http.Handler) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Retry-After", "1")
 			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write([]byte(`{"code":"TOO_MANY_REQUESTS","description":"Rate limit exceeded. Please try again later."}`))
+			_, err := w.Write([]byte(`{"code":"TOO_MANY_REQUESTS","description":"Rate limit exceeded. Please try again later."}`))
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				slog.Warn("cannot write info about error", "error", err)
+			}
 			return
 		}
 
