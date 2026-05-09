@@ -3,6 +3,7 @@ module gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker
 go 1.25.1
 
 require (
+	github.com/avast/retry-go/v4 v4.7.0
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-co-op/gocron/v2 v2.19.1

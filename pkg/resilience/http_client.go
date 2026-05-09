@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/sony/gobreaker"
 	"golang.org/x/time/rate"
 )
@@ -69,55 +70,44 @@ func (c *ResilientHTTPClient) Do(ctx context.Context, req *http.Request) (*http.
 
 func (c *ResilientHTTPClient) doWithRetry(ctx context.Context, req *http.Request) (*http.Response, error) {
 	var resp *http.Response
-	var lastErr error
 
-	backoff := c.retryConfig.InitialDelay
-
-	for attempt := 1; attempt <= c.retryConfig.MaxAttempts; attempt++ {
-		if attempt > 1 {
-			select {
-			case <-ctx.Done():
-				return nil, fmt.Errorf("context cancelled during retry: %w", ctx.Err())
-			case <-time.After(backoff):
-				// constant backoff (Factor = 1.0)
-				if c.retryConfig.BackoffFactor > 1.0 {
-					backoff = time.Duration(float64(backoff) * c.retryConfig.BackoffFactor)
-					if backoff > c.retryConfig.MaxDelay {
-						backoff = c.retryConfig.MaxDelay
-					}
-				}
-			}
-		}
-
+	retryableFunc := func() error {
 		reqClone := req.Clone(ctx)
 
-		resp, lastErr = c.client.Do(reqClone)
-		if lastErr != nil {
-			slog.Warn("request failed", "attempt", attempt, "error", lastErr)
-			continue
+		r, err := c.client.Do(reqClone)
+		if err != nil {
+			slog.Warn("request failed, will retry", "error", err)
+			return err
 		}
 
-		if slices.Contains(c.retryConfig.RetryableHTTP, resp.StatusCode) {
-			closeErr := resp.Body.Close()
-			if closeErr != nil {
-				slog.Warn("failed to close response body", "error", closeErr)
-			}
-			slog.Warn("retryable status", "attempt", attempt, "status", resp.StatusCode)
-			continue
+		if slices.Contains(c.retryConfig.RetryableHTTP, r.StatusCode) {
+			_ = r.Body.Close()
+			slog.Warn("retryable status, will retry", "status", r.StatusCode)
+			return fmt.Errorf("retryable status code: %d", r.StatusCode)
 		}
 
-		return resp, nil
+		resp = r
+		return nil
 	}
 
-	if resp != nil {
-		closeErr := resp.Body.Close()
-		if closeErr != nil {
-			slog.Warn("failed to close response body", "error", closeErr)
+	err := retry.Do(
+		retryableFunc,
+		retry.Attempts(uint(c.retryConfig.MaxAttempts)),
+		retry.Delay(c.retryConfig.InitialDelay),
+		retry.MaxDelay(c.retryConfig.MaxDelay),
+		retry.DelayType(retry.FixedDelay), // constant backoff
+		retry.LastErrorOnly(true),
+		retry.OnRetry(func(n uint, err error) {
+			slog.Warn("retrying request", "attempt", n, "error", err)
+		}),
+	)
+
+	if err != nil {
+		if resp != nil {
+			_ = resp.Body.Close()
 		}
-	}
-	if lastErr != nil {
-		return nil, fmt.Errorf("failed after %d attempts: %w", c.retryConfig.MaxAttempts, lastErr)
+		return nil, fmt.Errorf("failed after %d attempts: %w", c.retryConfig.MaxAttempts, err)
 	}
 
-	return nil, fmt.Errorf("failed after %d attempts: all responses returned retryable status codes", c.retryConfig.MaxAttempts)
+	return resp, nil
 }
