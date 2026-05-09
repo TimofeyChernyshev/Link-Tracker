@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 const (
@@ -34,12 +35,9 @@ type Config struct {
 	BatchSize   int `env:"SCRAPPER_BATCH_SIZE" envDefault:"20"`
 
 	// link checker (GitHub & StackOverflow)
-	APIBatchSize       int           `env:"API_BATCH_SIZE" envDefault:"100"`
-	LinkCheckerTimeout time.Duration `env:"LINK_CHECKER_TIMEOUT" envDefault:"5s"`
-	GighubBaseURL      string        `env:"GITHUB_BASE_URL,required"`
-	GithubTimeout      time.Duration `env:"GITHUB_TIMEOUT" envDefault:"5s"`
-	StackBaseURL       string        `env:"STACK_BASE_URL,required"`
-	StackTimeout       time.Duration `env:"STACK_TIMEOUT" envDefault:"5s"`
+	APIBatchSize  int    `env:"API_BATCH_SIZE" envDefault:"100"`
+	GighubBaseURL string `env:"GITHUB_BASE_URL,required"`
+	StackBaseURL  string `env:"STACK_BASE_URL,required"`
 
 	CheckerPreviewLen int `env:"CHECKER_PREVIEW_LEN" envDefault:"200"`
 
@@ -48,10 +46,6 @@ type Config struct {
 	MaxLimit     int `env:"HTTP_MAX_LIMIT" envDefault:"100"`
 
 	ShutdownTimeout time.Duration `env:"SCRAPPER_SHUTDOWN_TIMEOUT" envDefault:"30s"`
-
-	// Kafka/http notifier
-	NotificationType NotifierType `env:"NOTIFICATION_TYPE" envDefault:"kafka"`
-	NotifierConfig   NotifierConfig
 
 	// Valkey config
 	ValkeyAddresses       []string      `env:"VALKEY_ADDRESSES,required"`
@@ -63,6 +57,30 @@ type Config struct {
 	ValkeyMaxRetryBackoff time.Duration `env:"VALKEY_MAX_RETRY_BACKOFF" envDefault:"1s"`
 	ValkeyPingTime        time.Duration `env:"VALKEY_PING_TIME" envDefault:"5s"`
 	ValkeyClusterMode     bool          `env:"VALKEY_CLUSTER_MODE" envDefault:"true"`
+
+	// Rate limiter для HTTP сервера
+	RateLimiterConfig resilience.RateLimiterConfig `envPrefix:"SCRAPPER_RATE_LIMITER_"`
+
+	// Для базового HTTP клиента
+	BasicRetryConfig          resilience.RetryConfig          `envPrefix:"BASIC_"`
+	BasicCircuitBreakerConfig resilience.CircuitBreakerConfig `envPrefix:"BASIC_CB_"`
+	BasicRateLimit            int                             `env:"BASIC_RATE_LIMIT" envDefault:"100"`
+	BasicTimeout              time.Duration                   `env:"BASIC_TIMEOUT" envDefault:"5s"`
+
+	// Для GitHub клиента
+	GithubRetryConfig          resilience.RetryConfig          `envPrefix:"GITHUB_"`
+	GithubCircuitBreakerConfig resilience.CircuitBreakerConfig `envPrefix:"GITHUB_CB_"`
+	GithubRateLimit            int                             `env:"GITHUB_RATE_LIMIT" envDefault:"100"`
+	GithubTimeout              time.Duration                   `env:"GITHUB_TIMEOUT" envDefault:"5s"`
+
+	// Для StackOverflow клиента
+	StackRetryConfig          resilience.RetryConfig          `envPrefix:"STACK_"`
+	StackCircuitBreakerConfig resilience.CircuitBreakerConfig `envPrefix:"STACK_CB_"`
+	StackRateLimit            int                             `env:"STACK_RATE_LIMIT" envDefault:"100"`
+	StackTimeout              time.Duration                   `env:"STACK_TIMEOUT" envDefault:"5s"`
+
+	HTTPNotifierConfig  *HTTPBotNotifierConfig
+	KafkaNotifierConfig *KafkaBotNotifierConfig
 }
 
 type AccessType string
@@ -94,24 +112,21 @@ func Load() (*Config, error) {
 
 	cfg.AccessType = AccessType(strings.ToLower(string(cfg.AccessType)))
 
-	switch cfg.NotificationType {
-	case NotifierTypeKafka:
-		var kafkaCfg KafkaNotifierConfig
-		if err = env.Parse(&kafkaCfg); err != nil {
-			return nil, fmt.Errorf("failed to parse kafka config: %w", err)
-		}
-		cfg.NotifierConfig = &kafkaCfg
-
-	case NotifierTypeHTTP:
-		var httpCfg HTTPNotifierConfig
-		if err = env.Parse(&httpCfg); err != nil {
-			return nil, fmt.Errorf("failed to parse http config: %w", err)
-		}
-		cfg.NotifierConfig = &httpCfg
-
-	default:
-		return nil, fmt.Errorf("unknown notification type: %s", cfg.NotificationType)
+	var kafkaCfg KafkaBotNotifierConfig
+	if err = env.Parse(&kafkaCfg); err != nil {
+		return nil, fmt.Errorf("failed to parse kafka config: %w", err)
 	}
+	cfg.KafkaNotifierConfig = &kafkaCfg
+
+	var httpCfg HTTPBotNotifierConfig
+	if err = env.Parse(&httpCfg); err != nil {
+		return nil, fmt.Errorf("failed to parse http config: %w", err)
+	}
+	cfg.HTTPNotifierConfig = &httpCfg
+
+	cfg.BasicCircuitBreakerConfig.Name = "basic-http-client"
+	cfg.GithubCircuitBreakerConfig.Name = "github-client"
+	cfg.StackCircuitBreakerConfig.Name = "stackoverflow-client"
 
 	return &cfg, nil
 }
