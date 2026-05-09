@@ -77,7 +77,7 @@ func (c *ResilientHTTPClient) doWithRetry(ctx context.Context, req *http.Request
 		r, err := c.client.Do(reqClone)
 		if err != nil {
 			slog.Warn("request failed, will retry", "error", err)
-			return err
+			return fmt.Errorf("cannot do request: %w", err)
 		}
 
 		if slices.Contains(c.retryConfig.RetryableHTTP, r.StatusCode) {
