@@ -28,9 +28,11 @@ func StartScrapper(ctx context.Context, networkName string) (testcontainers.Cont
 			"GITHUB_BASE_URL": "https://api.github.com/repos",
 			"STACK_BASE_URL":  "https://api.stackexchange.com/2.3",
 
-			"NOTIFICATION_TYPE":       "http",
 			"BOT_BASE_URL":            "http://bot:8080",
 			"SCRAPPER_TO_BOT_TIMEOUT": "5s",
+
+			"KAFKA_BROKERS":       "non-existent-kafka-1:9092,non-existent-kafka-2:9092",
+			"KAFKA_UPDATES_TOPIC": "link-updates",
 
 			"VALKEY_ADDRESSES":    "valkey-node-1:6379,valkey-node-2:6379,valkey-node-3:6379",
 			"VALKEY_CLUSTER_MODE": "true",
@@ -72,7 +74,10 @@ func StartBot(ctx context.Context, networkName string, telegramURL string) (test
 			"BOT_PORT":          "8080",
 			"SCRAPPER_BASE_URL": "http://scrapper:8081",
 
-			"NOTIFICATION_TYPE": "http",
+			"KAFKA_BROKERS":       "non-existent-kafka-1:9092,non-existent-kafka-2:9092",
+			"KAFKA_UPDATES_TOPIC": "link-updates",
+			"KAFKA_GROUP_ID":      "bot-test-group",
+			"KAFKA_DLQ_TOPIC":     "dlq-topic",
 		},
 
 		Networks: []string{networkName},
