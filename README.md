@@ -8,3 +8,10 @@
 2. Выполните /newbot
 3. Скопируйте выданный токен в `.env.bot` переменную `TELEGRAM_TOKEN` и запустите программу
 4. Если запускаете через docker, то в `.env` также установите переменную `TELEGRAM_TOKEN` и запускайте через `docker-compose up -d --build`
+
+# Запуск интеграционных тестов
+
+Перед запуском соберите образы через bot и scrapper с именами
+
+- link-tracker-bot
+- link-tracker-scrapper

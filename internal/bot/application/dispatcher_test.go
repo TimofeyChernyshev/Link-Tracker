@@ -228,7 +228,7 @@ func TestHandleMessage_Success(t *testing.T) {
 	mockCmd.EXPECT().Execute(msg).Return(expectedResp, true, nil)
 	dispatcher.Register("/start", func() Command { return mockCmd })
 
-	bot.EXPECT().SendMessage(expectedResp).Times(1)
+	bot.EXPECT().SendMessage(expectedResp).Return(nil).Times(1)
 
 	dispatcher.HandleMessage(msg)
 }
@@ -251,7 +251,7 @@ func TestHandleMessage_DispatchError(t *testing.T) {
 	bot.EXPECT().SendMessage(gomock.Any()).Do(func(resp *domain.Response) {
 		assert.Equal(t, int64(12345), resp.ChatID)
 		assert.Contains(t, resp.Text, "Произошла ошибка")
-	}).Times(1)
+	}).Return(nil).Times(1)
 
 	dispatcher.HandleMessage(msg)
 }
@@ -270,15 +270,16 @@ func TestHandleUpdate(t *testing.T) {
 	bot.EXPECT().SendMessage(&domain.Response{
 		ChatID: 1,
 		Text:   desc,
-	}).Times(1)
+	}).Return(nil).Times(1)
 	bot.EXPECT().SendMessage(&domain.Response{
 		ChatID: 2,
 		Text:   desc,
-	}).Times(1)
+	}).Return(nil).Times(1)
 	bot.EXPECT().SendMessage(&domain.Response{
 		ChatID: 3,
 		Text:   desc,
-	}).Times(1)
+	}).Return(nil).Times(1)
 
-	dispatcher.HandleUpdate(chatIDs, desc)
+	err := dispatcher.HandleUpdate(chatIDs, desc)
+	require.NoError(t, err)
 }

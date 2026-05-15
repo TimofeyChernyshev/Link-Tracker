@@ -164,6 +164,7 @@ func (s *ServiceSuite) TestAddLink_Success() {
 	}
 
 	s.mockStorage.EXPECT().ChatExists(s.ctx, chatID).Return(true, nil)
+	s.mockStorage.EXPECT().IsSubscribed(s.ctx, chatID, url).Return(false, nil)
 	s.mockStorage.EXPECT().AddLink(s.ctx, chatID, url, tags).Return(expected, nil)
 
 	link, err := s.service.AddLink(s.ctx, chatID, url, tags)
@@ -180,6 +181,19 @@ func (s *ServiceSuite) TestAddLink_ChatNotExists() {
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, errChatInstRegistered)
 	s.Equal(domain.Link{}, link)
+}
+
+func (s *ServiceSuite) TestAddLink_AlreadyExist() {
+	chatID := int64(1)
+	url := "https://example.com"
+	tags := []string{"go"}
+
+	s.mockStorage.EXPECT().ChatExists(s.ctx, chatID).Return(true, nil)
+	s.mockStorage.EXPECT().IsSubscribed(s.ctx, chatID, url).Return(true, nil)
+
+	_, err := s.service.AddLink(s.ctx, chatID, url, tags)
+
+	s.Require().ErrorContains(err, "link already tracked")
 }
 
 func (s *ServiceSuite) TestRemoveLink_Success() {

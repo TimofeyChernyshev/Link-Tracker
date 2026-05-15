@@ -212,9 +212,11 @@ func (mr *MockBotMockRecorder) Receive(ctx interface{}) *gomock.Call {
 }
 
 // SendMessage mocks base method.
-func (m *MockBot) SendMessage(response *domain.Response) {
+func (m *MockBot) SendMessage(response *domain.Response) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SendMessage", response)
+	ret := m.ctrl.Call(m, "SendMessage", response)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // SendMessage indicates an expected call of SendMessage.
