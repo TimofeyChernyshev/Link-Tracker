@@ -42,6 +42,14 @@ func (s *Service) AddLink(ctx context.Context, chatID int64, url string, tags []
 		return domain.Link{}, errChatInstRegistered
 	}
 
+	subscribed, err := s.storage.IsSubscribed(ctx, chatID, url)
+	if err != nil {
+		return domain.Link{}, fmt.Errorf("check link subscription: %w", err)
+	}
+	if subscribed {
+		return domain.Link{}, errors.New("link already tracked")
+	}
+
 	link, err := s.storage.AddLink(ctx, chatID, url, tags)
 	if err != nil {
 		return domain.Link{}, fmt.Errorf("adding link: %w", err)

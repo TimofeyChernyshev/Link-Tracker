@@ -15,7 +15,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
-	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/http"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver"
 )
 
 const (
@@ -46,7 +46,11 @@ func main() {
 
 	b.SetCommands(d.GetCommands())
 
-	server := bothttp.NewServer(d, cfg.BotPort)
+	receiver, err := receiver.NewReceiver(cfg.ReceiverConfig, d)
+	if err != nil {
+		slog.Error("cannot create receiver", "error", err)
+		os.Exit(1)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -63,8 +67,7 @@ func main() {
 	}()
 
 	go func() {
-		slog.Info("http server for bot starting", "port", cfg.BotPort)
-		err = server.Start(context.Background())
+		err = receiver.Start(context.Background())
 		if !errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
@@ -83,7 +86,7 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer shutdownCancel()
 
-	if err = server.Shutdown(shutdownCtx); err != nil {
+	if err = receiver.Shutdown(shutdownCtx); err != nil {
 		slog.Error("error during shutdown server", "error", err)
 	}
 	if err = b.Stop(shutdownCtx); err != nil {

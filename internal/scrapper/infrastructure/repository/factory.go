@@ -19,6 +19,7 @@ type Repository interface {
 	DeleteChat(ctx context.Context, chatID int64) error
 	ChatExists(ctx context.Context, chatID int64) (bool, error)
 
+	IsSubscribed(ctx context.Context, chatID int64, url string) (bool, error)
 	AddLink(ctx context.Context, chatID int64, URL string, tags []string) (domain.Link, error)
 	RemoveLink(ctx context.Context, chatID int64, URL string) (domain.Link, error)
 	GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error)

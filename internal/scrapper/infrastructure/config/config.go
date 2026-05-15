@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -19,9 +18,7 @@ const (
 )
 
 type Config struct {
-	ScrapperPort string        `env:"SCRAPPER_PORT,required"`
-	BotBaseURL   string        `env:"BOT_BASE_URL,required"`
-	BotTimeout   time.Duration `env:"SCRAPPER_TO_BOT_TIMEOUT" envDefault:"5s"`
+	ScrapperPort string `env:"SCRAPPER_PORT,required"`
 
 	AccessType AccessType `env:"ACCESS_TYPE,required"`
 	DBUser     string     `env:"DB_USER,required"`
@@ -49,6 +46,9 @@ type Config struct {
 	MaxLimit     int `env:"HTTP_MAX_LIMIT" envDefault:"100"`
 
 	ShutdownTimeout time.Duration `env:"SCRAPPER_SHUTDOWN_TIMEOUT" envDefault:"30s"`
+
+	NotificationType NotifierType `env:"NOTIFICATION_TYPE" envDefault:"kafka"`
+	NotifierConfig   NotifierConfig
 }
 
 type AccessType string
@@ -75,11 +75,29 @@ func Load() (*Config, error) {
 	}
 
 	if cfg.WorkerCount < minWorkers || cfg.WorkerCount > maxWorkers {
-		slog.Error("wc", "wc", cfg.WorkerCount)
 		return nil, fmt.Errorf("WORKER_COUNT must be in range [%v;%v]", minWorkers, maxWorkers)
 	}
 
 	cfg.AccessType = AccessType(strings.ToLower(string(cfg.AccessType)))
+
+	switch cfg.NotificationType {
+	case NotifierTypeKafka:
+		var kafkaCfg KafkaNotifierConfig
+		if err = env.Parse(&kafkaCfg); err != nil {
+			return nil, fmt.Errorf("failed to parse kafka config: %w", err)
+		}
+		cfg.NotifierConfig = &kafkaCfg
+
+	case NotifierTypeHTTP:
+		var httpCfg HTTPNotifierConfig
+		if err = env.Parse(&httpCfg); err != nil {
+			return nil, fmt.Errorf("failed to parse http config: %w", err)
+		}
+		cfg.NotifierConfig = &httpCfg
+
+	default:
+		return nil, fmt.Errorf("unknown notification type: %s", cfg.NotificationType)
+	}
 
 	return &cfg, nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type BotScrapperSuite struct {
@@ -29,6 +30,8 @@ type BotScrapperSuite struct {
 	lastUpdateID   int
 	userMessages   []map[string]interface{}
 	lastBotMessage string
+
+	postgresContainer testcontainers.Container
 }
 
 func TestBotScrapperSuite(t *testing.T) {
@@ -51,6 +54,30 @@ func (s *BotScrapperSuite) SetupSuite() {
 	network, err := network.New(s.ctx)
 	s.Require().NoError(err)
 	s.network = network
+
+	postgresReq := testcontainers.ContainerRequest{
+		Image:        "postgres:15-alpine",
+		ExposedPorts: []string{"5432/tcp"},
+		Env: map[string]string{
+			"POSTGRES_USER":     "postgres",
+			"POSTGRES_PASSWORD": "postgres",
+			"POSTGRES_DB":       "linktracker",
+		},
+		Networks: []string{network.Name},
+		NetworkAliases: map[string][]string{
+			network.Name: {"postgres"},
+		},
+		WaitingFor: wait.ForLog("database system is ready to accept connections").
+			WithOccurrence(2).
+			WithStartupTimeout(60 * time.Second),
+	}
+
+	postgresContainer, err := testcontainers.GenericContainer(s.ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: postgresReq,
+		Started:          true,
+	})
+	s.Require().NoError(err)
+	s.postgresContainer = postgresContainer
 
 	scrapper, scrapperURL, err := StartScrapper(s.ctx, network.Name)
 	s.Require().NoError(err)

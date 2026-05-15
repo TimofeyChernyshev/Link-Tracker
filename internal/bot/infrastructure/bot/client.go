@@ -109,13 +109,16 @@ func (c *Client) Start() error {
 }
 
 // SendMessage отправляет в канал сообщений для отправки сообщения из внешнего источника
-func (c *Client) SendMessage(resp *domain.Response) {
+func (c *Client) SendMessage(resp *domain.Response) error {
 	select {
 	case <-c.stopChan:
 		slog.Info("stopping send channel")
+		return errors.New("stopping send channel")
 	case c.outgoing <- resp:
+		return nil
 	default:
 		slog.Warn("outgoing queue full")
+		return errors.New("outgoing queue full")
 	}
 }
 
