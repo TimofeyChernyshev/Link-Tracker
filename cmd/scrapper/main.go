@@ -83,7 +83,7 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 
 	cache, err := cache.NewValkeyClient(cfg.ValkeyAddresses, cfg.ValkeyPassword, cfg.ValkeyTTL,
 		cfg.ValkeyPoolSize, cfg.ValkeyMaxRetries, cfg.ValkeyMinRetryBackoff,
-		cfg.ValkeyMaxRetryBackoff, cfg.ValkeyPingTime, cfg.ValkeyClusterMode)
+		cfg.ValkeyMaxRetryBackoff, cfg.ValkeyPingTime, cfg.ValkeyClusterMode, cfg.ValkeyScanCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cache client: %w", err)
 	}

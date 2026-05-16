@@ -63,6 +63,7 @@ type Config struct {
 	ValkeyMaxRetryBackoff time.Duration `env:"VALKEY_MAX_RETRY_BACKOFF" envDefault:"1s"`
 	ValkeyPingTime        time.Duration `env:"VALKEY_PING_TIME" envDefault:"5s"`
 	ValkeyClusterMode     bool          `env:"VALKEY_CLUSTER_MODE" envDefault:"true"`
+	ValkeyScanCount       int64         `env:"VALKEY_SCAN_COUNT" envDefault:"100"`
 }
 
 type AccessType string

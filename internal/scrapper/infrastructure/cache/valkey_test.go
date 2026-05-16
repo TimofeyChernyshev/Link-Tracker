@@ -102,10 +102,12 @@ func (s *ValkeyClientTestSuite) TestSetAndGetLinks() {
 		},
 	}
 
-	err := s.client.SetLinks(s.ctx, chatID, testLinks)
+	limit, offset := 10, 10
+
+	err := s.client.SetLinks(s.ctx, chatID, limit, offset, testLinks)
 	s.Require().NoError(err)
 
-	cachedLinks, err := s.client.GetLinks(s.ctx, chatID)
+	cachedLinks, err := s.client.GetLinks(s.ctx, chatID, limit, offset)
 	s.Require().NoError(err)
 
 	s.Len(cachedLinks, 2)
@@ -120,8 +122,9 @@ func (s *ValkeyClientTestSuite) TestSetAndGetLinks() {
 
 func (s *ValkeyClientTestSuite) TestGetLinks_Empty() {
 	chatID := int64(99999)
+	limit, offset := 10, 10
 
-	links, err := s.client.GetLinks(s.ctx, chatID)
+	links, err := s.client.GetLinks(s.ctx, chatID, limit, offset)
 	s.Require().NoError(err)
 	s.Empty(links)
 }
@@ -129,41 +132,43 @@ func (s *ValkeyClientTestSuite) TestGetLinks_Empty() {
 func (s *ValkeyClientTestSuite) TestGetLinks_NonExistentKey() {
 	chatID1 := int64(11111123123)
 	chatID2 := int64(222222121)
+	limit, offset := 10, 10
 
 	testLinks := []domain.Link{
 		{ID: 1, URL: "https://test.com", Tags: []string{"test"}, UpdatedAt: time.Now()},
 	}
 
-	err := s.client.SetLinks(s.ctx, chatID1, testLinks)
+	err := s.client.SetLinks(s.ctx, chatID1, limit, offset, testLinks)
 	s.Require().NoError(err)
 
-	links, err := s.client.GetLinks(s.ctx, chatID2)
+	links, err := s.client.GetLinks(s.ctx, chatID2, limit, offset)
 	s.Require().NoError(err)
 	s.Empty(links)
 
-	links, err = s.client.GetLinks(s.ctx, chatID1)
+	links, err = s.client.GetLinks(s.ctx, chatID1, limit, offset)
 	s.Require().NoError(err)
 	s.Len(links, 1)
 }
 
 func (s *ValkeyClientTestSuite) TestInvalidateLinks() {
 	chatID := int64(12345)
+	limit, offset := 10, 10
 
 	testLinks := []domain.Link{
 		{ID: 1, URL: "https://test.com", Tags: []string{"test"}, UpdatedAt: time.Now()},
 	}
 
-	err := s.client.SetLinks(s.ctx, chatID, testLinks)
+	err := s.client.SetLinks(s.ctx, chatID, limit, offset, testLinks)
 	s.Require().NoError(err)
 
-	links, err := s.client.GetLinks(s.ctx, chatID)
+	links, err := s.client.GetLinks(s.ctx, chatID, limit, offset)
 	s.Require().NoError(err)
 	s.Len(links, 1)
 
 	err = s.client.InvalidateLinks(s.ctx, chatID)
 	s.Require().NoError(err)
 
-	links, err = s.client.GetLinks(s.ctx, chatID)
+	links, err = s.client.GetLinks(s.ctx, chatID, limit, offset)
 	s.Require().NoError(err)
 	s.Empty(links)
 }
@@ -177,12 +182,13 @@ func (s *ValkeyClientTestSuite) TestInvalidateLinks_NonExistent() {
 
 func (s *ValkeyClientTestSuite) TestOverwrite() {
 	chatID := int64(12345)
+	limit, offset := 10, 10
 
 	firstLinks := []domain.Link{
 		{ID: 1, URL: "https://first.com", Tags: []string{"first"}, UpdatedAt: time.Now()},
 	}
 
-	err := s.client.SetLinks(s.ctx, chatID, firstLinks)
+	err := s.client.SetLinks(s.ctx, chatID, limit, offset, firstLinks)
 	s.Require().NoError(err)
 
 	secondLinks := []domain.Link{
@@ -190,10 +196,10 @@ func (s *ValkeyClientTestSuite) TestOverwrite() {
 		{ID: 3, URL: "https://third.com", Tags: []string{"third"}, UpdatedAt: time.Now()},
 	}
 
-	err = s.client.SetLinks(s.ctx, chatID, secondLinks)
+	err = s.client.SetLinks(s.ctx, chatID, limit, offset, secondLinks)
 	s.Require().NoError(err)
 
-	cachedLinks, err := s.client.GetLinks(s.ctx, chatID)
+	cachedLinks, err := s.client.GetLinks(s.ctx, chatID, limit, offset)
 	s.Require().NoError(err)
 
 	s.Len(cachedLinks, 2)
@@ -206,6 +212,7 @@ func (s *ValkeyClientTestSuite) TestOverwrite() {
 func (s *ValkeyClientTestSuite) TestDifferentChatIDs() {
 	chats := []int64{11111, 22222, 33333}
 	linksPerChat := make(map[int64][]domain.Link)
+	limit, offset := 10, 10
 
 	for i, chatID := range chats {
 		links := []domain.Link{
@@ -218,14 +225,55 @@ func (s *ValkeyClientTestSuite) TestDifferentChatIDs() {
 		}
 		linksPerChat[chatID] = links
 
-		err := s.client.SetLinks(s.ctx, chatID, links)
+		err := s.client.SetLinks(s.ctx, chatID, limit, offset, links)
 		s.Require().NoError(err)
 	}
 
 	for chatID, expectedLinks := range linksPerChat {
-		cachedLinks, err := s.client.GetLinks(s.ctx, chatID)
+		cachedLinks, err := s.client.GetLinks(s.ctx, chatID, limit, offset)
 		s.Require().NoError(err)
 		s.Len(cachedLinks, 1)
 		s.Equal(expectedLinks[0].URL, cachedLinks[0].URL)
 	}
+}
+
+func (s *ValkeyClientTestSuite) TestDeleteDifferentKeysWithSameChatID() {
+	chatID := int64(12345)
+	limit1, offset1 := 1, 12
+	limit2, offset2 := 4, 3
+
+	firstLinks := []domain.Link{
+		{ID: 1, URL: "https://first.com", Tags: []string{"first"}, UpdatedAt: time.Now()},
+	}
+
+	err := s.client.SetLinks(s.ctx, chatID, limit1, offset1, firstLinks)
+	s.Require().NoError(err)
+
+	err = s.client.SetLinks(s.ctx, chatID, limit2, offset2, firstLinks)
+	s.Require().NoError(err)
+
+	cachedLinks, err := s.client.GetLinks(s.ctx, chatID, limit1, offset1)
+	s.Require().NoError(err)
+
+	s.Len(cachedLinks, 1)
+	s.Equal(int64(1), cachedLinks[0].ID)
+	s.Equal("https://first.com", cachedLinks[0].URL)
+
+	cachedLinks, err = s.client.GetLinks(s.ctx, chatID, limit2, offset2)
+	s.Require().NoError(err)
+
+	s.Len(cachedLinks, 1)
+	s.Equal(int64(1), cachedLinks[0].ID)
+	s.Equal("https://first.com", cachedLinks[0].URL)
+
+	err = s.client.InvalidateLinks(s.ctx, chatID)
+	s.Require().NoError(err)
+
+	cachedLinks, err = s.client.GetLinks(s.ctx, chatID, limit1, offset1)
+	s.Require().NoError(err)
+	s.Empty(cachedLinks)
+
+	cachedLinks, err = s.client.GetLinks(s.ctx, chatID, limit2, offset2)
+	s.Require().NoError(err)
+	s.Empty(cachedLinks)
 }

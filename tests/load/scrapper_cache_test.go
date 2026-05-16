@@ -35,6 +35,8 @@ var (
 
 	testDuration = 5 * time.Minute
 	rampUp       = time.Minute
+
+	scanCount = int64(100)
 )
 
 type Metrics struct {
@@ -80,6 +82,7 @@ func TestLoad(t *testing.T) {
 		time.Second,
 		time.Second,
 		false,
+		scanCount,
 	)
 	require.NoError(t, err)
 
