@@ -98,7 +98,7 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 
 	cache, err := cache.NewValkeyClient(cfg.ValkeyAddresses, cfg.ValkeyPassword, cfg.ValkeyTTL,
 		cfg.ValkeyPoolSize, cfg.ValkeyMaxRetries, cfg.ValkeyMinRetryBackoff,
-		cfg.ValkeyMaxRetryBackoff, cfg.ValkeyPingTime, cfg.ValkeyClusterMode)
+		cfg.ValkeyMaxRetryBackoff, cfg.ValkeyPingTime, cfg.ValkeyClusterMode, cfg.ValkeyScanCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cache client: %w", err)
 	}
@@ -113,23 +113,6 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 	rateLimiter := resilience.NewRateLimiterMiddleware(cfg.RateLimiterConfig.RPS, cfg.RateLimiterConfig.Burst)
 
 	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, cfg.DefaultLimit, cfg.MaxLimit, rateLimiter.Middleware)
-
-	return &ScrapperApp{
-		cfg:         cfg,
-		repo:        repo,
-		notifier:    notifier,
-		linkService: linkService,
-		scheduler:   sched,
-		server:      server,
-		cache:       cache,
-	}, nil
-}
-
-func (a *ScrapperApp) run() error {
-	defer a.cleanup()
-
-	a.scheduler.Start()
-	slog.Info("scheduler started", "interval", a.cfg.CheckInterval)
 
 	return &ScrapperApp{
 		cfg:         cfg,
