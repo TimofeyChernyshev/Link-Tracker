@@ -99,12 +99,12 @@ func main() {
 func setupReceiver(d *application.CommandDispatcher, cfg *config.Config) receiver.Receiver {
 	rateLimiter := resilience.NewRateLimiterMiddleware(cfg.RateLimiterConfig.RPS, cfg.RateLimiterConfig.Burst)
 
-	httpServer := bothttp.NewServer(d, cfg.HTTPReceiverConfig.Port, rateLimiter.Middleware)
+	httpServer := bothttp.NewServer(d, cfg.BotPort, rateLimiter.Middleware)
 	kafkaConsumer := botkafka.NewConsumer(
-		d, cfg.KafkaReceiverConfig.Brokers, cfg.KafkaReceiverConfig.Topic, cfg.KafkaReceiverConfig.GroupID,
-		cfg.KafkaReceiverConfig.SessionTimeout, cfg.KafkaReceiverConfig.MinBytes, cfg.KafkaReceiverConfig.MaxBytes,
-		cfg.KafkaReceiverConfig.MaxRetries, cfg.KafkaReceiverConfig.BatchSize, cfg.KafkaReceiverConfig.RetryDelay,
-		cfg.KafkaReceiverConfig.BatchTimeout, cfg.KafkaReceiverConfig.DLQTopic,
+		d, cfg.CommonKafkaConfig.Brokers, cfg.KafkaConsumerConfig.Topic, cfg.KafkaConsumerConfig.GroupID,
+		cfg.KafkaConsumerConfig.SessionTimeout, cfg.KafkaConsumerConfig.MinBytes, cfg.KafkaConsumerConfig.MaxBytes,
+		cfg.DLQConfig.MaxRetries, cfg.DLQConfig.BatchSize, cfg.DLQConfig.RetryDelay,
+		cfg.DLQConfig.BatchTimeout, cfg.DLQConfig.DLQTopic,
 	)
 
 	receiver := receiver.NewMultiReceiver([]receiver.Receiver{httpServer, kafkaConsumer})

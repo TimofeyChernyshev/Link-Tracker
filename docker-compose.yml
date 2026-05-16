@@ -139,8 +139,8 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
 
-      KAFKA_TOPIC_UPDATES: ${KAFKA_UPDATES_TOPIC:-link-updates}
-      KAFKA_TOPIC_UPDATES_DLQ: ${KAFKA_TOPIC_UPDATES_DLQ:-link-updates-dlq}
+      KAFKA_TOPIC_UPDATES: ${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
+      KAFKA_TOPIC_UPDATES_DLQ: ${KAFKA_PROCESSED_UPDATED_DLQ_TOPIC:-link.processed-updates-dlq}
 
       # =3, чтобы параллельно обрабатывать сообщения и распределять нагрузку по 3 брокерам
       KAFKA_TOPIC_UPDATES_PARTITIONS: "3"
@@ -339,8 +339,7 @@ services:
     ports:
       - "${SCRAPPER_PORT:-8081}:${SCRAPPER_PORT:-8081}"
     environment:
-      - NOTIFICATION_TYPE=${NOTIFICATION_TYPE:-kafka}
-      - KAFKA_UPDATES_TOPIC=${KAFKA_UPDATES_TOPIC:-link-updates}
+      - SCRAPPER_NOTIFIER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
       - KAFKA_BROKERS=${KAFKA_BROKERS}
     env_file:
       - .env.scrapper
@@ -356,9 +355,9 @@ services:
     ports:
       - "${BOT_PORT:-8080}:${BOT_PORT:-8080}"
     environment:
-      - NOTIFICATION_TYPE=${NOTIFICATION_TYPE:-kafka}
-      - KAFKA_UPDATES_TOPIC=${KAFKA_UPDATES_TOPIC}
       - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - BOT_KAFKA_DLQ_TOPIC=${KAFKA_PROCESSED_UPDATED_DLQ_TOPIC:-link.processed-updates-dlq}
+      - BOT_KAFKA_UPDATES_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
     env_file:
       - .env.bot
     networks:

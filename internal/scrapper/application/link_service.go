@@ -89,7 +89,7 @@ func (s *Service) RemoveLink(ctx context.Context, chatID int64, url string) (dom
 }
 
 func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
-	slog.Debug("getting links", "chatID", chatID)
+	slog.Debug("getting links", "chatID", chatID, "limit", limit, "offset", offset)
 
 	exists, err := s.storage.ChatExists(ctx, chatID)
 	if err != nil {

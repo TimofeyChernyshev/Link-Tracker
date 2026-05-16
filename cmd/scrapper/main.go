@@ -89,9 +89,9 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 	httpNotifier := httpnotifier.NewBotClient(cfg.HTTPNotifierConfig.BaseURL, botClient)
 
 	kafkanotifier := kafkanotifier.NewKafkaNotifier(
-		cfg.KafkaNotifierConfig.Topic,
-		cfg.KafkaNotifierConfig.Compression, cfg.KafkaNotifierConfig.Brokers,
-		cfg.KafkaNotifierConfig.BatchSize, cfg.KafkaNotifierConfig.RequiredAcks, cfg.KafkaNotifierConfig.BatchTimeout,
+		cfg.KafkaNotifierConfig.NotifierConfig.Topic,
+		cfg.KafkaNotifierConfig.NotifierConfig.Compression, cfg.KafkaNotifierConfig.CommonConfig.Brokers,
+		cfg.KafkaNotifierConfig.NotifierConfig.BatchSize, cfg.KafkaNotifierConfig.NotifierConfig.RequiredAcks, cfg.KafkaNotifierConfig.NotifierConfig.BatchTimeout,
 	)
 
 	notifier := scrappernotifier.NewFallbackNotifier([]scrappernotifier.Notifier{httpNotifier, kafkanotifier})

@@ -22,7 +22,7 @@ func TestLoad_Success(t *testing.T) {
 
 	content := []byte("SCRAPPER_PORT=8081\nBOT_BASE_URL=http://localhost:8080\n" +
 		"ACCESS_TYPE=1\nDB_USER=1\nDB_PASSWORD=1\nDB_HOST=1\nDB_PORT=1\nDB_NAME=1" +
-		"\nGITHUB_BASE_URL=http\nSTACK_BASE_URL=http\nNOTIFICATION_TYPE=http\nVALKEY_ADDRESSES=123\nKAFKA_BROKERS=x,23\nKAFKA_UPDATES_TOPIC=test")
+		"\nGITHUB_BASE_URL=http\nSTACK_BASE_URL=http\n\nVALKEY_ADDRESSES=123\nKAFKA_BROKERS=x,23\nSCRAPPER_NOTIFIER_TOPIC=test")
 	err = os.WriteFile(".env", content, 0644)
 	require.NoError(t, err)
 	_ = godotenv.Load()
