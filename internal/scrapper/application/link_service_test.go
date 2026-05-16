@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	testBatchSize   = 10
-	testWorkerCount = 2
-	testInterval    = time.Duration(100000)
+	testBatchSize    = 10
+	testWorkerCount  = 2
+	testInterval     = time.Duration(100000)
+	testDefaultLimit = 20
 )
 
 type ServiceSuite struct {
@@ -24,6 +25,7 @@ type ServiceSuite struct {
 	mockClient   *MockClient
 	mockNotifier *MockNotifier
 	mockStorage  *MockStorage
+	mockCache    *MockCache
 	service      *Service
 	ctx          context.Context
 }
@@ -33,13 +35,16 @@ func (s *ServiceSuite) SetupTest() {
 	s.mockClient = NewMockClient(s.ctrl)
 	s.mockNotifier = NewMockNotifier(s.ctrl)
 	s.mockStorage = NewMockStorage(s.ctrl)
+	s.mockCache = NewMockCache(s.ctrl)
 
 	s.service = NewLinkService(
 		s.mockClient,
 		s.mockNotifier,
 		s.mockStorage,
+		s.mockCache,
 		testBatchSize,
 		testWorkerCount,
+		testDefaultLimit,
 	)
 	s.ctx = context.Background()
 }
@@ -166,6 +171,7 @@ func (s *ServiceSuite) TestAddLink_Success() {
 	s.mockStorage.EXPECT().ChatExists(s.ctx, chatID).Return(true, nil)
 	s.mockStorage.EXPECT().IsSubscribed(s.ctx, chatID, url).Return(false, nil)
 	s.mockStorage.EXPECT().AddLink(s.ctx, chatID, url, tags).Return(expected, nil)
+	s.mockCache.EXPECT().InvalidateLinks(s.ctx, chatID).Return(nil)
 
 	link, err := s.service.AddLink(s.ctx, chatID, url, tags)
 
@@ -201,6 +207,7 @@ func (s *ServiceSuite) TestRemoveLink_Success() {
 
 	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
 	s.mockStorage.EXPECT().RemoveLink(s.ctx, int64(1), expected.URL).Return(expected, nil)
+	s.mockCache.EXPECT().InvalidateLinks(s.ctx, int64(1)).Return(nil)
 
 	link, err := s.service.RemoveLink(s.ctx, 1, expected.URL)
 
@@ -225,9 +232,12 @@ func (s *ServiceSuite) TestGetLinks_Success() {
 
 	limit := 10
 	offset := 0
+	s.service.defaultLimit = limit
 
 	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
+	s.mockCache.EXPECT().GetLinks(s.ctx, int64(1), limit, offset).Return(nil, nil) // cache miss
 	s.mockStorage.EXPECT().GetLinks(s.ctx, int64(1), limit, offset).Return(expected, nil)
+	s.mockCache.EXPECT().SetLinks(s.ctx, int64(1), limit, offset, expected).Return(nil)
 
 	links, err := s.service.GetLinks(s.ctx, 1, limit, offset)
 
@@ -243,6 +253,25 @@ func (s *ServiceSuite) TestGetLinks_ChatNotExists() {
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, errChatInstRegistered)
 	s.Nil(links)
+}
+
+func (s *ServiceSuite) TestGetLinks_CacheHit() {
+	expected := []domain.Link{
+		{URL: "a"},
+		{URL: "b"},
+	}
+
+	limit := 10
+	offset := 0
+	s.service.defaultLimit = limit
+
+	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
+	s.mockCache.EXPECT().GetLinks(s.ctx, int64(1), limit, offset).Return(expected, nil)
+
+	links, err := s.service.GetLinks(s.ctx, 1, limit, offset)
+
+	s.Require().NoError(err)
+	s.Equal(expected, links)
 }
 
 func (s *ServiceSuite) TestRegisterChat_Success() {
@@ -266,6 +295,7 @@ func (s *ServiceSuite) TestRegisterChat_AlreadyExists() {
 func (s *ServiceSuite) TestDeleteChat_Success() {
 	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
 	s.mockStorage.EXPECT().DeleteChat(s.ctx, int64(1)).Return(nil)
+	s.mockCache.EXPECT().InvalidateLinks(s.ctx, int64(1)).Return(nil)
 
 	err := s.service.DeleteChat(s.ctx, 1)
 

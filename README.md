@@ -15,3 +15,7 @@
 
 - link-tracker-bot
 - link-tracker-scrapper
+
+# Результаты нагрузочных тестов и их анализа
+
+[docs/benchmark_results.md](docs/benchmark_results.md)
