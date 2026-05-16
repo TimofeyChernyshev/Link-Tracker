@@ -40,6 +40,9 @@ type BotScrapperKafkaSuite struct {
 	kafkaContainer *kafka.KafkaContainer
 
 	postgresContainer testcontainers.Container
+
+	valkeyNodes []testcontainers.Container
+	valkeyInit  testcontainers.Container
 }
 
 func TestBotScrapperKafkaSuite(t *testing.T) {
@@ -65,27 +68,7 @@ func (s *BotScrapperKafkaSuite) SetupSuite() {
 	s.Require().NoError(err)
 	s.network = net
 
-	postgresReq := testcontainers.ContainerRequest{
-		Image:        "postgres:15-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     "postgres",
-			"POSTGRES_PASSWORD": "postgres",
-			"POSTGRES_DB":       "linktracker",
-		},
-		Networks: []string{net.Name},
-		NetworkAliases: map[string][]string{
-			net.Name: {"postgres"},
-		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).
-			WithStartupTimeout(60 * time.Second),
-	}
-
-	postgresContainer, err := testcontainers.GenericContainer(s.ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: postgresReq,
-		Started:          true,
-	})
+	postgresContainer, err := StartPostgres(s.ctx, net.Name)
 	s.Require().NoError(err)
 	s.postgresContainer = postgresContainer
 
@@ -104,6 +87,18 @@ func (s *BotScrapperKafkaSuite) SetupSuite() {
 	s.kafkaContainer = kafkaContainer
 
 	internalBroker := "kafka:9092"
+
+	valkeyNodes, err := StartValkeyNode(s.ctx, net.Name)
+	s.Require().NoError(err)
+	s.valkeyNodes = valkeyNodes
+
+	valkeyInit, err := InitValkeyCluster(s.ctx, net.Name)
+	s.Require().NoError(err)
+	s.valkeyInit = valkeyInit
+
+	s.Eventually(func() bool {
+		return IsValkeyClusterReady(s.ctx, net.Name)
+	}, 20*time.Second, 500*time.Millisecond)
 
 	brokers, err := kafkaContainer.Brokers(s.ctx)
 	s.Require().NoError(err)
@@ -144,6 +139,12 @@ func (s *BotScrapperKafkaSuite) TearDownSuite() {
 	}
 	if s.scrapper != nil {
 		s.scrapper.Terminate(s.ctx)
+	}
+	if s.valkeyInit != nil {
+		s.valkeyInit.Terminate(s.ctx)
+	}
+	for _, n := range s.valkeyNodes {
+		n.Terminate(s.ctx)
 	}
 	if s.kafkaContainer != nil {
 		s.kafkaContainer.Terminate(s.ctx)

@@ -30,3 +30,9 @@ type Storage interface {
 	UpdateTimestamp(ctx context.Context, url string, t time.Time) error
 	UpdateLastChecked(ctx context.Context, url string, t time.Time) error
 }
+
+type Cache interface {
+	GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error)
+	SetLinks(ctx context.Context, chatID int64, limit, offset int, data []domain.Link) error
+	InvalidateLinks(ctx context.Context, chatID int64) error
+}

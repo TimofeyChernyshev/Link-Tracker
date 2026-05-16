@@ -30,6 +30,9 @@ func StartScrapperWithKafka(ctx context.Context, networkName, topic string, brok
 
 			"GITHUB_BASE_URL": "https://api.github.com/repos",
 			"STACK_BASE_URL":  "https://api.stackexchange.com/2.3",
+
+			"VALKEY_ADDRESSES":    "valkey-node-1:6379,valkey-node-2:6379,valkey-node-3:6379",
+			"VALKEY_CLUSTER_MODE": "true",
 		},
 		Networks: []string{networkName},
 		NetworkAliases: map[string][]string{

@@ -20,6 +20,7 @@ const (
 type Config struct {
 	ScrapperPort string `env:"SCRAPPER_PORT,required"`
 
+	// DB
 	AccessType AccessType `env:"ACCESS_TYPE,required"`
 	DBUser     string     `env:"DB_USER,required"`
 	DBPassword string     `env:"DB_PASSWORD,required"`
@@ -32,6 +33,7 @@ type Config struct {
 	WorkerCount int `env:"SCRAPPER_WORKER_COUNT" envDefault:"4"`
 	BatchSize   int `env:"SCRAPPER_BATCH_SIZE" envDefault:"20"`
 
+	// link checker (GitHub & StackOverflow)
 	APIBatchSize       int           `env:"API_BATCH_SIZE" envDefault:"100"`
 	LinkCheckerTimeout time.Duration `env:"LINK_CHECKER_TIMEOUT" envDefault:"5s"`
 	GighubBaseURL      string        `env:"GITHUB_BASE_URL,required"`
@@ -47,8 +49,21 @@ type Config struct {
 
 	ShutdownTimeout time.Duration `env:"SCRAPPER_SHUTDOWN_TIMEOUT" envDefault:"30s"`
 
+	// Kafka/http notifier
 	NotificationType NotifierType `env:"NOTIFICATION_TYPE" envDefault:"kafka"`
 	NotifierConfig   NotifierConfig
+
+	// Valkey config
+	ValkeyAddresses       []string      `env:"VALKEY_ADDRESSES,required"`
+	ValkeyPassword        string        `env:"VALKEY_PASSWORD"`
+	ValkeyTTL             time.Duration `env:"VALKEY_TTL" envDefault:"300s"`
+	ValkeyMaxRetries      int           `env:"VALKEY_MAX_RETRIES" envDefault:"3"`
+	ValkeyPoolSize        int           `env:"VALKEY_POOL_SIZE" envDefault:"10"`
+	ValkeyMinRetryBackoff time.Duration `env:"VALKEY_MIN_RETRY_BACKOFF" envDefault:"100ms"`
+	ValkeyMaxRetryBackoff time.Duration `env:"VALKEY_MAX_RETRY_BACKOFF" envDefault:"1s"`
+	ValkeyPingTime        time.Duration `env:"VALKEY_PING_TIME" envDefault:"5s"`
+	ValkeyClusterMode     bool          `env:"VALKEY_CLUSTER_MODE" envDefault:"true"`
+	ValkeyScanCount       int64         `env:"VALKEY_SCAN_COUNT" envDefault:"100"`
 }
 
 type AccessType string
