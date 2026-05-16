@@ -92,36 +92,28 @@ func (c *ValkeyClient) SetLinks(ctx context.Context, chatID int64, limit, offset
 		return fmt.Errorf("failed to set cache: %w", err)
 	}
 
+	setKey := fmt.Sprintf("chat:%d:keys", chatID)
+	c.client.SAdd(ctx, setKey, key)
+	c.client.Expire(ctx, setKey, c.ttl)
+
 	return nil
 }
 
 // InvalidateLinks удаляет кэш для чата
 func (c *ValkeyClient) InvalidateLinks(ctx context.Context, chatID int64) error {
-	pattern := c.getPattern(chatID)
+	setKey := fmt.Sprintf("chat:%d:keys", chatID)
 
-	var cursor uint64
-	var keys []string
-
-	for {
-		var batch []string
-		var err error
-
-		batch, cursor, err = c.client.Scan(ctx, cursor, pattern, c.scanCount).Result()
-		if err != nil {
-			return fmt.Errorf("failed to scan keys: %w", err)
-		}
-
-		keys = append(keys, batch...)
-
-		if cursor == 0 {
-			break
-		}
+	keys, err := c.client.SMembers(ctx, setKey).Result()
+	if err != nil {
+		return fmt.Errorf("failed to get keys: %w", err)
 	}
 
 	if len(keys) > 0 {
-		err := c.client.Del(ctx, keys...).Err()
-		if err != nil {
+		if err := c.client.Del(ctx, keys...).Err(); err != nil {
 			return fmt.Errorf("failed to delete keys: %w", err)
+		}
+		if err := c.client.Del(ctx, setKey).Err(); err != nil {
+			return fmt.Errorf("failed to delete set: %w", err)
 		}
 	}
 
