@@ -8,11 +8,11 @@ import (
 
 type NoopCache struct{}
 
-func (n *NoopCache) GetLinks(_ context.Context, _ int64) ([]domain.Link, error) {
+func (n *NoopCache) GetLinks(_ context.Context, _ int64, _, _ int) ([]domain.Link, error) {
 	return nil, nil
 }
 
-func (n *NoopCache) SetLinks(_ context.Context, _ int64, _ []domain.Link) error {
+func (n *NoopCache) SetLinks(_ context.Context, _ int64, _, _ int, _ []domain.Link) error {
 	return nil
 }
 

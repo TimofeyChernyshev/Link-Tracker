@@ -296,18 +296,18 @@ func (m *MockCache) EXPECT() *MockCacheMockRecorder {
 }
 
 // GetLinks mocks base method.
-func (m *MockCache) GetLinks(ctx context.Context, chatID int64) ([]domain.Link, error) {
+func (m *MockCache) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLinks", ctx, chatID)
+	ret := m.ctrl.Call(m, "GetLinks", ctx, chatID, limit, offset)
 	ret0, _ := ret[0].([]domain.Link)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetLinks indicates an expected call of GetLinks.
-func (mr *MockCacheMockRecorder) GetLinks(ctx, chatID interface{}) *gomock.Call {
+func (mr *MockCacheMockRecorder) GetLinks(ctx, chatID, limit, offset interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockCache)(nil).GetLinks), ctx, chatID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockCache)(nil).GetLinks), ctx, chatID, limit, offset)
 }
 
 // InvalidateLinks mocks base method.
@@ -325,15 +325,15 @@ func (mr *MockCacheMockRecorder) InvalidateLinks(ctx, chatID interface{}) *gomoc
 }
 
 // SetLinks mocks base method.
-func (m *MockCache) SetLinks(ctx context.Context, chatID int64, data []domain.Link) error {
+func (m *MockCache) SetLinks(ctx context.Context, chatID int64, limit, offset int, data []domain.Link) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetLinks", ctx, chatID, data)
+	ret := m.ctrl.Call(m, "SetLinks", ctx, chatID, limit, offset, data)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetLinks indicates an expected call of SetLinks.
-func (mr *MockCacheMockRecorder) SetLinks(ctx, chatID, data interface{}) *gomock.Call {
+func (mr *MockCacheMockRecorder) SetLinks(ctx, chatID, limit, offset, data interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLinks", reflect.TypeOf((*MockCache)(nil).SetLinks), ctx, chatID, data)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLinks", reflect.TypeOf((*MockCache)(nil).SetLinks), ctx, chatID, limit, offset, data)
 }

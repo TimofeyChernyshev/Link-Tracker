@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -13,12 +14,13 @@ import (
 )
 
 type ValkeyClient struct {
-	client redis.UniversalClient
-	ttl    time.Duration
+	scanCount int64
+	client    redis.UniversalClient
+	ttl       time.Duration
 }
 
 func NewValkeyClient(addresses []string, password string, ttl time.Duration, poolSize int,
-	maxRetries int, minRetryBackoff, maxRetryBackoff, pingTime time.Duration, clusterMode bool) (*ValkeyClient, error) {
+	maxRetries int, minRetryBackoff, maxRetryBackoff, pingTime time.Duration, clusterMode bool, scanCount int64) (*ValkeyClient, error) {
 	var client redis.UniversalClient
 	if clusterMode {
 		client = redis.NewClusterClient(&redis.ClusterOptions{
@@ -48,13 +50,14 @@ func NewValkeyClient(addresses []string, password string, ttl time.Duration, poo
 	}
 
 	return &ValkeyClient{
-		client: client,
-		ttl:    ttl,
+		client:    client,
+		ttl:       ttl,
+		scanCount: scanCount,
 	}, nil
 }
 
-func (c *ValkeyClient) GetLinks(ctx context.Context, chatID int64) ([]domain.Link, error) {
-	key := c.getKey(chatID)
+func (c *ValkeyClient) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
+	key := c.getKey(chatID, limit, offset)
 
 	data, err := c.client.Get(ctx, key).Bytes()
 	if err != nil {
@@ -75,8 +78,8 @@ func (c *ValkeyClient) GetLinks(ctx context.Context, chatID int64) ([]domain.Lin
 }
 
 // SetLinks сохраняет ссылки в кэш
-func (c *ValkeyClient) SetLinks(ctx context.Context, chatID int64, links []domain.Link) error {
-	key := c.getKey(chatID)
+func (c *ValkeyClient) SetLinks(ctx context.Context, chatID int64, limit, offset int, links []domain.Link) error {
+	key := c.getKey(chatID, limit, offset)
 
 	//nolint:musttag // Для кэша быстрее использовать сразу доменную модель иначе придется создавать промежуточную и переносить данные, на это уходит много ресурсов
 	dataBytes, err := json.Marshal(links)
@@ -94,11 +97,32 @@ func (c *ValkeyClient) SetLinks(ctx context.Context, chatID int64, links []domai
 
 // InvalidateLinks удаляет кэш для чата
 func (c *ValkeyClient) InvalidateLinks(ctx context.Context, chatID int64) error {
-	key := c.getKey(chatID)
+	pattern := c.getPattern(chatID)
 
-	err := c.client.Del(ctx, key).Err()
-	if err != nil {
-		return fmt.Errorf("failed to invalidate cache: %w", err)
+	var cursor uint64
+	var keys []string
+
+	for {
+		var batch []string
+		var err error
+
+		batch, cursor, err = c.client.Scan(ctx, cursor, pattern, c.scanCount).Result()
+		if err != nil {
+			return fmt.Errorf("failed to scan keys: %w", err)
+		}
+
+		keys = append(keys, batch...)
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	if len(keys) > 0 {
+		err := c.client.Del(ctx, keys...).Err()
+		if err != nil {
+			return fmt.Errorf("failed to delete keys: %w", err)
+		}
 	}
 
 	return nil
@@ -113,6 +137,19 @@ func (c *ValkeyClient) Close() error {
 	return nil
 }
 
-func (c *ValkeyClient) getKey(chatID int64) string {
-	return strconv.FormatInt(chatID, 10)
+func (c *ValkeyClient) getKey(chatID int64, limit, offset int) string {
+	key := strings.Builder{}
+
+	key.WriteString(strconv.FormatInt(chatID, 10))
+	key.WriteString("_")
+	key.WriteString(strconv.Itoa(limit))
+	key.WriteString("_")
+	key.WriteString(strconv.Itoa(offset))
+
+	return key.String()
+}
+
+// getPattern возвращает паттерн для поиска всех ключей чата
+func (c *ValkeyClient) getPattern(chatID int64) string {
+	return strconv.FormatInt(chatID, 10) + "_*"
 }

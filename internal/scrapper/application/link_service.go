@@ -100,18 +100,12 @@ func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int)
 		return nil, errChatInstRegistered
 	}
 
-	// кэшируется только 1я страница, т.к. иначе нужно было бы
-	// создавать ключи под разные комбинации параметров limit и offset,
-	// а это противоречит пункту 1.1 условия ДЗ 6.
-	// в ДЗ 3 указано, что нужно использовать пагинацию для обработки данных из таблиц
-	if offset == 0 && limit == s.defaultLimit {
-		cached, errGetCache := s.cache.GetLinks(ctx, chatID)
-		if errGetCache != nil {
-			slog.Warn("cannot get links from cache", "error", errGetCache)
-		}
-		if len(cached) != 0 {
-			return cached, nil
-		}
+	cached, errGetCache := s.cache.GetLinks(ctx, chatID, limit, offset)
+	if errGetCache != nil {
+		slog.Warn("cannot get links from cache", "error", errGetCache)
+	}
+	if len(cached) != 0 {
+		return cached, nil
 	}
 
 	links, err := s.storage.GetLinks(ctx, chatID, limit, offset)
@@ -120,7 +114,7 @@ func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int)
 	}
 
 	if offset == 0 && limit == s.defaultLimit && len(links) > 0 {
-		if err = s.cache.SetLinks(ctx, chatID, links); err != nil {
+		if err = s.cache.SetLinks(ctx, chatID, limit, offset, links); err != nil {
 			slog.Warn("failed to set cache", "error", err)
 		}
 	}

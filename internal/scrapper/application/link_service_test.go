@@ -235,9 +235,9 @@ func (s *ServiceSuite) TestGetLinks_Success() {
 	s.service.defaultLimit = limit
 
 	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
-	s.mockCache.EXPECT().GetLinks(s.ctx, int64(1)).Return(nil, nil) // cache miss
+	s.mockCache.EXPECT().GetLinks(s.ctx, int64(1), limit, offset).Return(nil, nil) // cache miss
 	s.mockStorage.EXPECT().GetLinks(s.ctx, int64(1), limit, offset).Return(expected, nil)
-	s.mockCache.EXPECT().SetLinks(s.ctx, int64(1), expected).Return(nil)
+	s.mockCache.EXPECT().SetLinks(s.ctx, int64(1), limit, offset, expected).Return(nil)
 
 	links, err := s.service.GetLinks(s.ctx, 1, limit, offset)
 
@@ -266,7 +266,7 @@ func (s *ServiceSuite) TestGetLinks_CacheHit() {
 	s.service.defaultLimit = limit
 
 	s.mockStorage.EXPECT().ChatExists(s.ctx, int64(1)).Return(true, nil)
-	s.mockCache.EXPECT().GetLinks(s.ctx, int64(1)).Return(expected, nil)
+	s.mockCache.EXPECT().GetLinks(s.ctx, int64(1), limit, offset).Return(expected, nil)
 
 	links, err := s.service.GetLinks(s.ctx, 1, limit, offset)
 

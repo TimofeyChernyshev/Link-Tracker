@@ -131,6 +131,23 @@ func (a *ScrapperApp) run() error {
 	a.scheduler.Start()
 	slog.Info("scheduler started", "interval", a.cfg.CheckInterval)
 
+	return &ScrapperApp{
+		cfg:         cfg,
+		repo:        repo,
+		notifier:    notifier,
+		linkService: linkService,
+		scheduler:   sched,
+		server:      server,
+		cache:       cache,
+	}, nil
+}
+
+func (a *ScrapperApp) run() error {
+	defer a.cleanup()
+
+	a.scheduler.Start()
+	slog.Info("scheduler started", "interval", a.cfg.CheckInterval)
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	errChan := make(chan error, 1)
