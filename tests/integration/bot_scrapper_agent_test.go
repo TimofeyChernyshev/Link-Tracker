@@ -257,7 +257,7 @@ func (s *BotScrapperAgentSuite) SendUserMessage(text string) {
 }
 
 func (s *BotScrapperAgentSuite) TestValidMessageFlow() {
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		future := time.Now().Add(1 * time.Hour).UTC()
 
 		w.Header().Set("Last-Modified", future.Format(http.TimeFormat))
