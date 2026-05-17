@@ -396,7 +396,7 @@ services:
       - KAFKA_BROKERS=${KAFKA_BROKERS}
       - AGENT_KAFKA_DLQ_TOPIC=${KAFKA_RAW_UPDATES_DLQ_TOPIC:-link.raw-updates-dlq}
       - AGENT_KAFKA_CONSUMER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.raw-updates}
-      - AGENT_NOTIFIER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
+      - AGENT_KAFKA_NOTIFIER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
     env_file:
       - .env.bot
     networks:
