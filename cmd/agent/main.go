@@ -15,10 +15,9 @@ import (
 )
 
 type AgentApp struct {
-	cfg          *config.Config
-	notifier     *kafkanotifier.KafkaNotifier
-	agentService *application.AgentService
-	consumer     *receiver.Consumer
+	cfg      *config.Config
+	notifier *kafkanotifier.KafkaNotifier
+	consumer *receiver.Consumer
 }
 
 func main() {
@@ -34,11 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	app, err := buildApp(cfg)
-	if err != nil {
-		slog.Error("failed to build app", "error", err)
-		os.Exit(1)
-	}
+	app := buildApp(cfg)
 
 	if err = app.run(); err != nil {
 		slog.Error("app runtime error", "error", err)
@@ -46,7 +41,7 @@ func main() {
 	}
 }
 
-func buildApp(cfg *config.Config) (*AgentApp, error) {
+func buildApp(cfg *config.Config) *AgentApp {
 	kafkaNotifier := kafkanotifier.NewKafkaNotifier(
 		cfg.KafkaNotifierConfig.Topic,
 		cfg.KafkaNotifierConfig.Compression, cfg.CommonKafkaConfig.Brokers,
@@ -66,7 +61,7 @@ func buildApp(cfg *config.Config) (*AgentApp, error) {
 		cfg:      cfg,
 		notifier: kafkaNotifier,
 		consumer: consumer,
-	}, nil
+	}
 }
 
 func (a *AgentApp) run() error {
