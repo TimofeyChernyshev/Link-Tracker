@@ -36,7 +36,9 @@ build-scrapper:
 	docker build -f Dockerfile.scrapper -t link-tracker-scrapper .
 build-bot:
 	docker build -f Dockerfile.bot -t link-tracker-bot .
-build-images: build-scrapper build-bot
+build-agent:
+	docker build -f Dockerfile.agent -t link-tracker-agent .
+build-images: build-scrapper build-bot build-agent
 
 .PHONY: test-http test-kafka
 test-http:
