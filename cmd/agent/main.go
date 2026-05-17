@@ -58,7 +58,7 @@ func buildApp(cfg *config.Config) (*AgentApp, error) {
 	consumer := receiver.NewConsumer(
 		agentService, cfg.CommonKafkaConfig.Brokers, cfg.KafkaConsumerConfig.Topic,
 		cfg.KafkaConsumerConfig.GroupID, cfg.KafkaConsumerConfig.SessionTimeout, cfg.KafkaConsumerConfig.MinBytes,
-		cfg.KafkaConsumerConfig.MaxBytes, cfg.DLQConfig.MaxRetries, cfg.KafkaNotifierConfig.BatchSize,
+		cfg.KafkaConsumerConfig.MaxBytes, cfg.DLQConfig.MaxRetries, cfg.DLQConfig.BatchSize,
 		cfg.DLQConfig.RetryDelay, cfg.DLQConfig.BatchTimeout, cfg.DLQConfig.DLQTopic,
 	)
 
