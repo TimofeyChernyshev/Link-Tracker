@@ -16,7 +16,7 @@ type DLQConfig struct {
 }
 
 type KafkaConsumerConfig struct {
-	Topic          string        `env:"UPDATES_TOPIC,required"`
+	Topic          string        `env:"CONSUMER_TOPIC,required"`
 	GroupID        string        `env:"GROUP_ID,required"`
 	SessionTimeout time.Duration `env:"SESSION_TIMEOUT" envDefault:"10s"`
 	MinBytes       int           `env:"MIN_BYTES" envDefault:"1"`
