@@ -89,7 +89,7 @@ func (s *ConsumerSuite) SetupTest() {
 
 func (s *ConsumerSuite) TearDownTest() {
 	if s.consumer != nil {
-		err := s.consumer.Shutdown()
+		err := s.consumer.Shutdown(s.ctx)
 		s.Require().NoError(err)
 	}
 

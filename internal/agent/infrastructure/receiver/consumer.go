@@ -122,12 +122,24 @@ func (c *Consumer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *Consumer) Shutdown() error {
+func (c *Consumer) Shutdown(ctx context.Context) error {
 	if c.cancel != nil {
 		c.cancel()
 	}
 
-	c.wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		c.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		slog.Debug("consumer goroutine stopped")
+	case <-ctx.Done():
+		slog.Warn("consumer shutdown timeout", "error", ctx.Err())
+		return fmt.Errorf("shutdown timeout: %w", ctx.Err())
+	}
 
 	var errors []error
 
