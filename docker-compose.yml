@@ -398,7 +398,7 @@ services:
       - AGENT_KAFKA_CONSUMER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.raw-updates}
       - AGENT_KAFKA_NOTIFIER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
     env_file:
-      - .env.bot
+      - .env.agent
     networks:
       - linktracker-net
 
