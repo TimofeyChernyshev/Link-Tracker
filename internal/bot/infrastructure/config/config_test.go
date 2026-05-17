@@ -18,7 +18,7 @@ func TestLoad_Success(t *testing.T) {
 	t.Chdir(tempDir)
 	defer t.Chdir(originalDir)
 
-	content := []byte("TELEGRAM_TOKEN=test_token_12345\nBOT_PORT=8080\nSCRAPPER_BASE_URL=http://123\nKAFKA_BROKERS=1\nBOT_KAFKA_UPDATES_TOPIC=2\nBOT_KAFKA_GROUP_ID=3\nBOT_KAFKA_DLQ_TOPIC=4")
+	content := []byte("TELEGRAM_TOKEN=test_token_12345\nBOT_PORT=8080\nSCRAPPER_BASE_URL=http://123\nKAFKA_BROKERS=1\nBOT_KAFKA_CONSUMER_TOPIC=2\nBOT_KAFKA_GROUP_ID=3\nBOT_KAFKA_DLQ_TOPIC=4")
 	err = os.WriteFile(".env", content, 0644)
 	require.NoError(t, err)
 	_ = godotenv.Load()
