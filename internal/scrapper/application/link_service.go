@@ -270,6 +270,7 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) domain.CheckR
 			URL:         link.URL,
 			Description: event.Description,
 			ChatIDs:     chatIDs,
+			Author:      event.Author,
 		}); err != nil {
 			slog.Error("failed to send update", "url", link.URL, "error", err)
 		}

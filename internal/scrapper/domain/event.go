@@ -8,6 +8,7 @@ import (
 type Event struct {
 	OccurredAt  time.Time
 	Description string
+	Author      string
 }
 
 type Events []Event
