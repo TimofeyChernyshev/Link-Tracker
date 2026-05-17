@@ -10,6 +10,12 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const (
+	scrapperWaitTime = 60 * time.Second
+	botWaitTime      = 60 * time.Second
+	agentWaitTime    = 60 * time.Second
+)
+
 func StartScrapperWithKafka(ctx context.Context, networkName, topic string, brokers []string) (testcontainers.Container, string, error) {
 	brokersStr := strings.Join(brokers, ",")
 
@@ -42,7 +48,7 @@ func StartScrapperWithKafka(ctx context.Context, networkName, topic string, brok
 		NetworkAliases: map[string][]string{
 			networkName: {"scrapper"},
 		},
-		WaitingFor: wait.ForLog("Scrapper started").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForLog("Scrapper started").WithStartupTimeout(scrapperWaitTime),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -80,7 +86,7 @@ func StartBotWithKafka(ctx context.Context, networkName, telegramURL, topic, dlq
 		NetworkAliases: map[string][]string{
 			networkName: {"bot"},
 		},
-		WaitingFor: wait.ForLog("Bot started").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForLog("Bot started").WithStartupTimeout(botWaitTime),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -114,7 +120,7 @@ func StartAgent(ctx context.Context, networkName, rawTopic, processedTopic, dlqT
 		NetworkAliases: map[string][]string{
 			networkName: {"agent"},
 		},
-		WaitingFor: wait.ForLog("Agent started").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForLog("Agent started").WithStartupTimeout(agentWaitTime),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
