@@ -140,8 +140,3 @@ func (c *ValkeyClient) getKey(chatID int64, limit, offset int) string {
 
 	return key.String()
 }
-
-// getPattern возвращает паттерн для поиска всех ключей чата
-func (c *ValkeyClient) getPattern(chatID int64) string {
-	return strconv.FormatInt(chatID, 10) + "_*"
-}
