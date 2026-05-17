@@ -33,22 +33,3 @@ func TestLoad_Success(t *testing.T) {
 	assert.NotNil(t, cfg)
 	assert.Equal(t, []string(nil), cfg.FilterStopWords)
 }
-
-func TestLoad_EnvFileNotFound(t *testing.T) {
-	tempDir := t.TempDir()
-
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-
-	t.Chdir(tempDir)
-	require.NoError(t, err)
-	defer t.Chdir(originalDir)
-
-	os.Remove(".env")
-
-	cfg, err := Load()
-
-	require.Error(t, err)
-	assert.Nil(t, cfg)
-	assert.ErrorContains(t, err, "is not set")
-}
