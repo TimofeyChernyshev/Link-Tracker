@@ -329,13 +329,14 @@ func (s *BotScrapperAgentSuite) TestInvalidMessageFormat() {
 		ctx, cancel := context.WithTimeout(s.ctx, 2*time.Second)
 		defer cancel()
 
-		msg, err := dlqReader.ReadMessage(ctx)
+		var msg kafkago.Message
+		msg, err = dlqReader.ReadMessage(ctx)
 		if err != nil {
 			return false
 		}
 
 		var dlqMsg map[string]interface{}
-		if err := json.Unmarshal(msg.Value, &dlqMsg); err != nil {
+		if err = json.Unmarshal(msg.Value, &dlqMsg); err != nil {
 			return false
 		}
 

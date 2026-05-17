@@ -109,10 +109,10 @@ func (c *ValkeyClient) InvalidateLinks(ctx context.Context, chatID int64) error 
 	}
 
 	if len(keys) > 0 {
-		if err := c.client.Del(ctx, keys...).Err(); err != nil {
+		if err = c.client.Del(ctx, keys...).Err(); err != nil {
 			return fmt.Errorf("failed to delete keys: %w", err)
 		}
-		if err := c.client.Del(ctx, setKey).Err(); err != nil {
+		if err = c.client.Del(ctx, setKey).Err(); err != nil {
 			return fmt.Errorf("failed to delete set: %w", err)
 		}
 	}
