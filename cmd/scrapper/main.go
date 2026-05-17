@@ -94,7 +94,8 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		cfg.KafkaNotifierConfig.NotifierConfig.BatchSize, cfg.KafkaNotifierConfig.NotifierConfig.RequiredAcks, cfg.KafkaNotifierConfig.NotifierConfig.BatchTimeout,
 	)
 
-	notifier := scrappernotifier.NewFallbackNotifier([]scrappernotifier.Notifier{httpNotifier, kafkanotifier})
+	// Сначала пробуем отправить через Kafka в Agent, если не работает, то напрямую по http в Bot
+	notifier := scrappernotifier.NewFallbackNotifier([]scrappernotifier.Notifier{kafkanotifier, httpNotifier})
 
 	cache, err := cache.NewValkeyClient(cfg.ValkeyAddresses, cfg.ValkeyPassword, cfg.ValkeyTTL,
 		cfg.ValkeyPoolSize, cfg.ValkeyMaxRetries, cfg.ValkeyMinRetryBackoff,
