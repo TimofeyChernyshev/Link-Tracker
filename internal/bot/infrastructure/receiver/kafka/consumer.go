@@ -19,15 +19,15 @@ type Service interface {
 }
 
 type DeadLetterMessage struct {
-	OriginalMessage json.RawMessage `json:"original_message"`
-	Key             string          `json:"key"`
-	Topic           string          `json:"topic"`
-	Partition       int             `json:"partition"`
-	Offset          int64           `json:"offset"`
-	ErrorReason     string          `json:"error_reason"`
-	ErrorType       string          `json:"error_type"`
-	Retries         int             `json:"retries"`
-	Timestamp       time.Time       `json:"timestamp"`
+	OriginalMessage string    `json:"original_message"`
+	Key             string    `json:"key"`
+	Topic           string    `json:"topic"`
+	Partition       int       `json:"partition"`
+	Offset          int64     `json:"offset"`
+	ErrorReason     string    `json:"error_reason"`
+	ErrorType       string    `json:"error_type"`
+	Retries         int       `json:"retries"`
+	Timestamp       time.Time `json:"timestamp"`
 }
 
 type Consumer struct {
@@ -157,7 +157,7 @@ func (c *Consumer) sendToDLQ(msg kafka.Message, reason error, errorType string, 
 	}
 
 	dlqMsg := DeadLetterMessage{
-		OriginalMessage: msg.Value,
+		OriginalMessage: string(msg.Value),
 		Key:             string(msg.Key),
 		Topic:           msg.Topic,
 		Partition:       msg.Partition,
