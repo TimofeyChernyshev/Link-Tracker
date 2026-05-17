@@ -143,6 +143,8 @@ func (a *ScrapperApp) run() error {
 		}
 	}()
 
+	slog.Info("Scrapper started")
+
 	select {
 	case sig := <-sigChan:
 		slog.Info("received signal", "signal", sig)

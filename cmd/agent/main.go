@@ -84,6 +84,8 @@ func (a *AgentApp) run() error {
 		}
 	}()
 
+	slog.Info("Agent started")
+
 	select {
 	case sig := <-sigChan:
 		slog.Info("received signal", "signal", sig)

@@ -73,6 +73,8 @@ func main() {
 		}
 	}()
 
+	slog.Info("Bot started")
+
 	d.Run(ctx)
 
 	// Ожидание сигнала о завершении или ошибку
