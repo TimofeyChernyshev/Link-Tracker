@@ -65,6 +65,7 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) ([]do
 		events = append(events, domain.Event{
 			Description: c.formatAnswerMessage(&answer),
 			OccurredAt:  time.Unix(answer.CreationDate, 0),
+			Author:      answer.Owner.DisplayName,
 		})
 	}
 
@@ -73,6 +74,7 @@ func (c *StackOverflowClient) Check(ctx context.Context, link domain.Link) ([]do
 		events = append(events, domain.Event{
 			Description: c.formatCommentMessage(&comment, question.Title),
 			OccurredAt:  time.Unix(comment.CreationDate, 0),
+			Author:      comment.Owner.DisplayName,
 		})
 	}
 

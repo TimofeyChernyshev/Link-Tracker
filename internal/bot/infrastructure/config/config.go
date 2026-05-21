@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
@@ -34,8 +35,13 @@ type Config struct {
 	// Rate limiter для HTTP сервера
 	RateLimiterConfig resilience.RateLimiterConfig `envPrefix:"BOT_RATE_LIMITER_"`
 
-	HTTPReceiverConfig  HTTPReceiverConfig  `envPrefix:"BOT_"`
-	KafkaReceiverConfig KafkaReceiverConfig `envPrefix:"KAFKA_"`
+	// Port где расположен Bot
+	BotPort string `env:"BOT_PORT,required"`
+
+	// Конфиг для Kafka
+	CommonKafkaConfig   config.CommonConfig
+	DLQConfig           config.DLQConfig           `envPrefix:"BOT_KAFKA_"`
+	KafkaConsumerConfig config.KafkaConsumerConfig `envPrefix:"BOT_KAFKA_"`
 }
 
 func Load() (*Config, error) {

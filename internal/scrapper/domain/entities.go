@@ -14,6 +14,7 @@ type LinkUpdate struct {
 	URL         string
 	Description string
 	ChatIDs     []int64
+	Author      string
 }
 
 type CheckResult struct {

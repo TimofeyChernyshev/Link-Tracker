@@ -308,7 +308,7 @@ func (r *SQLRepository) GetLinks(ctx context.Context, chatID int64, limit, offse
 func (r *SQLRepository) GetLinksWithInterval(ctx context.Context, limit, offset int, interval time.Duration) ([]domain.Link, error) {
 	rows, err := r.db.Query(ctx, `
         SELECT id, url, updated_at FROM links 
-		WHERE last_checked_at < NOW() - $1::interval
+		WHERE last_checked_at IS NULL OR last_checked_at < NOW() - $1::interval
 		ORDER BY id LIMIT $2 OFFSET $3
     `, fmt.Sprintf("%.0f seconds", interval.Seconds()), limit, offset)
 	if err != nil {

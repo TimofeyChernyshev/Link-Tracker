@@ -60,6 +60,7 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 			events = append(events, domain.Event{
 				Description: c.formatPRMessage(&pr),
 				OccurredAt:  pr.CreatedAt,
+				Author:      pr.User.Login,
 			})
 		}
 	}
@@ -72,6 +73,7 @@ func (c *GithubClient) Check(ctx context.Context, link domain.Link) ([]domain.Ev
 			events = append(events, domain.Event{
 				Description: c.formatIssueMessage(&issue),
 				OccurredAt:  issue.CreatedAt,
+				Author:      issue.User.Login,
 			})
 		}
 	}
