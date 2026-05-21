@@ -3,7 +3,7 @@ package domain
 type Priority string
 
 const (
-	HighPriority   = "HIGHT"
+	HighPriority   = "HIGH"
 	MediumPriority = "MEDIUM"
 	LowPriority    = "LOW"
 )
