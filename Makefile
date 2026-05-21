@@ -31,7 +31,15 @@ test:
 	@go test -coverpkg='gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/...' --race -count=1 -coverprofile='$(COVERAGE_FILE)' ./...
 	@go tool cover -func='$(COVERAGE_FILE)' | grep ^total | tr -s '\t'
 
-.PHONY: docker-build
-docker-build:
-	docker build -f Dockerfile.bot -t linktracker-bot .
-	docker build -f Dockerfile.scrapper -t linktracker-scrapper .
+.PHONY: build-scrapper build-bot build-images
+build-scrapper:
+	docker build -f Dockerfile.scrapper -t link-tracker-scrapper .
+build-bot:
+	docker build -f Dockerfile.bot -t link-tracker-bot .
+build-images: build-scrapper build-bot
+
+.PHONY: test-http test-kafka
+test-http:
+	go test -v -timeout 10m -run "TestBotScrapperSuite" ./tests/integration/...
+test-kafka:
+	go test -v -timeout 10m -run "TestBotScrapperKafkaSuite" ./tests/integration/...

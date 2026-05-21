@@ -18,7 +18,7 @@ type Server struct {
 	srv *http.Server
 }
 
-func NewServer(service Service, port string) *Server {
+func NewServer(service Service, port string, middlewares ...func(http.Handler) http.Handler) *Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/updates", func(w http.ResponseWriter, r *http.Request) {
@@ -45,10 +45,15 @@ func NewServer(service Service, port string) *Server {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	var handler http.Handler = mux
+	for _, middleware := range middlewares {
+		handler = middleware(handler)
+	}
+
 	return &Server{
 		srv: &http.Server{
 			Addr:    ":" + port,
-			Handler: mux,
+			Handler: handler,
 		},
 	}
 }

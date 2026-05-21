@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 type SOClientSuite struct {
@@ -25,8 +26,24 @@ func (s *SOClientSuite) SetupTest() {
 	timeout := time.Second * 5
 	previewLen := 200
 
+	retryCfg := resilience.RetryConfig{
+		MaxAttempts:   1,
+		InitialDelay:  10 * time.Millisecond,
+		MaxDelay:      100 * time.Millisecond,
+		BackoffFactor: 1.0,
+		RetryableHTTP: []int{500, 502, 503, 504},
+	}
+	cbConfig := resilience.CircuitBreakerConfig{
+		Name:        "test-cb",
+		MaxRequests: 5,
+		Timeout:     1 * time.Second,
+	}
+	rateLimit := 100
+
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
+
 	s.ctx = context.Background()
-	s.client = NewStackOverflowClient("stack", "test-bot/1.0", batchSize, previewLen, timeout)
+	s.client = NewStackOverflowClient("stack", "test-bot/1.0", batchSize, previewLen, resilientClient)
 }
 
 func (s *SOClientSuite) TearDownTest() {

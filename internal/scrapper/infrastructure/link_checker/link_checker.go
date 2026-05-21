@@ -6,24 +6,25 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	githubchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker/gihub_checker"
 	stackoverflowchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker/stack_overflow_checker"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 type LinkChecker struct {
-	client              *http.Client
+	httpClient          *resilience.ResilientHTTPClient
 	githubClient        *githubchecker.GithubClient
 	stackOverflowClient *stackoverflowchecker.StackOverflowClient
 }
 
-func NewLinkChecker(userAgent string, batchSize, previewLen int, githubBaseURL, stackBaseURL string, basicTimeout, githubTimeout, stackTimeout time.Duration) *LinkChecker {
+func NewLinkChecker(userAgent string, batchSize, previewLen int, githubBaseURL, stackBaseURL string,
+	basicClient, githubClient, stackClient *resilience.ResilientHTTPClient) *LinkChecker {
 	return &LinkChecker{
-		client:              &http.Client{Timeout: basicTimeout},
-		githubClient:        githubchecker.NewGithubClient(githubBaseURL, userAgent, batchSize, previewLen, githubTimeout),
-		stackOverflowClient: stackoverflowchecker.NewStackOverflowClient(stackBaseURL, userAgent, batchSize, previewLen, stackTimeout),
+		httpClient:          basicClient,
+		githubClient:        githubchecker.NewGithubClient(githubBaseURL, userAgent, batchSize, previewLen, githubClient),
+		stackOverflowClient: stackoverflowchecker.NewStackOverflowClient(stackBaseURL, userAgent, batchSize, previewLen, stackClient),
 	}
 }
 
@@ -54,7 +55,7 @@ func (c *LinkChecker) checkLastModified(ctx context.Context, link domain.Link) (
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.httpClient.Do(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}

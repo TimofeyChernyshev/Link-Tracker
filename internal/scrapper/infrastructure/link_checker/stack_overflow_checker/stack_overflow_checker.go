@@ -14,19 +14,20 @@ import (
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 type StackOverflowClient struct {
-	httpClient *http.Client
+	httpClient *resilience.ResilientHTTPClient
 	baseURL    string
 	userAgent  string
 	batchSize  int
 	previewLen int
 }
 
-func NewStackOverflowClient(baseURL, userAgent string, batchSize, previewLen int, timeout time.Duration) *StackOverflowClient {
+func NewStackOverflowClient(baseURL, userAgent string, batchSize, previewLen int, resilientClient *resilience.ResilientHTTPClient) *StackOverflowClient {
 	return &StackOverflowClient{
-		httpClient: &http.Client{Timeout: timeout},
+		httpClient: resilientClient,
 		baseURL:    baseURL,
 		userAgent:  userAgent,
 		batchSize:  batchSize,
@@ -126,7 +127,7 @@ func (c *StackOverflowClient) fetchQuestion(ctx context.Context, questionID int6
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
@@ -214,7 +215,7 @@ func (c *StackOverflowClient) fetchItems(
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(ctx, req)
 	if err != nil {
 		return fmt.Errorf("execute request: %w", err)
 	}

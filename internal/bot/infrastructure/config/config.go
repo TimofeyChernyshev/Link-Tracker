@@ -5,17 +5,18 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 type Config struct {
 	TelegramToken    string `env:"TELEGRAM_TOKEN,required"`
 	TelegramEndpoint string `env:"TELEGRAM_API_URL"`
 
-	ScrapperBaseURL string        `env:"SCRAPPER_BASE_URL,required"`
-	ScrapperTimeout time.Duration `env:"BOT_TO_SCRAPPER_TIMEOUT" envDefault:"5s"`
-
-	NotificationType ReceiverType `env:"NOTIFICATION_TYPE" envDefault:"kafka"`
-	ReceiverConfig   ReceiverConfig
+	ScrapperBaseURL              string                          `env:"SCRAPPER_BASE_URL,required"`
+	ScrapperRetryConfig          resilience.RetryConfig          `envPrefix:"SCRAPPER_"`
+	ScrapperCircuitBreakerConfig resilience.CircuitBreakerConfig `envPrefix:"SCRAPPER_CB_"`
+	ScrapperRateLimit            int                             `env:"SCRAPPER_RATE_LIMIT" envDefault:"100"`
+	ScrapperTimeout              time.Duration                   `env:"SCRAPPER_TIMEOUT" envDefault:"5s"`
 
 	TimeoutCheckLink      time.Duration `env:"TIMEOUT_CHECK_LINK" envDefault:"10s"`
 	TimeoutSaveLink       time.Duration `env:"TIMEOUT_SAVE_LINK" envDefault:"5s"`
@@ -29,6 +30,12 @@ type Config struct {
 	OutgoingBufferSize int `env:"BOT_OUTGOING_BUFFER_SIZE" envDefault:"100"`
 
 	ShutdownTimeout time.Duration `env:"BOT_SHUTDOWN_TIMEOUT" envDefault:"30s"`
+
+	// Rate limiter для HTTP сервера
+	RateLimiterConfig resilience.RateLimiterConfig `envPrefix:"BOT_RATE_LIMITER_"`
+
+	HTTPReceiverConfig  HTTPReceiverConfig  `envPrefix:"BOT_"`
+	KafkaReceiverConfig KafkaReceiverConfig `envPrefix:"KAFKA_"`
 }
 
 func Load() (*Config, error) {
@@ -36,25 +43,6 @@ func Load() (*Config, error) {
 
 	if err := env.Parse(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	switch cfg.NotificationType {
-	case ReceiverTypeKafka:
-		var kafkaCfg KafkaReceiverConfig
-		if err := env.Parse(&kafkaCfg); err != nil {
-			return nil, fmt.Errorf("failed to parse kafka receiver config: %w", err)
-		}
-		cfg.ReceiverConfig = &kafkaCfg
-
-	case ReceiverTypeHTTP:
-		var httpCfg HTTPReceiverConfig
-		if err := env.Parse(&httpCfg); err != nil {
-			return nil, fmt.Errorf("failed to parse http receiver config: %w", err)
-		}
-		cfg.ReceiverConfig = &httpCfg
-
-	default:
-		return nil, fmt.Errorf("unknown notification type: %s", cfg.NotificationType)
 	}
 
 	return &cfg, nil

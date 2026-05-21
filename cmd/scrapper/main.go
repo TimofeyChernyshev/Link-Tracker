@@ -18,9 +18,12 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
 	scrappernotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier"
+	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/http"
+	kafkanotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/kafka"
 	scrapperhttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/receiver/http"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/repository"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/scheduler"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 type ScrapperApp struct {
@@ -69,17 +72,29 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		return nil, fmt.Errorf("failed to create repository: %w", err)
 	}
 
+	basicClient := resilience.NewResilientHTTPClient(cfg.BasicRetryConfig, cfg.BasicCircuitBreakerConfig, cfg.BasicRateLimit, cfg.BasicTimeout)
+	githubClient := resilience.NewResilientHTTPClient(cfg.GithubRetryConfig, cfg.GithubCircuitBreakerConfig, cfg.GithubRateLimit, cfg.GithubTimeout)
+	stackClient := resilience.NewResilientHTTPClient(cfg.StackRetryConfig, cfg.StackCircuitBreakerConfig, cfg.StackRateLimit, cfg.StackTimeout)
+
 	linkChecker := linkchecker.NewLinkChecker(
 		"link-tracker", cfg.APIBatchSize, cfg.CheckerPreviewLen,
 		cfg.GighubBaseURL, cfg.StackBaseURL,
-		cfg.LinkCheckerTimeout, cfg.GithubTimeout, cfg.StackTimeout,
+		basicClient, githubClient, stackClient,
 	)
 
-	notifier, err := scrappernotifier.NewNotifier(cfg.NotifierConfig)
-	if err != nil {
-		repo.Close()
-		return nil, fmt.Errorf("failed to create notifier: %w", err)
-	}
+	botClient := resilience.NewResilientHTTPClient(
+		cfg.HTTPNotifierConfig.RetryConfig, cfg.HTTPNotifierConfig.CircuitBreakerConfig,
+		cfg.HTTPNotifierConfig.RateLimit, cfg.HTTPNotifierConfig.Timeout,
+	)
+	httpNotifier := httpnotifier.NewBotClient(cfg.HTTPNotifierConfig.BaseURL, botClient)
+
+	kafkanotifier := kafkanotifier.NewKafkaNotifier(
+		cfg.KafkaNotifierConfig.Topic,
+		cfg.KafkaNotifierConfig.Compression, cfg.KafkaNotifierConfig.Brokers,
+		cfg.KafkaNotifierConfig.BatchSize, cfg.KafkaNotifierConfig.RequiredAcks, cfg.KafkaNotifierConfig.BatchTimeout,
+	)
+
+	notifier := scrappernotifier.NewFallbackNotifier([]scrappernotifier.Notifier{httpNotifier, kafkanotifier})
 
 	cache, err := cache.NewValkeyClient(cfg.ValkeyAddresses, cfg.ValkeyPassword, cfg.ValkeyTTL,
 		cfg.ValkeyPoolSize, cfg.ValkeyMaxRetries, cfg.ValkeyMinRetryBackoff,
@@ -95,7 +110,9 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		return nil, fmt.Errorf("failed to create scheduler: %w", err)
 	}
 
-	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, cfg.DefaultLimit, cfg.MaxLimit)
+	rateLimiter := resilience.NewRateLimiterMiddleware(cfg.RateLimiterConfig.RPS, cfg.RateLimiterConfig.Burst)
+
+	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, cfg.DefaultLimit, cfg.MaxLimit, rateLimiter.Middleware)
 
 	return &ScrapperApp{
 		cfg:         cfg,

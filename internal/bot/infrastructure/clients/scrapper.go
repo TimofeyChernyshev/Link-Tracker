@@ -9,9 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 const (
@@ -19,16 +19,14 @@ const (
 )
 
 type ScrapperClient struct {
-	baseURL string
-	http    *http.Client
+	baseURL    string
+	httpClient *resilience.ResilientHTTPClient
 }
 
-func NewScrapperClient(baseURL string, scrapperTimeout time.Duration) *ScrapperClient {
+func NewScrapperClient(baseURL string, httpClient *resilience.ResilientHTTPClient) *ScrapperClient {
 	return &ScrapperClient{
-		baseURL: baseURL,
-		http: &http.Client{
-			Timeout: scrapperTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: httpClient,
 	}
 }
 
@@ -119,7 +117,7 @@ func (c *ScrapperClient) doJSON(ctx context.Context, method string, chatID int64
 		req.Header.Set(HeaderChatID, strconv.FormatInt(chatID, 10))
 	}
 
-	resp, err := c.http.Do(req)
+	resp, err := c.httpClient.Do(ctx, req)
 	if err != nil {
 		slog.Error("cannot send request or get response", "error", err)
 		return fmt.Errorf("cannot send request or get response: %w", err)

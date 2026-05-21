@@ -16,6 +16,9 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver"
+	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/http"
+	botkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/kafka"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 const (
@@ -34,7 +37,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL, cfg.ScrapperTimeout)
+	httpClient := resilience.NewResilientHTTPClient(cfg.ScrapperRetryConfig, cfg.ScrapperCircuitBreakerConfig, cfg.ScrapperRateLimit, cfg.ScrapperTimeout)
+	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL, httpClient)
 
 	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint, cfg.WorkerCount, cfg.SenderCount, cfg.JobsBufferSize, cfg.OutgoingBufferSize)
 	if err != nil {
@@ -46,11 +50,7 @@ func main() {
 
 	b.SetCommands(d.GetCommands())
 
-	receiver, err := receiver.NewReceiver(cfg.ReceiverConfig, d)
-	if err != nil {
-		slog.Error("cannot create receiver", "error", err)
-		os.Exit(1)
-	}
+	receiver := setupReceiver(d, cfg)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -94,6 +94,22 @@ func main() {
 	}
 
 	slog.Info("bot stoped")
+}
+
+func setupReceiver(d *application.CommandDispatcher, cfg *config.Config) receiver.Receiver {
+	rateLimiter := resilience.NewRateLimiterMiddleware(cfg.RateLimiterConfig.RPS, cfg.RateLimiterConfig.Burst)
+
+	httpServer := bothttp.NewServer(d, cfg.HTTPReceiverConfig.Port, rateLimiter.Middleware)
+	kafkaConsumer := botkafka.NewConsumer(
+		d, cfg.KafkaReceiverConfig.Brokers, cfg.KafkaReceiverConfig.Topic, cfg.KafkaReceiverConfig.GroupID,
+		cfg.KafkaReceiverConfig.SessionTimeout, cfg.KafkaReceiverConfig.MinBytes, cfg.KafkaReceiverConfig.MaxBytes,
+		cfg.KafkaReceiverConfig.MaxRetries, cfg.KafkaReceiverConfig.BatchSize, cfg.KafkaReceiverConfig.RetryDelay,
+		cfg.KafkaReceiverConfig.BatchTimeout, cfg.KafkaReceiverConfig.DLQTopic,
+	)
+
+	receiver := receiver.NewMultiReceiver([]receiver.Receiver{httpServer, kafkaConsumer})
+
+	return receiver
 }
 
 func setLogger() {
