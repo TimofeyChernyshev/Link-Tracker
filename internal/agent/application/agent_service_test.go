@@ -30,6 +30,7 @@ func (s *ServiceSuite) SetupTest() {
 	s.service = NewAgentService(
 		[]string{"stop", "word"},
 		[]string{"author1"},
+		[]string{"high"}, []string{"low"},
 		testFilterMinLenght,
 		testsummarizationThreshold,
 		s.mockNotifier,
@@ -97,7 +98,6 @@ func (s *ServiceSuite) TestFilter() {
 				ID:          1,
 				Description: "123123123123123",
 				TgChatIDs:   []int64{1, 2},
-				Priority:    domain.HighPriority,
 			},
 			expectedIsFiltered: true,
 		},
@@ -113,7 +113,6 @@ func (s *ServiceSuite) TestFilter() {
 				ID:          1,
 				Description: "12312312312312313213...",
 				TgChatIDs:   []int64{1, 2},
-				Priority:    domain.HighPriority,
 			},
 			expectedIsFiltered: true,
 		},
@@ -140,7 +139,7 @@ func (s *ServiceSuite) TestHandleRawUpdate() {
 		ID:          1,
 		Description: "123123123123123",
 		TgChatIDs:   []int64{1, 2},
-		Priority:    domain.HighPriority,
+		Priority:    domain.MediumPriority,
 	}
 
 	s.mockNotifier.EXPECT().SendUpdate(s.ctx, processedUpd).Return(nil)
@@ -173,11 +172,52 @@ func (s *ServiceSuite) TestHandleRawUpdate_SendingError() {
 		ID:          1,
 		Description: "123123123123123",
 		TgChatIDs:   []int64{1, 2},
-		Priority:    domain.HighPriority,
+		Priority:    domain.MediumPriority,
 	}
 
 	s.mockNotifier.EXPECT().SendUpdate(s.ctx, processedUpd).Return(errors.New("some error"))
 
 	err := s.service.HandleRawUpdate(s.ctx, upd)
 	s.Require().Error(err)
+}
+
+func (s *ServiceSuite) TestDeterminePriority() {
+	tests := []struct {
+		name           string
+		description    string
+		expectPriority domain.Priority
+	}{
+		{
+			name:           "no low or high keywords",
+			description:    "12312312312312313213",
+			expectPriority: domain.MediumPriority,
+		},
+		{
+			name:           "high priority",
+			description:    "123 123 high",
+			expectPriority: domain.HighPriority,
+		},
+		{
+			name:           "low priority",
+			description:    "123 123 low",
+			expectPriority: domain.LowPriority,
+		},
+		{
+			name:           "low and high keywords",
+			description:    "high 123 low",
+			expectPriority: domain.HighPriority,
+		},
+		{
+			name:           "keyword is part of another word",
+			description:    "123high 123 123",
+			expectPriority: domain.MediumPriority,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			priority := s.service.determinePriority(tt.description)
+			s.Equal(tt.expectPriority, priority)
+		})
+	}
 }
