@@ -190,7 +190,7 @@ func (s *ServiceSuite) TestGrouping_SingleUpdate_NoGrouping() {
 
 	done := make(chan struct{})
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			close(done)
 			return nil
 		},
@@ -237,7 +237,7 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForSameChat() {
 
 	done := make(chan struct{})
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			close(done)
 			return nil
 		},
@@ -297,7 +297,7 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForDifferentChats() {
 	done := make(chan struct{}, 2)
 
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed1).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			callCount++
 			done <- struct{}{}
 			return nil
@@ -305,7 +305,7 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForDifferentChats() {
 	).Times(1)
 
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed2).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			callCount++
 			done <- struct{}{}
 			return nil
@@ -351,7 +351,7 @@ func (s *ServiceSuite) TestGrouping_PriorityMaxAmongGroup() {
 
 	done := make(chan struct{})
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			close(done)
 			return nil
 		},
@@ -410,7 +410,7 @@ func (s *ServiceSuite) TestGrouping_UpdatesOutsideWindow() {
 	done := make(chan struct{}, 2)
 
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed1).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			callCount++
 			done <- struct{}{}
 			return nil
@@ -418,7 +418,7 @@ func (s *ServiceSuite) TestGrouping_UpdatesOutsideWindow() {
 	).Times(1)
 
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed2).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			callCount++
 			done <- struct{}{}
 			return nil
@@ -452,7 +452,7 @@ func (s *ServiceSuite) TestHandleRawUpdate_SendingError() {
 
 	done := make(chan struct{})
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			close(done)
 			return errors.New("some error")
 		},
@@ -504,7 +504,7 @@ func (s *ServiceSuite) TestStop_FlushesRemainingGroups() {
 
 	done := make(chan struct{})
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed).DoAndReturn(
-		func(ctx context.Context, upd domain.ProcessedUpdate) error {
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
 			close(done)
 			return nil
 		},
