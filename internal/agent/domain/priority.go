@@ -6,13 +6,17 @@ const (
 	HighPriority   = "HIGH"
 	MediumPriority = "MEDIUM"
 	LowPriority    = "LOW"
+
+	HighPriorityLevel   = 3
+	MediumPriorityLevel = 2
+	LowPriorityLevel    = 1
 )
 
 var (
 	priorityOrder = map[Priority]int{
-		HighPriority:   3,
-		MediumPriority: 2,
-		LowPriority:    1,
+		HighPriority:   HighPriorityLevel,
+		MediumPriority: MediumPriorityLevel,
+		LowPriority:    LowPriorityLevel,
 	}
 )
 
