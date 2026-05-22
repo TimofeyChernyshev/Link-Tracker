@@ -28,12 +28,14 @@ type AgentService struct {
 	window      time.Duration
 	flushTicker *time.Ticker
 	stopCh      chan struct{}
+	stopOnce    sync.Once
+	wg          sync.WaitGroup
 
 	sendTimeout time.Duration
 }
 
 type pendingGroup struct {
-	updates  []domain.RawUpdate
+	updates  []domain.ProcessedUpdate
 	priority domain.Priority
 	lastSeen time.Time
 }
@@ -59,7 +61,12 @@ func NewAgentService(
 		sendTimeout:            sendTimeout,
 	}
 
-	go s.flushLoop()
+	s.wg.Add(1)
+
+	go func() {
+		defer s.wg.Done()
+		s.flushLoop()
+	}()
 
 	return s
 }
@@ -75,24 +82,28 @@ func (s *AgentService) HandleRawUpdate(rawUpdate domain.RawUpdate) error {
 	processedUpdate.Priority = s.determinePriority(rawDescription)
 
 	for _, chatID := range rawUpdate.TgChatIDs {
-		s.addToGroup(chatID, rawUpdate, processedUpdate.Priority)
+		s.addToGroup(chatID, processedUpdate)
 	}
 
 	return nil
 }
 
 func (s *AgentService) Stop() {
-	close(s.stopCh)
-	s.flushTicker.Stop()
+	s.stopOnce.Do(func() {
+		close(s.stopCh)
+		s.flushTicker.Stop()
 
-	s.mu.Lock()
-	remaining := s.pending
-	s.pending = make(map[int64]*pendingGroup)
-	s.mu.Unlock()
+		s.wg.Wait()
 
-	for chatID, group := range remaining {
-		s.sendGroupedUpdate(chatID, group)
-	}
+		s.mu.Lock()
+		remaining := s.pending
+		s.pending = make(map[int64]*pendingGroup)
+		s.mu.Unlock()
+
+		for chatID, group := range remaining {
+			s.sendGroupedUpdate(chatID, group)
+		}
+	})
 }
 
 func (s *AgentService) filter(rawUpdate *domain.RawUpdate) (domain.ProcessedUpdate, bool) {
@@ -155,15 +166,21 @@ func extractWords(text string) []string {
 	return re.FindAllString(text, -1)
 }
 
-func (s *AgentService) addToGroup(chatID int64, update domain.RawUpdate, priority domain.Priority) {
+func (s *AgentService) addToGroup(chatID int64, update domain.ProcessedUpdate) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	select {
+	case <-s.stopCh:
+		return
+	default:
+	}
 
 	group, exists := s.pending[chatID]
 	if !exists {
 		s.pending[chatID] = &pendingGroup{
-			updates:  []domain.RawUpdate{update},
-			priority: priority,
+			updates:  []domain.ProcessedUpdate{update},
+			priority: update.Priority,
 			lastSeen: time.Now(),
 		}
 		return
@@ -172,8 +189,8 @@ func (s *AgentService) addToGroup(chatID int64, update domain.RawUpdate, priorit
 	group.updates = append(group.updates, update)
 	group.lastSeen = time.Now()
 
-	if priority.IsHigher(group.priority) {
-		group.priority = priority
+	if update.Priority.IsHigher(group.priority) {
+		group.priority = update.Priority
 	}
 }
 
@@ -183,6 +200,7 @@ func (s *AgentService) flushLoop() {
 		case <-s.flushTicker.C:
 			s.flushExpiredGroups()
 		case <-s.stopCh:
+			s.flushExpiredGroups()
 			return
 		}
 	}

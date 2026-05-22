@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -183,7 +184,7 @@ func (s *ServiceSuite) TestGrouping_SingleUpdate_NoGrouping() {
 
 	expectedProcessed := domain.ProcessedUpdate{
 		ID:          1,
-		Description: "single update message",
+		Description: "single update messag...",
 		TgChatIDs:   []int64{12345},
 		Priority:    domain.MediumPriority,
 	}
@@ -230,7 +231,7 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForSameChat() {
 
 	expectedProcessed := domain.ProcessedUpdate{
 		ID:          1,
-		Description: "1. First update message\n2. Second update message",
+		Description: "1. First update message\n2. Second update messag...",
 		TgChatIDs:   []int64{chatID},
 		Priority:    domain.MediumPriority,
 	}
@@ -293,12 +294,12 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForDifferentChats() {
 		Priority:    domain.MediumPriority,
 	}
 
-	var callCount int
+	var callCount int32
 	done := make(chan struct{}, 2)
 
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed1).DoAndReturn(
 		func(_ context.Context, _ domain.ProcessedUpdate) error {
-			callCount++
+			atomic.AddInt32(&callCount, 1)
 			done <- struct{}{}
 			return nil
 		},
@@ -306,7 +307,7 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForDifferentChats() {
 
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed2).DoAndReturn(
 		func(_ context.Context, _ domain.ProcessedUpdate) error {
-			callCount++
+			atomic.AddInt32(&callCount, 1)
 			done <- struct{}{}
 			return nil
 		},
@@ -321,7 +322,7 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForDifferentChats() {
 	waitTime := 200 * time.Millisecond
 	tickTime := 10 * time.Millisecond
 	s.Eventually(func() bool {
-		return callCount >= 2
+		return atomic.LoadInt32(&callCount) >= 2
 	}, testGroupingWindow+waitTime, tickTime)
 }
 
@@ -344,7 +345,7 @@ func (s *ServiceSuite) TestGrouping_PriorityMaxAmongGroup() {
 
 	expectedProcessed := domain.ProcessedUpdate{
 		ID:          1,
-		Description: "1. low priority message\n2. high priority message",
+		Description: "1. low priority message\n2. high priority messag...",
 		TgChatIDs:   []int64{chatID},
 		Priority:    domain.HighPriority,
 	}
@@ -401,17 +402,17 @@ func (s *ServiceSuite) TestGrouping_UpdatesOutsideWindow() {
 
 	expectedProcessed2 := domain.ProcessedUpdate{
 		ID:          2,
-		Description: "Second update (outside window)",
+		Description: "Second update (outsi...",
 		TgChatIDs:   []int64{chatID},
 		Priority:    domain.MediumPriority,
 	}
 
-	var callCount int
+	var callCount int32
 	done := make(chan struct{}, 2)
 
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed1).DoAndReturn(
 		func(_ context.Context, _ domain.ProcessedUpdate) error {
-			callCount++
+			atomic.AddInt32(&callCount, 1)
 			done <- struct{}{}
 			return nil
 		},
@@ -419,7 +420,7 @@ func (s *ServiceSuite) TestGrouping_UpdatesOutsideWindow() {
 
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed2).DoAndReturn(
 		func(_ context.Context, _ domain.ProcessedUpdate) error {
-			callCount++
+			atomic.AddInt32(&callCount, 1)
 			done <- struct{}{}
 			return nil
 		},
@@ -431,14 +432,14 @@ func (s *ServiceSuite) TestGrouping_UpdatesOutsideWindow() {
 	waitTime := 200 * time.Millisecond
 	tickTime := 10 * time.Millisecond
 	s.Eventually(func() bool {
-		return callCount == 1
+		return atomic.LoadInt32(&callCount) == 1
 	}, testGroupingWindow+waitTime, tickTime)
 
 	err = s.service.HandleRawUpdate(upd2)
 	s.Require().NoError(err)
 
 	s.Eventually(func() bool {
-		return callCount == 2
+		return atomic.LoadInt32(&callCount) == 2
 	}, testGroupingWindow+waitTime, tickTime)
 }
 
@@ -450,13 +451,15 @@ func (s *ServiceSuite) TestHandleRawUpdate_SendingError() {
 		TgChatIDs:   []int64{1, 2},
 	}
 
-	done := make(chan struct{})
+	var callCount int32
+
 	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(_ context.Context, _ domain.ProcessedUpdate) error {
-			close(done)
+			atomic.AddInt32(&callCount, 1)
+
 			return errors.New("some error")
 		},
-	).Times(1)
+	).Times(2)
 
 	err := s.service.HandleRawUpdate(upd)
 	s.Require().NoError(err)
@@ -464,12 +467,7 @@ func (s *ServiceSuite) TestHandleRawUpdate_SendingError() {
 	waitTime := 200 * time.Millisecond
 	tickTime := 10 * time.Millisecond
 	s.Eventually(func() bool {
-		select {
-		case <-done:
-			return true
-		default:
-			return false
-		}
+		return atomic.LoadInt32(&callCount) == 2
 	}, testGroupingWindow+waitTime, tickTime)
 }
 
@@ -497,7 +495,7 @@ func (s *ServiceSuite) TestStop_FlushesRemainingGroups() {
 
 	expectedProcessed := domain.ProcessedUpdate{
 		ID:          1,
-		Description: "Message that will be flushed",
+		Description: "Message that will be...",
 		TgChatIDs:   []int64{chatID},
 		Priority:    domain.MediumPriority,
 	}
@@ -515,7 +513,7 @@ func (s *ServiceSuite) TestStop_FlushesRemainingGroups() {
 
 	s.service.Stop()
 
-	waitTime := 10000 * time.Millisecond
+	waitTime := 500 * time.Millisecond
 	tickTime := 10 * time.Millisecond
 	s.Eventually(func() bool {
 		select {
