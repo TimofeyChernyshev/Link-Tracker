@@ -404,11 +404,10 @@ func (s *BotScrapperAgentSuite) TestProcessedMessagePublished() {
 		ctx, cancel := context.WithTimeout(s.ctx, 2*time.Second)
 		defer cancel()
 
-		msg, err := reader.ReadMessage(ctx)
+		processedMsg, err = reader.ReadMessage(ctx)
 		if err != nil {
 			return false
 		}
-		processedMsg = msg
 		return true
 	}, waitTime, tickTime)
 
