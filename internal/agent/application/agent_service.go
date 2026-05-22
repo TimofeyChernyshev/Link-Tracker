@@ -28,6 +28,8 @@ type AgentService struct {
 	window      time.Duration
 	flushTicker *time.Ticker
 	stopCh      chan struct{}
+
+	sendTimeout time.Duration
 }
 
 type pendingGroup struct {
@@ -39,7 +41,7 @@ type pendingGroup struct {
 func NewAgentService(
 	stopWords, excludedAuthors, highKeywords, lowKeywords []string,
 	filterMinLength, summarizationThreshold int,
-	window time.Duration,
+	window, sendTimeout time.Duration,
 	notifier Notifier,
 ) *AgentService {
 	s := &AgentService{
@@ -54,6 +56,7 @@ func NewAgentService(
 		window:                 window,
 		flushTicker:            time.NewTicker(window),
 		stopCh:                 make(chan struct{}),
+		sendTimeout:            sendTimeout,
 	}
 
 	go s.flushLoop()
@@ -61,7 +64,7 @@ func NewAgentService(
 	return s
 }
 
-func (s *AgentService) HandleRawUpdate(ctx context.Context, rawUpdate domain.RawUpdate) error {
+func (s *AgentService) HandleRawUpdate(rawUpdate domain.RawUpdate) error {
 	rawDescription := rawUpdate.Description
 	processedUpdate, ok := s.filter(&rawUpdate)
 	if !ok {
@@ -223,7 +226,10 @@ func (s *AgentService) sendGroupedUpdate(chatID int64, group *pendingGroup) {
 		Priority:    group.priority,
 	}
 
-	if err := s.notifier.SendUpdate(context.Background(), processed); err != nil {
+	sendCtx, cancel := context.WithTimeout(context.Background(), s.sendTimeout)
+	defer cancel()
+
+	if err := s.notifier.SendUpdate(sendCtx, processed); err != nil {
 		slog.Error("failed to send grouped update", "chatID", chatID, "error", err)
 	}
 }

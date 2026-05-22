@@ -25,6 +25,8 @@ type Config struct {
 	Prioritization prioritization `envPrefix:"PRIORITIZATION_"`
 
 	GroupingWindow time.Duration `env:"GROUPING_WINDOW" envDefault:"30000ms"`
+
+	SendUpdateTimeout time.Duration `env:"AGENT_SEND_UPDATE_TIMEOUT" envDefault:"30s"`
 }
 
 type prioritization struct {

@@ -51,7 +51,7 @@ func buildApp(cfg *config.Config) *AgentApp {
 	agentService := application.NewAgentService(
 		cfg.FilterStopWords, cfg.FilterExcludedAuthors, cfg.Prioritization.HighKeywords, cfg.Prioritization.LowKeywords,
 		cfg.FilterMinLength, cfg.SummarizationThreshold,
-		cfg.GroupingWindow,
+		cfg.GroupingWindow, cfg.SendUpdateTimeout,
 		kafkaNotifier,
 	)
 

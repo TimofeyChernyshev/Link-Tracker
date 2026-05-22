@@ -15,6 +15,7 @@ const (
 	testFilterMinLenght        = 10
 	testsummarizationThreshold = 20
 	testGroupingWindow         = 100 * time.Millisecond
+	sendTimeout                = 30 * time.Second
 )
 
 type ServiceSuite struct {
@@ -36,6 +37,7 @@ func (s *ServiceSuite) SetupTest() {
 		testFilterMinLenght,
 		testsummarizationThreshold,
 		testGroupingWindow,
+		sendTimeout,
 		s.mockNotifier,
 	)
 	s.ctx = context.Background()
@@ -194,7 +196,7 @@ func (s *ServiceSuite) TestGrouping_SingleUpdate_NoGrouping() {
 		},
 	).Times(1)
 
-	err := s.service.HandleRawUpdate(s.ctx, upd)
+	err := s.service.HandleRawUpdate(upd)
 	s.Require().NoError(err)
 
 	waitTime := 200 * time.Millisecond
@@ -241,10 +243,10 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForSameChat() {
 		},
 	).Times(1)
 
-	err := s.service.HandleRawUpdate(s.ctx, upd1)
+	err := s.service.HandleRawUpdate(upd1)
 	s.Require().NoError(err)
 
-	err = s.service.HandleRawUpdate(s.ctx, upd2)
+	err = s.service.HandleRawUpdate(upd2)
 	s.Require().NoError(err)
 
 	waitTime := 200 * time.Millisecond
@@ -310,10 +312,10 @@ func (s *ServiceSuite) TestGrouping_MultipleUpdatesForDifferentChats() {
 		},
 	).Times(1)
 
-	err := s.service.HandleRawUpdate(s.ctx, upd1)
+	err := s.service.HandleRawUpdate(upd1)
 	s.Require().NoError(err)
 
-	err = s.service.HandleRawUpdate(s.ctx, upd2)
+	err = s.service.HandleRawUpdate(upd2)
 	s.Require().NoError(err)
 
 	waitTime := 200 * time.Millisecond
@@ -355,10 +357,10 @@ func (s *ServiceSuite) TestGrouping_PriorityMaxAmongGroup() {
 		},
 	).Times(1)
 
-	err := s.service.HandleRawUpdate(s.ctx, updLow)
+	err := s.service.HandleRawUpdate(updLow)
 	s.Require().NoError(err)
 
-	err = s.service.HandleRawUpdate(s.ctx, updHigh)
+	err = s.service.HandleRawUpdate(updHigh)
 	s.Require().NoError(err)
 
 	waitTime := 200 * time.Millisecond
@@ -423,7 +425,7 @@ func (s *ServiceSuite) TestGrouping_UpdatesOutsideWindow() {
 		},
 	).Times(1)
 
-	err := s.service.HandleRawUpdate(s.ctx, upd1)
+	err := s.service.HandleRawUpdate(upd1)
 	s.Require().NoError(err)
 
 	waitTime := 200 * time.Millisecond
@@ -432,7 +434,7 @@ func (s *ServiceSuite) TestGrouping_UpdatesOutsideWindow() {
 		return callCount == 1
 	}, testGroupingWindow+waitTime, tickTime)
 
-	err = s.service.HandleRawUpdate(s.ctx, upd2)
+	err = s.service.HandleRawUpdate(upd2)
 	s.Require().NoError(err)
 
 	s.Eventually(func() bool {
@@ -456,7 +458,7 @@ func (s *ServiceSuite) TestHandleRawUpdate_SendingError() {
 		},
 	).Times(1)
 
-	err := s.service.HandleRawUpdate(s.ctx, upd)
+	err := s.service.HandleRawUpdate(upd)
 	s.Require().NoError(err)
 
 	waitTime := 200 * time.Millisecond
@@ -479,7 +481,7 @@ func (s *ServiceSuite) TestHandleRawUpdate_MessageFiltered() {
 		TgChatIDs:   []int64{1, 2},
 	}
 
-	err := s.service.HandleRawUpdate(s.ctx, upd)
+	err := s.service.HandleRawUpdate(upd)
 	s.Require().NoError(err)
 }
 
@@ -508,7 +510,7 @@ func (s *ServiceSuite) TestStop_FlushesRemainingGroups() {
 		},
 	).Times(1)
 
-	err := s.service.HandleRawUpdate(s.ctx, upd)
+	err := s.service.HandleRawUpdate(upd)
 	s.Require().NoError(err)
 
 	s.service.Stop()
