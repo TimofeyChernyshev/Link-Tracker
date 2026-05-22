@@ -115,6 +115,9 @@ func StartAgent(ctx context.Context, networkName, rawTopic, processedTopic, dlqT
 			"AGENT_KAFKA_GROUP_ID":       "agent-test-group",
 			"AGENT_KAFKA_DLQ_TOPIC":      dlqTopic,
 			"AGENT_KAFKA_NOTIFIER_TOPIC": processedTopic,
+
+			"FILTER_STOP_WORDS": "stopword",
+			"GROUPING_WINDOW":   "1000ms",
 		},
 		Networks: []string{networkName},
 		NetworkAliases: map[string][]string{

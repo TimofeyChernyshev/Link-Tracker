@@ -18,6 +18,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/domain"
 )
 
 type BotScrapperAgentSuite struct {
@@ -342,4 +343,123 @@ func (s *BotScrapperAgentSuite) TestInvalidMessageFormat() {
 
 		return dlqMsg["error_type"] == "unmarshal"
 	}, waitTime, tickTime)
+}
+
+func (s *BotScrapperAgentSuite) TestProcessedMessagePublished() {
+	req, err := http.NewRequest(http.MethodPost, s.scrapperURL+"/tg-chat/123", nil)
+	s.Require().NoError(err)
+	resp, err := http.DefaultClient.Do(req)
+	s.Require().NoError(err)
+	defer resp.Body.Close()
+	s.Equal(http.StatusOK, resp.StatusCode)
+
+	var requestCount int
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requestCount++
+		var modTime time.Time
+		if requestCount == 1 {
+			modTime = time.Now().Add(-24 * time.Hour)
+		} else {
+			modTime = time.Now()
+		}
+		w.Header().Set("Last-Modified", modTime.UTC().Format(http.TimeFormat))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer testServer.Close()
+
+	testURL := strings.Replace(testServer.URL, "127.0.0.1", "host.docker.internal", 1)
+
+	addLinkReq := map[string]interface{}{
+		"link": testURL,
+		"tags": []string{"test"},
+	}
+	body, err := json.Marshal(addLinkReq)
+	s.Require().NoError(err)
+
+	req, err = http.NewRequest(http.MethodPost, s.scrapperURL+"/links", bytes.NewReader(body))
+	s.Require().NoError(err)
+	req.Header.Set("Tg-Chat-Id", "123")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err = http.DefaultClient.Do(req)
+	s.Require().NoError(err)
+	defer resp.Body.Close()
+	s.Equal(http.StatusOK, resp.StatusCode)
+
+	brokers, err := s.kafkaContainer.Brokers(s.ctx)
+	s.Require().NoError(err)
+
+	reader := kafkago.NewReader(kafkago.ReaderConfig{
+		Brokers:     brokers,
+		Topic:       s.processedTopic,
+		GroupID:     "test-processed-reader",
+		StartOffset: kafkago.FirstOffset,
+	})
+	defer reader.Close()
+
+	waitTime := 20 * time.Second
+	tickTime := 500 * time.Millisecond
+	var processedMsg kafkago.Message
+	s.Eventually(func() bool {
+		ctx, cancel := context.WithTimeout(s.ctx, 2*time.Second)
+		defer cancel()
+
+		msg, err := reader.ReadMessage(ctx)
+		if err != nil {
+			return false
+		}
+		processedMsg = msg
+		return true
+	}, waitTime, tickTime)
+
+	var processed domain.ProcessedUpdate
+	err = json.Unmarshal(processedMsg.Value, &processed)
+	s.Require().NoError(err)
+
+	s.Equal(int64(1), processed.ID)
+	s.Contains(processed.Description, testURL)
+	s.Equal(domain.Priority(domain.MediumPriority), processed.Priority)
+	s.Contains(processed.TgChatIDs, int64(123))
+}
+
+func (s *BotScrapperAgentSuite) TestFilteredMessageNotPublished() {
+	brokers, err := s.kafkaContainer.Brokers(s.ctx)
+	s.Require().NoError(err)
+
+	writer := kafkago.NewWriter(kafkago.WriterConfig{
+		Brokers: brokers,
+		Topic:   s.rawTopic,
+	})
+	defer writer.Close()
+
+	filteredUpdate := domain.RawUpdate{
+		ID:          999,
+		Description: "This message contains stopword and should be filtered",
+		Author:      "some-user",
+		TgChatIDs:   []int64{12345},
+	}
+	data, err := json.Marshal(filteredUpdate)
+	s.Require().NoError(err)
+
+	err = writer.WriteMessages(s.ctx, kafkago.Message{
+		Key:   []byte("999"),
+		Value: data,
+	})
+	s.Require().NoError(err)
+
+	reader := kafkago.NewReader(kafkago.ReaderConfig{
+		Brokers:     brokers,
+		Topic:       s.processedTopic,
+		GroupID:     "test-filtered-reader",
+		StartOffset: kafkago.LastOffset,
+	})
+	defer reader.Close()
+
+	time.Sleep(1 * time.Second)
+
+	ctx, cancel := context.WithTimeout(s.ctx, 2*time.Second)
+	defer cancel()
+
+	_, err = reader.ReadMessage(ctx)
+	s.Error(err, "Filtered message should NOT appear in processed topic")
 }
