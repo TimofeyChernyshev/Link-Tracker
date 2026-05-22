@@ -214,7 +214,7 @@ func (s *AgentService) sendGroupedUpdate(chatID int64, group *pendingGroup) {
 	} else {
 		var sb strings.Builder
 		for i, u := range group.updates {
-			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, u.Description))
+			fmt.Fprintf(&sb, "%d. %s\n", i+1, u.Description)
 		}
 		description = strings.TrimRight(sb.String(), "\n")
 	}
