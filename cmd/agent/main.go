@@ -15,9 +15,10 @@ import (
 )
 
 type AgentApp struct {
-	cfg      *config.Config
-	notifier *kafkanotifier.KafkaNotifier
-	consumer *receiver.Consumer
+	cfg          *config.Config
+	notifier     *kafkanotifier.KafkaNotifier
+	consumer     *receiver.Consumer
+	agentService *application.AgentService
 }
 
 func main() {
@@ -63,9 +64,10 @@ func buildApp(cfg *config.Config) *AgentApp {
 	)
 
 	return &AgentApp{
-		cfg:      cfg,
-		notifier: kafkaNotifier,
-		consumer: consumer,
+		cfg:          cfg,
+		notifier:     kafkaNotifier,
+		consumer:     consumer,
+		agentService: agentService,
 	}
 }
 
@@ -101,6 +103,8 @@ func (a *AgentApp) shutdown() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
 	defer cancel()
+
+	a.agentService.Stop()
 
 	if err := a.notifier.Close(); err != nil {
 		slog.Error("server stop error", "error", err)
