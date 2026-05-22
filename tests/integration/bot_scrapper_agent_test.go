@@ -405,10 +405,7 @@ func (s *BotScrapperAgentSuite) TestProcessedMessagePublished() {
 		defer cancel()
 
 		processedMsg, err = reader.ReadMessage(ctx)
-		if err == nil {
-			return true
-		}
-		return false
+		return err == nil
 	}, waitTime, tickTime)
 
 	var processed domain.ProcessedUpdate
