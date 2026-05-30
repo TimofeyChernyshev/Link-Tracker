@@ -113,10 +113,8 @@ func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int)
 		return nil, fmt.Errorf("getting links: %w", err)
 	}
 
-	if offset == 0 && limit == s.defaultLimit && len(links) > 0 {
-		if err = s.cache.SetLinks(ctx, chatID, limit, offset, links); err != nil {
-			slog.Warn("failed to set cache", "error", err)
-		}
+	if err = s.cache.SetLinks(ctx, chatID, limit, offset, links); err != nil {
+		slog.Warn("failed to set cache", "error", err)
 	}
 
 	return links, nil
