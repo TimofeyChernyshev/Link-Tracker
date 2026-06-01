@@ -115,14 +115,14 @@ func (a *BotApp) run() error {
 
 	go func() {
 		slog.Info("starting bot")
-		if err := a.botClient.Start(); err != nil {
+		if err = a.botClient.Start(); err != nil {
 			errChan <- fmt.Errorf("bot start error: %w", err)
 		}
 	}()
 
 	go func() {
 		slog.Info("starting receiver (HTTP + Kafka)")
-		if err := a.receiver.Start(context.Background()); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err = a.receiver.Start(context.Background()); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errChan <- fmt.Errorf("receiver start error: %w", err)
 		}
 	}()
@@ -134,7 +134,7 @@ func (a *BotApp) run() error {
 	select {
 	case sig := <-sigChan:
 		slog.Info("received signal", "signal", sig)
-	case err := <-errChan:
+	case err = <-errChan:
 		slog.Error("runtime error", "error", err)
 	}
 
