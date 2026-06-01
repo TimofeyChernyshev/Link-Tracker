@@ -83,7 +83,6 @@ func NewMetrics(memoryMetricTick time.Duration) *Metrics {
 	return m
 }
 
-// Реализация application.MetricsCollector
 func (m *Metrics) RecordCommand(ctx context.Context, command string) {
 	m.commandRequestsTotal.WithLabelValues(command).Inc()
 }
@@ -96,7 +95,6 @@ func (m *Metrics) RecordNotificationSent(ctx context.Context) {
 	m.sentNotificationTotal.Inc()
 }
 
-// Реализация bothttp.MetricsCollector
 func (m *Metrics) RecordHTTPRequest(ctx context.Context, method, endpoint, status string) {
 	m.httpRequestsTotal.WithLabelValues(method, endpoint, status).Inc()
 }
@@ -109,7 +107,6 @@ func (m *Metrics) RecordHTTPRequestsInFlight(ctx context.Context, delta int) {
 	m.httpRequestsInFlight.Add(float64(delta))
 }
 
-// HTTP middleware для RED метрик
 func (m *Metrics) HTTPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		m.RecordHTTPRequestsInFlight(r.Context(), 1)
