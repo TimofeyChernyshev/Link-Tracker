@@ -151,5 +151,6 @@ func (m *Metrics) collectMemoryMetrics(memoryMetricTick time.Duration) {
 	for range ticker.C {
 		var memStats runtime.MemStats
 		runtime.ReadMemStats(&memStats)
+		m.UpdateMemoryUsage(memStats.Alloc)
 	}
 }
