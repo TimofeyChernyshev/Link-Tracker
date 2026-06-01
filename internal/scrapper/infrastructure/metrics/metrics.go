@@ -119,31 +119,31 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-func (m *Metrics) RecordLinksTracked(ctx context.Context, domain string, count int) {
+func (m *Metrics) RecordLinksTracked(_ context.Context, domain string, count int) {
 	m.linksOnTrack.WithLabelValues(domain).Set(float64(count))
 }
 
-func (m *Metrics) RecordRequestDuration(ctx context.Context, scope, scopeType string, durationMs float64) {
+func (m *Metrics) RecordRequestDuration(_ context.Context, scope, scopeType string, durationMs float64) {
 	m.requestDuration.WithLabelValues(scope, scopeType).Observe(durationMs)
 }
 
-func (m *Metrics) RecordAPIRequest(ctx context.Context, source string) {
+func (m *Metrics) RecordAPIRequest(_ context.Context, source string) {
 	m.apiRequestsTotal.WithLabelValues(source).Inc()
 }
 
-func (m *Metrics) RecordHTTPRequest(ctx context.Context, method, endpoint, status string) {
+func (m *Metrics) RecordHTTPRequest(_ context.Context, method, endpoint, status string) {
 	m.httpRequestsTotal.WithLabelValues(method, endpoint, status).Inc()
 }
 
-func (m *Metrics) RecordHTTPRequestDuration(ctx context.Context, method, endpoint string, durationSeconds float64) {
+func (m *Metrics) RecordHTTPRequestDuration(_ context.Context, method, endpoint string, durationSeconds float64) {
 	m.httpRequestDuration.WithLabelValues(method, endpoint).Observe(durationSeconds)
 }
 
-func (m *Metrics) RecordHTTPRequestsInFlight(ctx context.Context, delta int) {
+func (m *Metrics) RecordHTTPRequestsInFlight(_ context.Context, delta int) {
 	m.httpRequestsInFlight.Add(float64(delta))
 }
 
-func (m *Metrics) RecordMemoryUsage(ctx context.Context, bytes uint64) {
+func (m *Metrics) RecordMemoryUsage(_ context.Context, bytes uint64) {
 	m.memoryUsage.Set(float64(bytes))
 }
 

@@ -83,27 +83,27 @@ func NewMetrics(memoryMetricTick time.Duration) *Metrics {
 	return m
 }
 
-func (m *Metrics) RecordCommand(ctx context.Context, command string) {
+func (m *Metrics) RecordCommand(_ context.Context, command string) {
 	m.commandRequestsTotal.WithLabelValues(command).Inc()
 }
 
-func (m *Metrics) RecordCommandDuration(ctx context.Context, scope, scopeType string, durationMs float64) {
+func (m *Metrics) RecordCommandDuration(_ context.Context, scope, scopeType string, durationMs float64) {
 	m.commandDuration.WithLabelValues(scope, scopeType).Observe(durationMs)
 }
 
-func (m *Metrics) RecordNotificationSent(ctx context.Context) {
+func (m *Metrics) RecordNotificationSent(_ context.Context) {
 	m.sentNotificationTotal.Inc()
 }
 
-func (m *Metrics) RecordHTTPRequest(ctx context.Context, method, endpoint, status string) {
+func (m *Metrics) RecordHTTPRequest(_ context.Context, method, endpoint, status string) {
 	m.httpRequestsTotal.WithLabelValues(method, endpoint, status).Inc()
 }
 
-func (m *Metrics) RecordHTTPRequestDuration(ctx context.Context, method, endpoint string, durationSeconds float64) {
+func (m *Metrics) RecordHTTPRequestDuration(_ context.Context, method, endpoint string, durationSeconds float64) {
 	m.httpRequestDuration.WithLabelValues(method, endpoint).Observe(durationSeconds)
 }
 
-func (m *Metrics) RecordHTTPRequestsInFlight(ctx context.Context, delta int) {
+func (m *Metrics) RecordHTTPRequestsInFlight(_ context.Context, delta int) {
 	m.httpRequestsInFlight.Add(float64(delta))
 }
 
