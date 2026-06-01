@@ -147,7 +147,7 @@ func (m *Metrics) RecordMemoryUsage(ctx context.Context, bytes uint64) {
 	m.memoryUsage.Set(float64(bytes))
 }
 
-func (m *Metrics) RunMetricsServer(port string) (shutdown func(ctx context.Context) error, err error) {
+func (m *Metrics) RunMetricsServer(port string) (func(ctx context.Context) error, error) {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 	srv := &http.Server{
@@ -162,7 +162,7 @@ func (m *Metrics) RunMetricsServer(port string) (shutdown func(ctx context.Conte
 		}
 	}()
 
-	shutdown = func(ctx context.Context) error {
+	shutdown := func(ctx context.Context) error {
 		return srv.Shutdown(ctx)
 	}
 	return shutdown, nil
