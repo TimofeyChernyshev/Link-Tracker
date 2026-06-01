@@ -2,12 +2,14 @@ package botmetrics
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"runtime"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Metrics struct {
@@ -125,6 +127,27 @@ func (m *Metrics) HTTPMiddleware(next http.Handler) http.Handler {
 		m.RecordHTTPRequest(r.Context(), r.Method, r.URL.Path, statusText)
 		m.RecordHTTPRequestDuration(r.Context(), r.Method, r.URL.Path, duration)
 	})
+}
+
+func (m *Metrics) RunMetricsServer(port string) (shutdown func(ctx context.Context) error, err error) {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
+	}
+
+	go func() {
+		slog.Info("metrics server listening", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("metrics server error", "error", err)
+		}
+	}()
+
+	shutdown = func(ctx context.Context) error {
+		return srv.Shutdown(ctx)
+	}
+	return shutdown, nil
 }
 
 type responseWriter struct {

@@ -37,6 +37,12 @@ func main() {
 	}
 
 	metric := botmetrics.NewMetrics(cfg.BotMetricTick)
+	metricsShutdown, err := metric.RunMetricsServer("9091")
+	if err != nil {
+		slog.Error("failed to start metrics server", "error", err)
+		os.Exit(1)
+	}
+
 	httpClient := resilience.NewResilientHTTPClient(cfg.ScrapperRetryConfig, cfg.ScrapperCircuitBreakerConfig, cfg.ScrapperRateLimit, cfg.ScrapperTimeout)
 	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL, httpClient, metric)
 
@@ -93,6 +99,9 @@ func main() {
 	}
 	if err = b.Stop(shutdownCtx); err != nil {
 		slog.Error("error during shutdown bot", "error", err)
+	}
+	if err = metricsShutdown(shutdownCtx); err != nil {
+		slog.Error("metrics server shutdown error", "error", err)
 	}
 
 	slog.Info("bot stoped")

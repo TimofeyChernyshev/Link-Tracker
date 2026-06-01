@@ -35,6 +35,7 @@ type ScrapperApp struct {
 	scheduler   *scheduler.Scheduler
 	server      *scrapperhttp.Server
 	cache       *cache.ValkeyClient
+	metrics     *scrappermetrics.Metrics
 }
 
 func main() {
@@ -126,11 +127,24 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		scheduler:   sched,
 		server:      server,
 		cache:       cache,
+		metrics:     metric,
 	}, nil
 }
 
 func (a *ScrapperApp) run() error {
 	defer a.cleanup()
+
+	metricsShutdown, err := a.metrics.RunMetricsServer("9090")
+	if err != nil {
+		return fmt.Errorf("failed to start metrics server: %w", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
+		defer cancel()
+		if err := metricsShutdown(ctx); err != nil {
+			slog.Error("metrics server shutdown error", "error", err)
+		}
+	}()
 
 	a.scheduler.Start()
 	slog.Info("scheduler started", "interval", a.cfg.CheckInterval)

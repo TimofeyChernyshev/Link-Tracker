@@ -2,12 +2,14 @@ package scrappermetrics
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"runtime"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Metrics struct {
@@ -143,6 +145,27 @@ func (m *Metrics) RecordHTTPRequestsInFlight(ctx context.Context, delta int) {
 
 func (m *Metrics) RecordMemoryUsage(ctx context.Context, bytes uint64) {
 	m.memoryUsage.Set(float64(bytes))
+}
+
+func (m *Metrics) RunMetricsServer(port string) (shutdown func(ctx context.Context) error, err error) {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
+	}
+
+	go func() {
+		slog.Info("metrics server listening", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("metrics server error", "error", err)
+		}
+	}()
+
+	shutdown = func(ctx context.Context) error {
+		return srv.Shutdown(ctx)
+	}
+	return shutdown, nil
 }
 
 func (m *Metrics) collectMemoryMetrics(memoryMetricTick time.Duration) {
