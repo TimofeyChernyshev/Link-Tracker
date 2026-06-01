@@ -102,43 +102,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
-			if c.metrics != nil {
-				c.metrics.RecordCommand(ctx, "kafka_message_received")
-			}
-
-			start := time.Now()
-			var update domain.LinkUpdate
-			if err = json.Unmarshal(msg.Value, &update); err != nil {
-				slog.Error("failed to unmarshal message", "error", err, "key", string(msg.Key))
-				c.sendToDLQ(msg, err, "unmarshal", 0)
-				if c.metrics != nil {
-					c.metrics.RecordCommandDuration(ctx, "kafka_consumer", "handle_update", float64(time.Since(start).Milliseconds()))
-				}
-				continue
-			}
-
-			attempt := 0
-
-			for attempt = range c.maxRetries + 1 {
-				if attempt > 0 {
-					slog.Warn("retrying to handle message", "attempt", attempt)
-					time.Sleep(c.retryDelay)
-				}
-
-				err = c.service.HandleUpdate(update.TgChatIDs, update.Description)
-				if err == nil {
-					break
-				}
-			}
-
-			if attempt == c.maxRetries+1 {
-				slog.Error("handle update error", "error", err, "attempt", attempt)
-				c.sendToDLQ(msg, errors.New("all retries exhausted"), "processing", c.maxRetries)
-			}
-
-			if c.metrics != nil {
-				c.metrics.RecordCommandDuration(ctx, "kafka_consumer", "handle_update", float64(time.Since(start).Milliseconds()))
-			}
+			c.processMessage(ctx, msg)
 		}
 	}()
 
@@ -171,6 +135,40 @@ func (c *Consumer) Shutdown(_ context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
+	if c.metrics != nil {
+		c.metrics.RecordCommand(ctx, "kafka_message_received")
+	}
+	start := time.Now()
+	defer func() {
+		if c.metrics != nil {
+			c.metrics.RecordCommandDuration(ctx, "kafka_consumer", "handle_update", float64(time.Since(start).Milliseconds()))
+		}
+	}()
+
+	var update domain.LinkUpdate
+	if err := json.Unmarshal(msg.Value, &update); err != nil {
+		slog.Error("failed to unmarshal message", "error", err, "key", string(msg.Key))
+		c.sendToDLQ(msg, err, "unmarshal", 0)
+		return
+	}
+
+	var lastErr error
+	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+		if attempt > 0 {
+			slog.Warn("retrying to handle message", "attempt", attempt)
+			time.Sleep(c.retryDelay)
+		}
+		if err := c.service.HandleUpdate(update.TgChatIDs, update.Description); err == nil {
+			return
+		} else {
+			lastErr = err
+		}
+	}
+	slog.Error("handle update error", "error", lastErr, "attempt", c.maxRetries+1)
+	c.sendToDLQ(msg, errors.New("all retries exhausted"), "processing", c.maxRetries)
 }
 
 func (c *Consumer) sendToDLQ(msg kafka.Message, reason error, errorType string, retries int) {
