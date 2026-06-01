@@ -21,6 +21,8 @@ const (
 type Config struct {
 	ScrapperPort string `env:"SCRAPPER_PORT,required"`
 
+	MetricPort string `env:"SCRAPPER_METRIC_PORT"`
+
 	// DB
 	AccessType AccessType `env:"ACCESS_TYPE,required"`
 	DBUser     string     `env:"DB_USER,required"`

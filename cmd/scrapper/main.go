@@ -134,7 +134,7 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 func (a *ScrapperApp) run() error {
 	defer a.cleanup()
 
-	metricsShutdown, err := a.metrics.RunMetricsServer("9090")
+	metricsShutdown, err := a.metrics.RunMetricsServer(a.cfg.MetricPort)
 	if err != nil {
 		return fmt.Errorf("failed to start metrics server: %w", err)
 	}

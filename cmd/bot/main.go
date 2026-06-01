@@ -37,7 +37,7 @@ func main() {
 	}
 
 	metric := botmetrics.NewMetrics(cfg.BotMetricTick)
-	metricsShutdown, err := metric.RunMetricsServer("9091")
+	metricsShutdown, err := metric.RunMetricsServer(cfg.MetricPort)
 	if err != nil {
 		slog.Error("failed to start metrics server", "error", err)
 		os.Exit(1)
