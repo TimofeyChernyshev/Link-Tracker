@@ -1,0 +1,29 @@
+# 1. RPS (Scrapper)
+sum(rate(http_requests_total{job="scrapper"}[5m]))
+
+# 2. Error rate (Scrapper)
+sum(rate(http_requests_total{job="scrapper", status=~"5.."}[5m])) / sum(rate(http_requests_total{job="scrapper"}[5m]))
+
+# 3. P99 latency (Scrapper)
+histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="scrapper"}[5m])) by (le))
+
+# 4. Memory usage (any service)
+memory_usage_bytes{job=~"$app"}
+
+# 5. Tracked links per domain
+links_on_track_total{job="scrapper"}
+
+# 6. Scrape latency for external sources
+histogram_quantile(0.99, sum(rate(request_duration_ms_total_bucket{job="scrapper", scope="external_source"}[5m])) by (le, scope_type))
+
+# 7. Bot commands per second
+sum(rate(command_requests_total{job="bot"}[5m]))
+
+# 8. Bot command duration P99
+histogram_quantile(0.99, sum(rate(command_duration_ms_total_bucket{job="bot"}[5m])) by (le, scope_type))
+
+# 9. Sent notifications rate
+rate(sent_notification_total{job="bot"}[5m])
+
+# 10. API requests by source (Scrapper)
+sum by (source) (rate(api_requests_total{job="scrapper"}[5m]))
