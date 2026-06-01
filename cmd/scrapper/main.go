@@ -141,7 +141,7 @@ func (a *ScrapperApp) run() error {
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
 		defer cancel()
-		if err := metricsShutdown(ctx); err != nil {
+		if err = metricsShutdown(ctx); err != nil {
 			slog.Error("metrics server shutdown error", "error", err)
 		}
 	}()
@@ -155,7 +155,7 @@ func (a *ScrapperApp) run() error {
 
 	go func() {
 		slog.Info("starting scrapper server", "port", a.cfg.ScrapperPort)
-		if err := a.server.Start(); err != nil {
+		if err = a.server.Start(); err != nil {
 			errChan <- err
 		}
 	}()
@@ -165,7 +165,7 @@ func (a *ScrapperApp) run() error {
 	select {
 	case sig := <-sigChan:
 		slog.Info("received signal", "signal", sig)
-	case err := <-errChan:
+	case err = <-errChan:
 		slog.Error("server error", "error", err)
 	}
 

@@ -387,7 +387,7 @@ func (r *SQLRepository) GetLinksBatch(ctx context.Context, batchSize, offset int
 	var links []domain.Link
 	for rows.Next() {
 		var link domain.Link
-		if err := rows.Scan(&link.ID, &link.URL, &link.UpdatedAt); err != nil {
+		if err = rows.Scan(&link.ID, &link.URL, &link.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan link: %w", err)
 		}
 		links = append(links, link)

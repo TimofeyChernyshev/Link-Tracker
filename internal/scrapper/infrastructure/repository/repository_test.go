@@ -398,7 +398,7 @@ func (s *RepositorySuite) TestGetLinksBatch() {
 
 	for i := 0; i < 25; i++ {
 		url := fmt.Sprintf("https://github.com/test/repo%d", i)
-		_, err := s.repo.AddLink(s.ctx, 12345, url, []string{fmt.Sprintf("tag%d", i)})
+		_, err = s.repo.AddLink(s.ctx, 12345, url, []string{fmt.Sprintf("tag%d", i)})
 		s.Require().NoError(err)
 	}
 
