@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 )
@@ -17,15 +18,17 @@ type CommandDispatcher struct {
 
 	conversations sync.Map // chatID -> active dialog
 
-	bot Bot
+	bot     Bot
+	metrics MetricsCollector
 }
 
-func NewCommandDispatcher(unknownCommand Command, bot Bot) *CommandDispatcher {
+func NewCommandDispatcher(unknownCommand Command, bot Bot, metrics MetricsCollector) *CommandDispatcher {
 	return &CommandDispatcher{
 		factories:      make(map[string]func() Command),
 		conversations:  sync.Map{},
 		unknownCommand: unknownCommand,
 		bot:            bot,
+		metrics:        metrics,
 	}
 }
 
@@ -71,6 +74,10 @@ func (cd *CommandDispatcher) HandleMessage(msg *domain.Message) {
 func (cd *CommandDispatcher) HandleUpdate(chatIDs []int64, desc string) error {
 	slog.Debug("got update", "description", desc, "chatIds", chatIDs)
 
+	if cd.metrics != nil {
+		cd.metrics.RecordNotificationSent(context.Background())
+	}
+
 	var errors []error
 
 	for _, chatID := range chatIDs {
@@ -107,6 +114,16 @@ func (cd *CommandDispatcher) GetCommands() []domain.BotCommand {
 }
 
 func (cd *CommandDispatcher) Dispatch(msg *domain.Message) (*domain.Response, error) {
+	start := time.Now()
+	cmdName := cd.extractCommandName(msg.Text)
+
+	if cd.metrics != nil {
+		cd.metrics.RecordCommand(context.Background(), cmdName)
+		defer func() {
+			cd.metrics.RecordCommandDuration(context.Background(), "command", cmdName, float64(time.Since(start).Milliseconds()))
+		}()
+	}
+
 	isCommand := strings.HasPrefix(msg.Text, "/")
 
 	convRaw, hasConversation := cd.conversations.Load(msg.ChatID)
@@ -181,4 +198,12 @@ func (cd *CommandDispatcher) handleNewCommand(msg *domain.Message, isCommand boo
 	}
 
 	return resp, nil
+}
+
+func (cd *CommandDispatcher) extractCommandName(text string) string {
+	parts := strings.Fields(text)
+	if len(parts) == 0 || !strings.HasPrefix(parts[0], "/") {
+		return "unknown"
+	}
+	return parts[0]
 }

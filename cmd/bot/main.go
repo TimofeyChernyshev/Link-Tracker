@@ -15,6 +15,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/bot"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/clients"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/config"
+	botmetrics "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/metrics"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver"
 	bothttp "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/http"
 	botkafka "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/infrastructure/receiver/kafka"
@@ -26,10 +27,8 @@ const (
 )
 
 func main() {
-	// Создание логера
 	setLogger()
 
-	// Загрузка конфига
 	_ = godotenv.Load(".env.bot")
 	cfg, err := config.Load()
 	if err != nil {
@@ -37,8 +36,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	metric := botmetrics.NewMetrics(cfg.BotMetricTick)
 	httpClient := resilience.NewResilientHTTPClient(cfg.ScrapperRetryConfig, cfg.ScrapperCircuitBreakerConfig, cfg.ScrapperRateLimit, cfg.ScrapperTimeout)
-	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL, httpClient)
+	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL, httpClient, metric)
 
 	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint, cfg.WorkerCount, cfg.SenderCount, cfg.JobsBufferSize, cfg.OutgoingBufferSize)
 	if err != nil {
@@ -46,11 +46,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	d := setupDispatcher(b, scrapperClient, cfg)
+	d := setupDispatcher(b, scrapperClient, metric, cfg)
 
 	b.SetCommands(d.GetCommands())
 
-	receiver := setupReceiver(d, cfg)
+	receiver := setupReceiver(d, cfg, metric)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -98,15 +98,16 @@ func main() {
 	slog.Info("bot stoped")
 }
 
-func setupReceiver(d *application.CommandDispatcher, cfg *config.Config) receiver.Receiver {
+func setupReceiver(d *application.CommandDispatcher, cfg *config.Config, metric *botmetrics.Metrics) receiver.Receiver {
 	rateLimiter := resilience.NewRateLimiterMiddleware(cfg.RateLimiterConfig.RPS, cfg.RateLimiterConfig.Burst)
 
-	httpServer := bothttp.NewServer(d, cfg.BotPort, rateLimiter.Middleware)
+	httpServer := bothttp.NewServer(d, cfg.BotPort, rateLimiter.Middleware, metric.HTTPMiddleware)
 	kafkaConsumer := botkafka.NewConsumer(
 		d, cfg.CommonKafkaConfig.Brokers, cfg.KafkaConsumerConfig.Topic, cfg.KafkaConsumerConfig.GroupID,
 		cfg.KafkaConsumerConfig.SessionTimeout, cfg.KafkaConsumerConfig.MinBytes, cfg.KafkaConsumerConfig.MaxBytes,
 		cfg.DLQConfig.MaxRetries, cfg.DLQConfig.BatchSize, cfg.DLQConfig.RetryDelay,
 		cfg.DLQConfig.BatchTimeout, cfg.DLQConfig.DLQTopic,
+		metric,
 	)
 
 	receiver := receiver.NewMultiReceiver([]receiver.Receiver{httpServer, kafkaConsumer})
@@ -122,8 +123,8 @@ func setLogger() {
 	slog.SetDefault(logger)
 }
 
-func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient, cfg *config.Config) *application.CommandDispatcher {
-	d := application.NewCommandDispatcher(handlers.NewUnknownHandler(), bot)
+func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient, metric *botmetrics.Metrics, cfg *config.Config) *application.CommandDispatcher {
+	d := application.NewCommandDispatcher(handlers.NewUnknownHandler(), bot, metric)
 	start := handlers.NewStartHandler(scrapperClient, cfg.TimeoutStartHandler)
 	d.Register(start.Name(), func() application.Command { return start })
 	help := handlers.NewHelpHandler()

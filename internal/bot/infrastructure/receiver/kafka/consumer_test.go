@@ -71,6 +71,7 @@ func TestConsumer_HandleUpdate(t *testing.T) {
 		1,
 		1e6,
 		3, 1, time.Second, time.Second, "dlq-topic",
+		nil,
 	)
 
 	err = consumer.Start(ctx)

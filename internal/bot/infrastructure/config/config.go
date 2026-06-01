@@ -42,6 +42,8 @@ type Config struct {
 	CommonKafkaConfig   config.CommonConfig
 	DLQConfig           config.DLQConfig           `envPrefix:"BOT_KAFKA_"`
 	KafkaConsumerConfig config.KafkaConsumerConfig `envPrefix:"BOT_KAFKA_"`
+
+	BotMetricTick time.Duration `env:"BOT_MEMORY_METRIC_TICK" envDefault:"30s"`
 }
 
 func Load() (*Config, error) {
