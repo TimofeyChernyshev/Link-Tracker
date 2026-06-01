@@ -3,6 +3,7 @@ package scrappermetrics
 import (
 	"context"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,7 +22,7 @@ type Metrics struct {
 	memoryUsage prometheus.Gauge
 }
 
-func NewMetrics() *Metrics {
+func NewMetrics(memoryMetricTick time.Duration) *Metrics {
 	m := &Metrics{
 		linksOnTrack: promauto.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -79,6 +80,8 @@ func NewMetrics() *Metrics {
 			},
 		),
 	}
+
+	go m.collectMemoryMetrics(memoryMetricTick)
 
 	return m
 }
@@ -140,4 +143,13 @@ func (m *Metrics) RecordHTTPRequestsInFlight(ctx context.Context, delta int) {
 
 func (m *Metrics) RecordMemoryUsage(ctx context.Context, bytes uint64) {
 	m.memoryUsage.Set(float64(bytes))
+}
+
+func (m *Metrics) collectMemoryMetrics(memoryMetricTick time.Duration) {
+	ticker := time.NewTicker(memoryMetricTick)
+	defer ticker.Stop()
+	for range ticker.C {
+		var memStats runtime.MemStats
+		runtime.ReadMemStats(&memStats)
+	}
 }

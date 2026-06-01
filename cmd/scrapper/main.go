@@ -105,7 +105,7 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		return nil, fmt.Errorf("failed to create cache client: %w", err)
 	}
 
-	metric := scrappermetrics.NewMetrics()
+	metric := scrappermetrics.NewMetrics(cfg.ScrapperMetricTick)
 
 	linkService := application.NewLinkService(linkChecker, notifier, repo, cache, metric, cfg.BatchSize, cfg.WorkerCount, cfg.DefaultLimit)
 

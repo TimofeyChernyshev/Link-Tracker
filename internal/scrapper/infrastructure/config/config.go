@@ -82,6 +82,8 @@ type Config struct {
 
 	HTTPNotifierConfig  *HTTPBotNotifierConfig
 	KafkaNotifierConfig *KafkaBotNotifierConfig
+
+	ScrapperMetricTick time.Duration `env:"SCRAPPER_MEMORY_METRIC_TICK" envDefault:"30s"`
 }
 
 type AccessType string
