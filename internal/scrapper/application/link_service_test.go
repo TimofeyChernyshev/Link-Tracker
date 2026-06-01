@@ -42,6 +42,7 @@ func (s *ServiceSuite) SetupTest() {
 		s.mockNotifier,
 		s.mockStorage,
 		s.mockCache,
+		nil,
 		testBatchSize,
 		testWorkerCount,
 		testDefaultLimit,

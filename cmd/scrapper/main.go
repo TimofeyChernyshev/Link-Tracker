@@ -17,6 +17,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/cache"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
+	scrappermetrics "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/metrics"
 	scrappernotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier"
 	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/http"
 	kafkanotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/kafka"
@@ -104,7 +105,9 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		return nil, fmt.Errorf("failed to create cache client: %w", err)
 	}
 
-	linkService := application.NewLinkService(linkChecker, notifier, repo, cache, cfg.BatchSize, cfg.WorkerCount, cfg.DefaultLimit)
+	metric := scrappermetrics.NewMetrics()
+
+	linkService := application.NewLinkService(linkChecker, notifier, repo, cache, metric, cfg.BatchSize, cfg.WorkerCount, cfg.DefaultLimit)
 
 	sched, err := scheduler.New(cfg.CheckInterval, linkService)
 	if err != nil {
@@ -113,7 +116,7 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 
 	rateLimiter := resilience.NewRateLimiterMiddleware(cfg.RateLimiterConfig.RPS, cfg.RateLimiterConfig.Burst)
 
-	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, cfg.DefaultLimit, cfg.MaxLimit, rateLimiter.Middleware)
+	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, metric, cfg.DefaultLimit, cfg.MaxLimit, rateLimiter.Middleware, metric.HTTPMiddleware)
 
 	return &ScrapperApp{
 		cfg:         cfg,

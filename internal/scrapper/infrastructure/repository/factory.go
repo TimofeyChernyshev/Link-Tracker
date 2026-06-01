@@ -31,6 +31,8 @@ type Repository interface {
 	UpdateTimestamp(ctx context.Context, url string, t time.Time) error
 	UpdateLastChecked(ctx context.Context, url string, t time.Time) error
 
+	GetLinksBatch(ctx context.Context, batchSize, offset int) ([]domain.Link, error)
+
 	DB() *sql.DB
 }
 

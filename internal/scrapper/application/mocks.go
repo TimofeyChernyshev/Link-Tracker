@@ -170,6 +170,21 @@ func (mr *MockStorageMockRecorder) GetLinks(ctx, chatID, limit, offset interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinks", reflect.TypeOf((*MockStorage)(nil).GetLinks), ctx, chatID, limit, offset)
 }
 
+// GetLinksBatch mocks base method.
+func (m *MockStorage) GetLinksBatch(ctx context.Context, batchSize, offset int) ([]domain.Link, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLinksBatch", ctx, batchSize, offset)
+	ret0, _ := ret[0].([]domain.Link)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLinksBatch indicates an expected call of GetLinksBatch.
+func (mr *MockStorageMockRecorder) GetLinksBatch(ctx, batchSize, offset interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinksBatch", reflect.TypeOf((*MockStorage)(nil).GetLinksBatch), ctx, batchSize, offset)
+}
+
 // GetLinksWithInterval mocks base method.
 func (m *MockStorage) GetLinksWithInterval(ctx context.Context, limit, offset int, interval time.Duration) ([]domain.Link, error) {
 	m.ctrl.T.Helper()
@@ -336,4 +351,51 @@ func (m *MockCache) SetLinks(ctx context.Context, chatID int64, limit, offset in
 func (mr *MockCacheMockRecorder) SetLinks(ctx, chatID, limit, offset, data interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLinks", reflect.TypeOf((*MockCache)(nil).SetLinks), ctx, chatID, limit, offset, data)
+}
+
+// MockMetricsCollector is a mock of MetricsCollector interface.
+type MockMetricsCollector struct {
+	ctrl     *gomock.Controller
+	recorder *MockMetricsCollectorMockRecorder
+}
+
+// MockMetricsCollectorMockRecorder is the mock recorder for MockMetricsCollector.
+type MockMetricsCollectorMockRecorder struct {
+	mock *MockMetricsCollector
+}
+
+// NewMockMetricsCollector creates a new mock instance.
+func NewMockMetricsCollector(ctrl *gomock.Controller) *MockMetricsCollector {
+	mock := &MockMetricsCollector{ctrl: ctrl}
+	mock.recorder = &MockMetricsCollectorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMetricsCollector) EXPECT() *MockMetricsCollectorMockRecorder {
+	return m.recorder
+}
+
+// RecordLinksTracked mocks base method.
+func (m *MockMetricsCollector) RecordLinksTracked(ctx context.Context, domain string, count int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RecordLinksTracked", ctx, domain, count)
+}
+
+// RecordLinksTracked indicates an expected call of RecordLinksTracked.
+func (mr *MockMetricsCollectorMockRecorder) RecordLinksTracked(ctx, domain, count interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordLinksTracked", reflect.TypeOf((*MockMetricsCollector)(nil).RecordLinksTracked), ctx, domain, count)
+}
+
+// RecordRequestDuration mocks base method.
+func (m *MockMetricsCollector) RecordRequestDuration(ctx context.Context, scope, scopeType string, durationMs float64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RecordRequestDuration", ctx, scope, scopeType, durationMs)
+}
+
+// RecordRequestDuration indicates an expected call of RecordRequestDuration.
+func (mr *MockMetricsCollectorMockRecorder) RecordRequestDuration(ctx, scope, scopeType, durationMs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordRequestDuration", reflect.TypeOf((*MockMetricsCollector)(nil).RecordRequestDuration), ctx, scope, scopeType, durationMs)
 }

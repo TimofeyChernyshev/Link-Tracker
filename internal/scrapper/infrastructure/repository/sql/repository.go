@@ -371,3 +371,26 @@ func (r *SQLRepository) UpdateLastChecked(ctx context.Context, url string, times
 
 	return nil
 }
+
+func (r *SQLRepository) GetLinksBatch(ctx context.Context, batchSize, offset int) ([]domain.Link, error) {
+	rows, err := r.db.Query(ctx, `
+        SELECT id, url, updated_at
+        FROM links
+        ORDER BY id
+        LIMIT $1 OFFSET $2
+    `, batchSize, offset)
+	if err != nil {
+		return nil, fmt.Errorf("get links batch: %w", err)
+	}
+	defer rows.Close()
+
+	var links []domain.Link
+	for rows.Next() {
+		var link domain.Link
+		if err := rows.Scan(&link.ID, &link.URL, &link.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan link: %w", err)
+		}
+		links = append(links, link)
+	}
+	return links, nil
+}

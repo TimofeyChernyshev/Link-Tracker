@@ -412,3 +412,18 @@ func (r *OrmRepository) UpdateLastChecked(ctx context.Context, url string, ts ti
 
 	return nil
 }
+
+func (r *OrmRepository) GetLinksBatch(ctx context.Context, batchSize, offset int) ([]domain.Link, error) {
+	var links []domain.Link
+	err := r.db.
+		From("links").
+		Select("id", "url", "updated_at").
+		Order(goqu.I("id").Asc()).
+		Limit(uint(batchSize)).
+		Offset(uint(offset)).
+		ScanStructsContext(ctx, &links)
+	if err != nil {
+		return nil, fmt.Errorf("get links batch: %w", err)
+	}
+	return links, nil
+}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -23,16 +24,24 @@ type Service struct {
 	notifier     Notifier
 	cache        Cache
 	storage      Storage
+	metrics      MetricsCollector
 	batchSize    int
 	workerCount  int
 	defaultLimit int
 }
 
-func NewLinkService(c Client, n Notifier, s Storage, cache Cache, bs, wk, dl int) *Service {
-	return &Service{client: c, notifier: n, storage: s, cache: cache, batchSize: bs, workerCount: wk, defaultLimit: dl}
+func NewLinkService(c Client, n Notifier, s Storage, cache Cache, metrics MetricsCollector, bs, wk, dl int) *Service {
+	return &Service{client: c, notifier: n, storage: s, cache: cache, metrics: metrics, batchSize: bs, workerCount: wk, defaultLimit: dl}
 }
 
 func (s *Service) AddLink(ctx context.Context, chatID int64, url string, tags []string) (domain.Link, error) {
+	start := time.Now()
+	defer func() {
+		if s.metrics != nil {
+			s.metrics.RecordRequestDuration(ctx, "database", "links_table", float64(time.Since(start).Milliseconds()))
+		}
+	}()
+
 	slog.Debug("adding link", "chatID", chatID, "url", url, "tags", tags)
 
 	exists, err := s.storage.ChatExists(ctx, chatID)
@@ -57,14 +66,29 @@ func (s *Service) AddLink(ctx context.Context, chatID int64, url string, tags []
 		return domain.Link{}, fmt.Errorf("adding link: %w", err)
 	}
 
+	cacheStart := time.Now()
 	if err = s.cache.InvalidateLinks(ctx, chatID); err != nil {
 		slog.Warn("failed to invalidate cache on add", "error", err)
+	}
+	if s.metrics != nil {
+		s.metrics.RecordRequestDuration(ctx, "cache", "redis", float64(time.Since(cacheStart).Milliseconds()))
+	}
+
+	if s.metrics != nil {
+		s.updateLinksMetrics(ctx)
 	}
 
 	return link, nil
 }
 
 func (s *Service) RemoveLink(ctx context.Context, chatID int64, url string) (domain.Link, error) {
+	start := time.Now()
+	defer func() {
+		if s.metrics != nil {
+			s.metrics.RecordRequestDuration(ctx, "database", "links_table", float64(time.Since(start).Milliseconds()))
+		}
+	}()
+
 	slog.Debug("removing link", "chatID", chatID, "url", url)
 
 	exists, err := s.storage.ChatExists(ctx, chatID)
@@ -81,8 +105,16 @@ func (s *Service) RemoveLink(ctx context.Context, chatID int64, url string) (dom
 		return domain.Link{}, fmt.Errorf("removing link: %w", err)
 	}
 
+	cacheStart := time.Now()
 	if err = s.cache.InvalidateLinks(ctx, chatID); err != nil {
 		slog.Warn("failed to invalidate cache on remove", "error", err)
+	}
+	if s.metrics != nil {
+		s.metrics.RecordRequestDuration(ctx, "cache", "redis", float64(time.Since(cacheStart).Milliseconds()))
+	}
+
+	if s.metrics != nil {
+		s.updateLinksMetrics(ctx)
 	}
 
 	return link, nil
@@ -100,7 +132,11 @@ func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int)
 		return nil, errChatInstRegistered
 	}
 
+	cacheStart := time.Now()
 	cached, errGetCache := s.cache.GetLinks(ctx, chatID, limit, offset)
+	if s.metrics != nil {
+		s.metrics.RecordRequestDuration(ctx, "cache", "redis", float64(time.Since(cacheStart).Milliseconds()))
+	}
 	if errGetCache != nil {
 		slog.Warn("cannot get links from cache", "error", errGetCache)
 	}
@@ -108,19 +144,34 @@ func (s *Service) GetLinks(ctx context.Context, chatID int64, limit, offset int)
 		return cached, nil
 	}
 
+	dbStart := time.Now()
 	links, err := s.storage.GetLinks(ctx, chatID, limit, offset)
+	if s.metrics != nil {
+		s.metrics.RecordRequestDuration(ctx, "database", "links_table", float64(time.Since(dbStart).Milliseconds()))
+	}
 	if err != nil {
 		return nil, fmt.Errorf("getting links: %w", err)
 	}
 
+	cacheSetStart := time.Now()
 	if err = s.cache.SetLinks(ctx, chatID, limit, offset, links); err != nil {
 		slog.Warn("failed to set cache", "error", err)
+	}
+	if s.metrics != nil {
+		s.metrics.RecordRequestDuration(ctx, "cache", "redis", float64(time.Since(cacheSetStart).Milliseconds()))
 	}
 
 	return links, nil
 }
 
 func (s *Service) RegisterChat(ctx context.Context, chatID int64) error {
+	start := time.Now()
+	defer func() {
+		if s.metrics != nil {
+			s.metrics.RecordRequestDuration(ctx, "database", "chats_table", float64(time.Since(start).Milliseconds()))
+		}
+	}()
+
 	slog.Debug("registering chat", "chatID", chatID)
 
 	exists, err := s.storage.ChatExists(ctx, chatID)
@@ -140,6 +191,13 @@ func (s *Service) RegisterChat(ctx context.Context, chatID int64) error {
 }
 
 func (s *Service) DeleteChat(ctx context.Context, chatID int64) error {
+	start := time.Now()
+	defer func() {
+		if s.metrics != nil {
+			s.metrics.RecordRequestDuration(ctx, "database", "chats_table", float64(time.Since(start).Milliseconds()))
+		}
+	}()
+
 	slog.Debug("deleting chat", "chatID", chatID)
 
 	exists, err := s.storage.ChatExists(ctx, chatID)
@@ -155,8 +213,12 @@ func (s *Service) DeleteChat(ctx context.Context, chatID int64) error {
 		return fmt.Errorf("delete chat: %w", err)
 	}
 
+	cacheStart := time.Now()
 	if err = s.cache.InvalidateLinks(ctx, chatID); err != nil {
 		slog.Warn("failed to invalidate cache on delete chat", "error", err)
+	}
+	if s.metrics != nil {
+		s.metrics.RecordRequestDuration(ctx, "cache", "redis", float64(time.Since(cacheStart).Milliseconds()))
 	}
 
 	return nil
@@ -167,7 +229,11 @@ func (s *Service) CheckUpdates(ctx context.Context, interval time.Duration) {
 	var allErrors []domain.CheckResult
 
 	for {
+		dbStart := time.Now()
 		links, err := s.storage.GetLinksWithInterval(ctx, s.batchSize, offset, interval)
+		if s.metrics != nil {
+			s.metrics.RecordRequestDuration(ctx, "database", "links_table", float64(time.Since(dbStart).Milliseconds()))
+		}
 		if err != nil {
 			slog.Error("failed to get links", "error", err)
 			return
@@ -234,7 +300,12 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) domain.CheckR
 		ProcessedAt: time.Now(),
 	}
 
+	start := time.Now()
 	events, err := s.client.Check(ctx, link)
+	if s.metrics != nil {
+		domainName := extractDomain(link.URL)
+		s.metrics.RecordRequestDuration(ctx, "external_source", domainName, float64(time.Since(start).Milliseconds()))
+	}
 	if err != nil {
 		result.Error = fmt.Errorf("check failed: %w", err)
 		slog.Warn("error during checking link", "url", link.URL, "error", err)
@@ -263,6 +334,7 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) domain.CheckR
 			maxTime = event.OccurredAt
 		}
 
+		sendStart := time.Now()
 		if err = s.notifier.SendUpdate(ctx, domain.LinkUpdate{
 			ID:          link.ID,
 			URL:         link.URL,
@@ -271,6 +343,9 @@ func (s *Service) checkLink(ctx context.Context, link domain.Link) domain.CheckR
 			Author:      event.Author,
 		}); err != nil {
 			slog.Error("failed to send update", "url", link.URL, "error", err)
+		}
+		if s.metrics != nil {
+			s.metrics.RecordRequestDuration(ctx, "notifier", "bot", float64(time.Since(sendStart).Milliseconds()))
 		}
 	}
 
@@ -321,4 +396,40 @@ func joinErrors(errors []string) string {
 		builder.WriteString(s)
 	}
 	return builder.String()
+}
+
+func (s *Service) updateLinksMetrics(ctx context.Context) {
+	const batchSize = 1000
+	offset := 0
+	domainCount := make(map[string]int)
+
+	for {
+		links, err := s.storage.GetLinksBatch(ctx, batchSize, offset)
+		if err != nil {
+			slog.Warn("failed to get links batch for metrics", "error", err, "offset", offset)
+			break
+		}
+		if len(links) == 0 {
+			break
+		}
+		for _, link := range links {
+			domain := extractDomain(link.URL)
+			domainCount[domain]++
+		}
+		offset += batchSize
+	}
+
+	for domain, count := range domainCount {
+		s.metrics.RecordLinksTracked(ctx, domain, count)
+	}
+}
+
+func extractDomain(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "other"
+	}
+	host := strings.ToLower(u.Host)
+	host = strings.TrimPrefix(host, "www.")
+	return host
 }

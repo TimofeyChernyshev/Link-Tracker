@@ -29,10 +29,17 @@ type Storage interface {
 	GetSubscribers(ctx context.Context, url string) ([]int64, error)
 	UpdateTimestamp(ctx context.Context, url string, t time.Time) error
 	UpdateLastChecked(ctx context.Context, url string, t time.Time) error
+
+	GetLinksBatch(ctx context.Context, batchSize, offset int) ([]domain.Link, error)
 }
 
 type Cache interface {
 	GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error)
 	SetLinks(ctx context.Context, chatID int64, limit, offset int, data []domain.Link) error
 	InvalidateLinks(ctx context.Context, chatID int64) error
+}
+
+type MetricsCollector interface {
+	RecordLinksTracked(ctx context.Context, domain string, count int)
+	RecordRequestDuration(ctx context.Context, scope, scopeType string, durationMs float64)
 }

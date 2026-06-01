@@ -389,3 +389,28 @@ func (s *RepositorySuite) TestRemoveLink_ClearsUnusedTags() {
 	s.Require().NoError(err)
 	s.Equal(0, count)
 }
+
+func (s *RepositorySuite) TestGetLinksBatch() {
+	defer s.Cleanup()
+
+	err := s.repo.RegisterChat(s.ctx, 12345)
+	s.Require().NoError(err)
+
+	for i := 0; i < 25; i++ {
+		url := fmt.Sprintf("https://github.com/test/repo%d", i)
+		_, err := s.repo.AddLink(s.ctx, 12345, url, []string{fmt.Sprintf("tag%d", i)})
+		s.Require().NoError(err)
+	}
+
+	links, err := s.repo.GetLinksBatch(s.ctx, 10, 0)
+	s.Require().NoError(err)
+	s.Len(links, 10)
+
+	links2, err := s.repo.GetLinksBatch(s.ctx, 10, 10)
+	s.Require().NoError(err)
+	s.Len(links2, 10)
+
+	links3, err := s.repo.GetLinksBatch(s.ctx, 10, 20)
+	s.Require().NoError(err)
+	s.Len(links3, 5)
+}
