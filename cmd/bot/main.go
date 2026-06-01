@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -22,106 +23,185 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
-const (
-	goroutines = 2
-)
+const goroutines = 2
+
+type BotApp struct {
+	cfg            *config.Config
+	metrics        *botmetrics.Metrics
+	scrapperClient *clients.ScrapperClient
+	botClient      *bot.Client
+	dispatcher     *application.CommandDispatcher
+	receiver       receiver.Receiver
+}
 
 func main() {
 	setLogger()
 
-	_ = godotenv.Load(".env.bot")
+	if err := godotenv.Load(".env.bot"); err != nil {
+		slog.Warn("no .env.bot file found")
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 
-	metric := botmetrics.NewMetrics(cfg.BotMetricTick)
-	metricsShutdown, err := metric.RunMetricsServer(cfg.MetricPort)
+	app, err := buildApp(cfg)
 	if err != nil {
-		slog.Error("failed to start metrics server", "error", err)
+		slog.Error("failed to build app", "error", err)
 		os.Exit(1)
 	}
 
-	httpClient := resilience.NewResilientHTTPClient(cfg.ScrapperRetryConfig, cfg.ScrapperCircuitBreakerConfig, cfg.ScrapperRateLimit, cfg.ScrapperTimeout)
+	if err = app.run(); err != nil {
+		slog.Error("app runtime error", "error", err)
+		os.Exit(1)
+	}
+}
+func buildApp(cfg *config.Config) (*BotApp, error) {
+	metric := botmetrics.NewMetrics(cfg.BotMetricTick)
+
+	httpClient := resilience.NewResilientHTTPClient(
+		cfg.ScrapperRetryConfig,
+		cfg.ScrapperCircuitBreakerConfig,
+		cfg.ScrapperRateLimit,
+		cfg.ScrapperTimeout,
+	)
 	scrapperClient := clients.NewScrapperClient(cfg.ScrapperBaseURL, httpClient, metric)
 
-	b, err := bot.NewClient(cfg.TelegramToken, cfg.TelegramEndpoint, cfg.WorkerCount, cfg.SenderCount, cfg.JobsBufferSize, cfg.OutgoingBufferSize)
+	botClient, err := bot.NewClient(
+		cfg.TelegramToken,
+		cfg.TelegramEndpoint,
+		cfg.WorkerCount,
+		cfg.SenderCount,
+		cfg.JobsBufferSize,
+		cfg.OutgoingBufferSize,
+	)
 	if err != nil {
-		slog.Error("cannot start bot", "error", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("cannot create bot client: %w", err)
 	}
 
-	d := setupDispatcher(b, scrapperClient, metric, cfg)
+	dispatcher := setupDispatcher(botClient, scrapperClient, metric, cfg)
+	botClient.SetCommands(dispatcher.GetCommands())
 
-	b.SetCommands(d.GetCommands())
+	receiver := setupReceiver(dispatcher, cfg, metric)
 
-	receiver := setupReceiver(d, cfg, metric)
+	return &BotApp{
+		cfg:            cfg,
+		metrics:        metric,
+		scrapperClient: scrapperClient,
+		botClient:      botClient,
+		dispatcher:     dispatcher,
+		receiver:       receiver,
+	}, nil
+}
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+func (a *BotApp) run() error {
+	metricsShutdown, err := a.metrics.RunMetricsServer(a.cfg.MetricPort)
+	if err != nil {
+		return fmt.Errorf("failed to start metrics server: %w", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
+		defer cancel()
+		if err = metricsShutdown(ctx); err != nil {
+			slog.Error("metrics server shutdown error", "error", err)
+		}
+	}()
 
-	// Канал ошибок
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	errChan := make(chan error, goroutines)
 
-	// Запуск бота в горутине
 	go func() {
-		slog.Info("bot starting")
-		if err = b.Start(); err != nil {
-			errChan <- err
+		slog.Info("starting bot")
+		if err := a.botClient.Start(); err != nil {
+			errChan <- fmt.Errorf("bot start error: %w", err)
 		}
 	}()
 
 	go func() {
-		err = receiver.Start(context.Background())
-		if !errors.Is(err, http.ErrServerClosed) {
-			errChan <- err
+		slog.Info("starting receiver (HTTP + Kafka)")
+		if err := a.receiver.Start(context.Background()); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errChan <- fmt.Errorf("receiver start error: %w", err)
 		}
 	}()
 
 	slog.Info("Bot started")
 
-	d.Run(ctx)
+	go a.dispatcher.Run(context.Background())
 
-	// Ожидание сигнала о завершении или ошибку
 	select {
-	case <-ctx.Done():
-		slog.Info("shutdown signal received")
-	case err = <-errChan:
+	case sig := <-sigChan:
+		slog.Info("received signal", "signal", sig)
+	case err := <-errChan:
 		slog.Error("runtime error", "error", err)
 	}
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
-	defer shutdownCancel()
+	return a.shutdown()
+}
 
-	if err = receiver.Shutdown(shutdownCtx); err != nil {
-		slog.Error("error during shutdown server", "error", err)
+func (a *BotApp) shutdown() error {
+	slog.Info("shutting down bot")
+
+	ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
+	defer cancel()
+
+	if err := a.receiver.Shutdown(ctx); err != nil {
+		slog.Error("receiver shutdown error", "error", err)
 	}
-	if err = b.Stop(shutdownCtx); err != nil {
-		slog.Error("error during shutdown bot", "error", err)
-	}
-	if err = metricsShutdown(shutdownCtx); err != nil {
-		slog.Error("metrics server shutdown error", "error", err)
+	if err := a.botClient.Stop(ctx); err != nil {
+		slog.Error("bot stop error", "error", err)
 	}
 
-	slog.Info("bot stoped")
+	slog.Info("bot stopped")
+	return nil
 }
 
 func setupReceiver(d *application.CommandDispatcher, cfg *config.Config, metric *botmetrics.Metrics) receiver.Receiver {
 	rateLimiter := resilience.NewRateLimiterMiddleware(cfg.RateLimiterConfig.RPS, cfg.RateLimiterConfig.Burst)
 
 	httpServer := bothttp.NewServer(d, cfg.BotPort, rateLimiter.Middleware, metric.HTTPMiddleware)
+
 	kafkaConsumer := botkafka.NewConsumer(
-		d, cfg.CommonKafkaConfig.Brokers, cfg.KafkaConsumerConfig.Topic, cfg.KafkaConsumerConfig.GroupID,
-		cfg.KafkaConsumerConfig.SessionTimeout, cfg.KafkaConsumerConfig.MinBytes, cfg.KafkaConsumerConfig.MaxBytes,
-		cfg.DLQConfig.MaxRetries, cfg.DLQConfig.BatchSize, cfg.DLQConfig.RetryDelay,
-		cfg.DLQConfig.BatchTimeout, cfg.DLQConfig.DLQTopic,
+		d,
+		cfg.CommonKafkaConfig.Brokers,
+		cfg.KafkaConsumerConfig.Topic,
+		cfg.KafkaConsumerConfig.GroupID,
+		cfg.KafkaConsumerConfig.SessionTimeout,
+		cfg.KafkaConsumerConfig.MinBytes,
+		cfg.KafkaConsumerConfig.MaxBytes,
+		cfg.DLQConfig.MaxRetries,
+		cfg.DLQConfig.BatchSize,
+		cfg.DLQConfig.RetryDelay,
+		cfg.DLQConfig.BatchTimeout,
+		cfg.DLQConfig.DLQTopic,
 		metric,
 	)
 
-	receiver := receiver.NewMultiReceiver([]receiver.Receiver{httpServer, kafkaConsumer})
+	return receiver.NewMultiReceiver([]receiver.Receiver{httpServer, kafkaConsumer})
+}
 
-	return receiver
+func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient, metric *botmetrics.Metrics, cfg *config.Config) *application.CommandDispatcher {
+	d := application.NewCommandDispatcher(handlers.NewUnknownHandler(), bot, metric)
+
+	start := handlers.NewStartHandler(scrapperClient, cfg.TimeoutStartHandler)
+	d.Register(start.Name(), func() application.Command { return start })
+
+	help := handlers.NewHelpHandler()
+	d.Register(help.Name(), func() application.Command { return help })
+
+	d.Register("/track", func() application.Command {
+		return handlers.NewTrackHandler(scrapperClient, cfg.TimeoutSaveLink, cfg.TimeoutCheckLink)
+	})
+	d.Register("/untrack", func() application.Command {
+		return handlers.NewUntrackHandler(scrapperClient, cfg.TimeoutUntrackHandler)
+	})
+	d.Register("/list", func() application.Command {
+		return handlers.NewListHandler(scrapperClient, cfg.TimeoutListHandler)
+	})
+
+	return d
 }
 
 func setLogger() {
@@ -130,21 +210,4 @@ func setLogger() {
 	})
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
-}
-
-func setupDispatcher(bot application.Bot, scrapperClient *clients.ScrapperClient, metric *botmetrics.Metrics, cfg *config.Config) *application.CommandDispatcher {
-	d := application.NewCommandDispatcher(handlers.NewUnknownHandler(), bot, metric)
-	start := handlers.NewStartHandler(scrapperClient, cfg.TimeoutStartHandler)
-	d.Register(start.Name(), func() application.Command { return start })
-	help := handlers.NewHelpHandler()
-	d.Register(help.Name(), func() application.Command { return help })
-	d.Register("/track", func() application.Command {
-		return handlers.NewTrackHandler(scrapperClient, cfg.TimeoutSaveLink, cfg.TimeoutCheckLink)
-	})
-	d.Register("/untrack", func() application.Command {
-		return handlers.NewUntrackHandler(scrapperClient, cfg.TimeoutUntrackHandler)
-	})
-	d.Register("/list", func() application.Command { return handlers.NewListHandler(scrapperClient, cfg.TimeoutListHandler) })
-
-	return d
 }
