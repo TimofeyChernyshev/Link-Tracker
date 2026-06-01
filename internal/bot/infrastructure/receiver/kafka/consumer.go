@@ -161,11 +161,13 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 			slog.Warn("retrying to handle message", "attempt", attempt)
 			time.Sleep(c.retryDelay)
 		}
-		if err := c.service.HandleUpdate(update.TgChatIDs, update.Description); err == nil {
+
+		var err error
+		if err = c.service.HandleUpdate(update.TgChatIDs, update.Description); err == nil {
 			return
-		} else {
-			lastErr = err
 		}
+
+		lastErr = err
 	}
 	slog.Error("handle update error", "error", lastErr, "attempt", c.maxRetries+1)
 	c.sendToDLQ(msg, errors.New("all retries exhausted"), "processing", c.maxRetries)
