@@ -1,0 +1,3 @@
+CREATE TABLE chats (
+    id BIGINT PRIMARY KEY
+);

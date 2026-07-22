@@ -1,0 +1,216 @@
+package botkafka
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"strconv"
+	"sync"
+	"time"
+
+	"github.com/segmentio/kafka-go"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+)
+
+type Service interface {
+	HandleUpdate(chatIDs []int64, desc string) error
+}
+
+type MetricsCollector interface {
+	RecordCommand(ctx context.Context, command string)
+
+	RecordCommandDuration(ctx context.Context, scope, scopeType string, durationMs float64)
+
+	RecordNotificationSent(ctx context.Context)
+}
+
+type DeadLetterMessage struct {
+	OriginalMessage string    `json:"original_message"`
+	Key             string    `json:"key"`
+	Topic           string    `json:"topic"`
+	Partition       int       `json:"partition"`
+	Offset          int64     `json:"offset"`
+	ErrorReason     string    `json:"error_reason"`
+	ErrorType       string    `json:"error_type"`
+	Retries         int       `json:"retries"`
+	Timestamp       time.Time `json:"timestamp"`
+}
+
+type Consumer struct {
+	reader     *kafka.Reader
+	service    Service
+	wg         sync.WaitGroup
+	stopCh     chan struct{}
+	dlqWriter  *kafka.Writer
+	maxRetries int
+	retryDelay time.Duration
+
+	cancel context.CancelFunc
+
+	metrics MetricsCollector
+}
+
+func NewConsumer(service Service, brokers []string, topic string, groupID string,
+	sessionTimeout time.Duration, minBytes, maxBytes int,
+	maxRetries, batchSize int, retryDelay, batchTimeout time.Duration, dlqTopic string, metric MetricsCollector) *Consumer {
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:        brokers,
+		Topic:          topic,
+		GroupID:        groupID,
+		MinBytes:       minBytes,
+		MaxBytes:       maxBytes,
+		SessionTimeout: sessionTimeout,
+		StartOffset:    kafka.FirstOffset,
+	})
+
+	var DLQWriter *kafka.Writer
+	if dlqTopic != "" {
+		DLQWriter = &kafka.Writer{
+			Addr:         kafka.TCP(brokers...),
+			Topic:        dlqTopic,
+			Balancer:     &kafka.LeastBytes{},
+			RequiredAcks: kafka.RequireAll,
+			BatchSize:    batchSize,
+			BatchTimeout: batchTimeout,
+		}
+	}
+
+	return &Consumer{
+		service: service, reader: reader, stopCh: make(chan struct{}),
+		dlqWriter: DLQWriter, maxRetries: maxRetries, retryDelay: retryDelay,
+		metrics: metric,
+	}
+}
+
+func (c *Consumer) Start(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	c.cancel = cancel
+
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+
+		for {
+			msg, err := c.reader.ReadMessage(ctx)
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					return
+				}
+				slog.Error("read error", "err", err)
+				continue
+			}
+
+			c.processMessage(ctx, msg)
+		}
+	}()
+
+	return nil
+}
+
+func (c *Consumer) Shutdown(_ context.Context) error {
+	if c.cancel != nil {
+		c.cancel()
+	}
+
+	c.wg.Wait()
+
+	var errors []error
+
+	err := c.reader.Close()
+	if err != nil {
+		errors = append(errors, fmt.Errorf("cannot close reader: %w", err))
+	}
+
+	if c.dlqWriter != nil {
+		err = c.dlqWriter.Close()
+		if err != nil {
+			errors = append(errors, fmt.Errorf("cannot close DLQ writer: %w", err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("shutdown errors: %v", errors)
+	}
+
+	return nil
+}
+
+func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
+	if c.metrics != nil {
+		c.metrics.RecordCommand(ctx, "kafka_message_received")
+	}
+	start := time.Now()
+	defer func() {
+		if c.metrics != nil {
+			c.metrics.RecordCommandDuration(ctx, "kafka_consumer", "handle_update", float64(time.Since(start).Milliseconds()))
+		}
+	}()
+
+	var update domain.LinkUpdate
+	if err := json.Unmarshal(msg.Value, &update); err != nil {
+		slog.Error("failed to unmarshal message", "error", err, "key", string(msg.Key))
+		c.sendToDLQ(msg, err, "unmarshal", 0)
+		return
+	}
+
+	var lastErr error
+	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+		if attempt > 0 {
+			slog.Warn("retrying to handle message", "attempt", attempt)
+			time.Sleep(c.retryDelay)
+		}
+
+		var err error
+		if err = c.service.HandleUpdate(update.TgChatIDs, update.Description); err == nil {
+			return
+		}
+
+		lastErr = err
+	}
+	slog.Error("handle update error", "error", lastErr, "attempt", c.maxRetries+1)
+	c.sendToDLQ(msg, errors.New("all retries exhausted"), "processing", c.maxRetries)
+}
+
+func (c *Consumer) sendToDLQ(msg kafka.Message, reason error, errorType string, retries int) {
+	if c.dlqWriter == nil {
+		slog.Warn("DLQ not configured, lost message", "key", string(msg.Key), "reason", reason.Error())
+		return
+	}
+
+	dlqMsg := DeadLetterMessage{
+		OriginalMessage: string(msg.Value),
+		Key:             string(msg.Key),
+		Topic:           msg.Topic,
+		Partition:       msg.Partition,
+		Offset:          msg.Offset,
+		ErrorReason:     reason.Error(),
+		ErrorType:       errorType,
+		Retries:         retries,
+		Timestamp:       time.Now(),
+	}
+
+	data, err := json.Marshal(dlqMsg)
+	if err != nil {
+		slog.Error("cannot marshal DLQ message", "error", err)
+		return
+	}
+
+	dlqKafkaMsg := kafka.Message{
+		Key:   msg.Key,
+		Value: data,
+		Time:  time.Now(),
+		Headers: []kafka.Header{
+			{Key: "original-topic", Value: []byte(msg.Topic)},
+			{Key: "error-type", Value: []byte(errorType)},
+			{Key: "error-reason", Value: []byte(reason.Error())},
+			{Key: "retries", Value: []byte(strconv.Itoa(retries))},
+		},
+	}
+
+	if err = c.dlqWriter.WriteMessages(context.Background(), dlqKafkaMsg); err != nil {
+		slog.Error("cannot send to DLQ", "error", err)
+		return
+	}
+}

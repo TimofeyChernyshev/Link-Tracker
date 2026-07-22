@@ -1,0 +1,456 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: linktracker-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-linktracker}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kafka1:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: linktracker-kafka1
+    restart: unless-stopped
+    ports:
+      - "9092:19092"
+      - "9093:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:9093,2@kafka2:9093,3@kafka3:9093"
+      
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka1:9092,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka1_data:/var/lib/kafka/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: linktracker-kafka2
+    restart: unless-stopped
+    ports:
+      - "9094:19092"
+      - "9095:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 2
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:9093,2@kafka2:9093,3@kafka3:9093"
+      
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka2:9092,EXTERNAL://localhost:9094"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka2_data:/var/lib/kafka/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: linktracker-kafka3
+    restart: unless-stopped
+    ports:
+      - "9096:19092"
+      - "9097:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 3
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:9093,2@kafka2:9093,3@kafka3:9093"
+      
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka3:9092,EXTERNAL://localhost:9096"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka3_data:/var/lib/kafka/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: linktracker-kafka-init
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    networks:
+      - linktracker-net
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
+
+      KAFKA_PROCESSED_UPDATES_TOPIC: ${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
+      KAFKA_PROCESSED_UPDATES_DLQ_TOPIC: ${KAFKA_PROCESSED_UPDATES_DLQ_TOPIC:-link.processed-updates-dlq}
+      KAFKA_RAW_UPDATES_TOPIC: ${KAFKA_RAW_UPDATES_TOPIC:-link.raw-updates}
+      KAFKA_RAW_UPDATES_DLQ_TOPIC: ${KAFKA_RAW_UPDATES_DLQ_TOPIC:-link.raw-updates-dlq}
+
+      # =3, чтобы параллельно обрабатывать сообщения и распределять нагрузку по 3 брокерам
+      KAFKA_PROCESSED_UPDATES_TOPIC_PARTITIONS: "3"
+      KAFKA_RAW_UPDATES_TOPIC_PARTITIONS: "3"
+      # =1, т.к. в DLQ меньше сообщений и это упрощает ручной разбор
+      KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_PARTITIONS: "1"
+      KAFKA_RAW_UPDATES_DLQ_TOPIC_PARTITIONS: "1"
+
+      # =3, каждая партиция хранится на всех брокерах, чтобы не терять данные при падении до 2 брокеров
+      KAFKA_PROCESSED_UPDATES_TOPIC_RF: "3"
+      KAFKA_RAW_UPDATES_TOPIC_RF: "3"
+      # =2, при падении 1 брокера данные сохраняются
+      KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_RF: "2"
+      KAFKA_RAW_UPDATES_DLQ_TOPIC_RF: "2"
+
+      # время хранения сообщений =7 дней
+      KAFKA_PROCESSED_UPDATES_TOPIC_RETENTION_MS: "604800000"
+      KAFKA_RAW_UPDATES_TOPIC_RETENTION_MS: "604800000"
+      # время для хранения DLQ нужно чуть больше (30 дней)
+      KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_RETENTION_MS: "2592000000"
+      KAFKA_RAW_UPDATES_DLQ_TOPIC_RETENTION_MS: "2592000000"
+    command:
+      - sh
+      - -c
+      - |
+        cub kafka-ready -b $$KAFKA_BOOTSTRAP_SERVERS 1 30
+
+        kafka-topics --create --if-not-exists \
+          --topic $$KAFKA_PROCESSED_UPDATES_TOPIC \
+          --partitions $$KAFKA_PROCESSED_UPDATES_TOPIC_PARTITIONS \
+          --replication-factor $$KAFKA_PROCESSED_UPDATES_TOPIC_RF \
+          --config retention.ms=$$KAFKA_PROCESSED_UPDATES_TOPIC_RETENTION_MS \
+          --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+
+        kafka-topics --create --if-not-exists \
+          --topic $$KAFKA_PROCESSED_UPDATES_DLQ_TOPIC \
+          --partitions $$KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_PARTITIONS \
+          --replication-factor $$KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_RF \
+          --config retention.ms=$$KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_RETENTION_MS \
+          --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+
+        kafka-topics --create --if-not-exists \
+          --topic $$KAFKA_RAW_UPDATES_TOPIC \
+          --partitions $$KAFKA_RAW_UPDATES_TOPIC_PARTITIONS \
+          --replication-factor $$KAFKA_RAW_UPDATES_TOPIC_RF \
+          --config retention.ms=$$KAFKA_RAW_UPDATES_TOPIC_RETENTION_MS \
+          --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+
+        kafka-topics --create --if-not-exists \
+          --topic $$KAFKA_RAW_UPDATES_DLQ_TOPIC \
+          --partitions $$KAFKA_RAW_UPDATES_DLQ_TOPIC_PARTITIONS \
+          --replication-factor $$KAFKA_RAW_UPDATES_DLQ_TOPIC_RF \
+          --config retention.ms=$$KAFKA_RAW_UPDATES_DLQ_TOPIC_RETENTION_MS \
+          --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+
+        echo 'Topics created:' && kafka-topics --list --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+
+  valkey-node-1:
+    image: valkey/valkey:8.0-alpine
+    container_name: linktracker-valkey-1
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_NODE_1_PORT:-6379}:6379"
+      - "${VALKEY_NODE_1_BUS_PORT:-16379}:16379"
+    command:
+      - valkey-server
+      - --cluster-enabled
+      - "${VALKEY_CLUSTER_ENABLED:-yes}"
+      - --cluster-config-file
+      - "${VALKEY_NODE_1_CONF:-/data/nodes-1.conf}"
+      - --cluster-node-timeout
+      - "${VALKEY_CLUSTER_NODE_TIMEOUT:-5000}"
+      - --appendonly
+      - "${VALKEY_APPENDONLY:-yes}"
+      - --appendfsync
+      - "${VALKEY_APPENDFSYNC:-everysec}"
+      - --port
+      - "6379"
+      - --cluster-announce-port
+      - "6379"
+      - --cluster-announce-bus-port
+      - "16379"
+      - --cluster-announce-ip
+      - valkey-node-1
+      - --maxmemory
+      - "${VALKEY_MAXMEMORY:-256mb}"
+      - --maxmemory-policy
+      - "${VALKEY_MAXMEMORY_POLICY:-allkeys-lru}"
+    volumes:
+      - valkey_data_1:/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  valkey-node-2:
+    image: valkey/valkey:8.0-alpine
+    container_name: linktracker-valkey-2
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_NODE_2_PORT:-6380}:6379"
+      - "${VALKEY_NODE_2_BUS_PORT:-16380}:16379"
+    command:
+      - valkey-server
+      - --cluster-enabled
+      - "${VALKEY_CLUSTER_ENABLED:-yes}"
+      - --cluster-config-file
+      - "${VALKEY_NODE_2_CONF:-/data/nodes-2.conf}"
+      - --cluster-node-timeout
+      - "${VALKEY_CLUSTER_NODE_TIMEOUT:-5000}"
+      - --appendonly
+      - "${VALKEY_APPENDONLY:-yes}"
+      - --appendfsync
+      - "${VALKEY_APPENDFSYNC:-everysec}"
+      - --port
+      - "6379"
+      - --cluster-announce-port
+      - "6379"
+      - --cluster-announce-bus-port
+      - "16379"
+      - --cluster-announce-ip
+      - valkey-node-2
+      - --maxmemory
+      - "${VALKEY_MAXMEMORY:-256mb}"
+      - --maxmemory-policy
+      - "${VALKEY_MAXMEMORY_POLICY:-allkeys-lru}"
+    volumes:
+      - valkey_data_2:/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  valkey-node-3:
+    image: valkey/valkey:8.0-alpine
+    container_name: linktracker-valkey-3
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_NODE_3_PORT:-6381}:6379"
+      - "${VALKEY_NODE_3_BUS_PORT:-16381}:16379"
+    command:
+      - valkey-server
+      - --cluster-enabled
+      - "${VALKEY_CLUSTER_ENABLED:-yes}"
+      - --cluster-config-file
+      - "${VALKEY_NODE_3_CONF:-/data/nodes-3.conf}"
+      - --cluster-node-timeout
+      - "${VALKEY_CLUSTER_NODE_TIMEOUT:-5000}"
+      - --appendonly
+      - "${VALKEY_APPENDONLY:-yes}"
+      - --appendfsync
+      - "${VALKEY_APPENDFSYNC:-everysec}"
+      - --port
+      - "6379"
+      - --cluster-announce-port
+      - "6379"
+      - --cluster-announce-bus-port
+      - "16379"
+      - --cluster-announce-ip
+      - valkey-node-3
+      - --maxmemory
+      - "${VALKEY_MAXMEMORY:-256mb}"
+      - --maxmemory-policy
+      - "${VALKEY_MAXMEMORY_POLICY:-allkeys-lru}"
+    volumes:
+      - valkey_data_3:/data
+    networks:
+      - linktracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  valkey-cluster-init:
+    image: valkey/valkey:8.0-alpine
+    container_name: linktracker-valkey-init
+    depends_on:
+      valkey-node-1:
+        condition: service_healthy
+      valkey-node-2:
+        condition: service_healthy
+      valkey-node-3:
+        condition: service_healthy
+    networks:
+      - linktracker-net
+    environment:
+      VALKEY_CLUSTER_REPLICAS: ${VALKEY_CLUSTER_REPLICAS:-0}
+    command:
+      - sh
+      - -c
+      - |
+        valkey-cli --cluster create \
+          valkey-node-1:6379 \
+          valkey-node-2:6379 \
+          valkey-node-3:6379 \
+          --cluster-replicas ${VALKEY_CLUSTER_REPLICAS:-0} \
+          --cluster-yes
+
+        echo "Cluster ready"
+    restart: "no"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: linktracker-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "7092:7092"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.listen-address=:7092'
+    networks:
+      - linktracker-net
+    depends_on:
+      - scrapper
+      - bot
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: linktracker-grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    networks:
+      - linktracker-net
+    depends_on:
+      - prometheus
+
+  scrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile.scrapper
+    container_name: linktracker-scrapper
+    restart: unless-stopped
+    depends_on:
+      - valkey-cluster-init
+    ports:
+      - "${SCRAPPER_PORT:-8081}:${SCRAPPER_PORT:-8081}"
+      - "${SCRAPPER_METRIC_PORT:-9090}:${SCRAPPER_METRIC_PORT:-9090}"
+    environment:
+      - SCRAPPER_NOTIFIER_TOPIC=${KAFKA_RAW_UPDATES_TOPIC:-link.raw-updates}
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+    env_file:
+      - .env.scrapper
+    networks:
+      - linktracker-net
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: linktracker-bot
+    restart: unless-stopped
+    ports:
+      - "${BOT_PORT:-8080}:${BOT_PORT:-8080}"
+      - "${BOT_METRIC_PORT:-9091}:${BOT_METRIC_PORT:-9091}"
+    environment:
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - BOT_KAFKA_DLQ_TOPIC=${KAFKA_PROCESSED_UPDATES_DLQ_TOPIC:-link.processed-updates-dlq}
+      - BOT_KAFKA_CONSUMER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
+    env_file:
+      - .env.bot
+    networks:
+      - linktracker-net
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: linktracker-agent
+    restart: unless-stopped
+    environment:
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - AGENT_KAFKA_DLQ_TOPIC=${KAFKA_RAW_UPDATES_DLQ_TOPIC:-link.raw-updates-dlq}
+      - AGENT_KAFKA_CONSUMER_TOPIC=${KAFKA_RAW_UPDATES_TOPIC:-link.raw-updates}
+      - AGENT_KAFKA_NOTIFIER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
+    env_file:
+      - .env.agent
+    networks:
+      - linktracker-net
+
+volumes:
+  postgres_data:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
+  valkey_data_1:
+  valkey_data_2:
+  valkey_data_3:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  linktracker-net:
+    driver: bridge

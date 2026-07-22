@@ -28,5 +28,22 @@ $(addprefix build_,$(MODULES)):
 ## test: run all tests
 .PHONY: test
 test:
-	@go test -coverpkg='github.com/es-debug/backend-academy-2024-go-template/...' --race -count=1 -coverprofile='$(COVERAGE_FILE)' ./...
+	@go test -coverpkg='gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/...' --race -count=1 -coverprofile='$(COVERAGE_FILE)' ./...
 	@go tool cover -func='$(COVERAGE_FILE)' | grep ^total | tr -s '\t'
+
+.PHONY: build-scrapper build-bot build-agent build-images
+build-scrapper:
+	docker build -f Dockerfile.scrapper -t link-tracker-scrapper .
+build-bot:
+	docker build -f Dockerfile.bot -t link-tracker-bot .
+build-agent:
+	docker build -f Dockerfile.agent -t link-tracker-agent .
+build-images: build-scrapper build-bot build-agent
+
+.PHONY: test-http test-kafka test-scrapper-agent-bot
+test-http:
+	go test -v -count=1 -timeout 10m -run "TestBotScrapperSuite" ./tests/integration/...
+test-kafka:
+	go test -v -count=1 -timeout 10m -run "TestBotScrapperKafkaSuite" ./tests/integration/...
+test-scrapper-agent-bot:
+	go test -v -count=1 -timeout 10m -run "TestBotScrapperAgentSuite" ./tests/integration/...
