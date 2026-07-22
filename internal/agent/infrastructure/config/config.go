@@ -21,6 +21,17 @@ type Config struct {
 	FilterMinLength       int      `env:"FILTER_MIN_LENGTH" envDefault:"20"`
 
 	SummarizationThreshold int `env:"SUMMARIZATION_THRESHOLD" envDefault:"500"`
+
+	Prioritization prioritization `envPrefix:"PRIORITIZATION_"`
+
+	GroupingWindow time.Duration `env:"GROUPING_WINDOW" envDefault:"30000ms"`
+
+	SendUpdateTimeout time.Duration `env:"AGENT_SEND_UPDATE_TIMEOUT" envDefault:"30s"`
+}
+
+type prioritization struct {
+	HighKeywords []string `env:"HIGH_KEYWORDS"`
+	LowKeywords  []string `env:"LOW_KEYWORDS"`
 }
 
 func Load() (*Config, error) {

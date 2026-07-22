@@ -15,7 +15,7 @@ import (
 )
 
 type Service interface {
-	HandleRawUpdate(ctx context.Context, rawUpdate domain.RawUpdate) error
+	HandleRawUpdate(rawUpdate domain.RawUpdate) error
 }
 
 type DeadLetterMessage struct {
@@ -106,7 +106,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 					time.Sleep(c.retryDelay)
 				}
 
-				err = c.service.HandleRawUpdate(ctx, rawUpdate)
+				err = c.service.HandleRawUpdate(rawUpdate)
 				if err == nil {
 					break
 				}

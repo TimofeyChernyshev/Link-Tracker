@@ -3,7 +3,9 @@ package application
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
@@ -13,6 +15,8 @@ import (
 const (
 	testFilterMinLenght        = 10
 	testsummarizationThreshold = 20
+	testGroupingWindow         = 100 * time.Millisecond
+	sendTimeout                = 30 * time.Second
 )
 
 type ServiceSuite struct {
@@ -30,8 +34,11 @@ func (s *ServiceSuite) SetupTest() {
 	s.service = NewAgentService(
 		[]string{"stop", "word"},
 		[]string{"author1"},
+		[]string{"high"}, []string{"low"},
 		testFilterMinLenght,
 		testsummarizationThreshold,
+		testGroupingWindow,
+		sendTimeout,
 		s.mockNotifier,
 	)
 	s.ctx = context.Background()
@@ -97,7 +104,6 @@ func (s *ServiceSuite) TestFilter() {
 				ID:          1,
 				Description: "123123123123123",
 				TgChatIDs:   []int64{1, 2},
-				Priority:    domain.HighPriority,
 			},
 			expectedIsFiltered: true,
 		},
@@ -113,7 +119,6 @@ func (s *ServiceSuite) TestFilter() {
 				ID:          1,
 				Description: "12312312312312313213...",
 				TgChatIDs:   []int64{1, 2},
-				Priority:    domain.HighPriority,
 			},
 			expectedIsFiltered: true,
 		},
@@ -128,37 +133,314 @@ func (s *ServiceSuite) TestFilter() {
 	}
 }
 
-func (s *ServiceSuite) TestHandleRawUpdate() {
-	upd := domain.RawUpdate{
-		ID:          1,
-		Description: "123123123123123",
-		Author:      "1",
-		TgChatIDs:   []int64{1, 2},
+func (s *ServiceSuite) TestDeterminePriority() {
+	tests := []struct {
+		name           string
+		description    string
+		expectPriority domain.Priority
+	}{
+		{
+			name:           "no low or high keywords",
+			description:    "12312312312312313213",
+			expectPriority: domain.MediumPriority,
+		},
+		{
+			name:           "high priority",
+			description:    "123 123 high",
+			expectPriority: domain.HighPriority,
+		},
+		{
+			name:           "low priority",
+			description:    "123 123 low",
+			expectPriority: domain.LowPriority,
+		},
+		{
+			name:           "low and high keywords",
+			description:    "high 123 low",
+			expectPriority: domain.HighPriority,
+		},
+		{
+			name:           "keyword is part of another word",
+			description:    "123high 123 123",
+			expectPriority: domain.MediumPriority,
+		},
 	}
 
-	processedUpd := domain.ProcessedUpdate{
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			priority := s.service.determinePriority(tt.description)
+			s.Equal(tt.expectPriority, priority)
+		})
+	}
+}
+
+func (s *ServiceSuite) TestGrouping_SingleUpdate_NoGrouping() {
+	upd := domain.RawUpdate{
 		ID:          1,
-		Description: "123123123123123",
-		TgChatIDs:   []int64{1, 2},
+		Description: "single update message",
+		Author:      "user",
+		TgChatIDs:   []int64{12345},
+	}
+
+	expectedProcessed := domain.ProcessedUpdate{
+		ID:          1,
+		Description: "single update messag...",
+		TgChatIDs:   []int64{12345},
+		Priority:    domain.MediumPriority,
+	}
+
+	done := make(chan struct{})
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			close(done)
+			return nil
+		},
+	).Times(1)
+
+	err := s.service.HandleRawUpdate(upd)
+	s.Require().NoError(err)
+
+	waitTime := 200 * time.Millisecond
+	tickTime := 10 * time.Millisecond
+	s.Eventually(func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}, testGroupingWindow+waitTime, tickTime)
+}
+
+func (s *ServiceSuite) TestGrouping_MultipleUpdatesForSameChat() {
+	chatID := int64(12345)
+
+	upd1 := domain.RawUpdate{
+		ID:          1,
+		Description: "First update message",
+		Author:      "user1",
+		TgChatIDs:   []int64{chatID},
+	}
+
+	upd2 := domain.RawUpdate{
+		ID:          2,
+		Description: "Second update message",
+		Author:      "user2",
+		TgChatIDs:   []int64{chatID},
+	}
+
+	expectedProcessed := domain.ProcessedUpdate{
+		ID:          1,
+		Description: "1. First update message\n2. Second update messag...",
+		TgChatIDs:   []int64{chatID},
+		Priority:    domain.MediumPriority,
+	}
+
+	done := make(chan struct{})
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			close(done)
+			return nil
+		},
+	).Times(1)
+
+	err := s.service.HandleRawUpdate(upd1)
+	s.Require().NoError(err)
+
+	err = s.service.HandleRawUpdate(upd2)
+	s.Require().NoError(err)
+
+	waitTime := 200 * time.Millisecond
+	tickTime := 10 * time.Millisecond
+	s.Eventually(func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}, testGroupingWindow+waitTime, tickTime)
+}
+
+func (s *ServiceSuite) TestGrouping_MultipleUpdatesForDifferentChats() {
+	chatID1 := int64(12345)
+	chatID2 := int64(67890)
+
+	upd1 := domain.RawUpdate{
+		ID:          1,
+		Description: "Update for chat 1",
+		Author:      "user1",
+		TgChatIDs:   []int64{chatID1},
+	}
+
+	upd2 := domain.RawUpdate{
+		ID:          2,
+		Description: "Update for chat 2",
+		Author:      "user2",
+		TgChatIDs:   []int64{chatID2},
+	}
+
+	expectedProcessed1 := domain.ProcessedUpdate{
+		ID:          1,
+		Description: "Update for chat 1",
+		TgChatIDs:   []int64{chatID1},
+		Priority:    domain.MediumPriority,
+	}
+
+	expectedProcessed2 := domain.ProcessedUpdate{
+		ID:          2,
+		Description: "Update for chat 2",
+		TgChatIDs:   []int64{chatID2},
+		Priority:    domain.MediumPriority,
+	}
+
+	var callCount int32
+	done := make(chan struct{}, 2)
+
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed1).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			atomic.AddInt32(&callCount, 1)
+			done <- struct{}{}
+			return nil
+		},
+	).Times(1)
+
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed2).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			atomic.AddInt32(&callCount, 1)
+			done <- struct{}{}
+			return nil
+		},
+	).Times(1)
+
+	err := s.service.HandleRawUpdate(upd1)
+	s.Require().NoError(err)
+
+	err = s.service.HandleRawUpdate(upd2)
+	s.Require().NoError(err)
+
+	waitTime := 200 * time.Millisecond
+	tickTime := 10 * time.Millisecond
+	s.Eventually(func() bool {
+		return atomic.LoadInt32(&callCount) >= 2
+	}, testGroupingWindow+waitTime, tickTime)
+}
+
+func (s *ServiceSuite) TestGrouping_PriorityMaxAmongGroup() {
+	chatID := int64(12345)
+
+	updLow := domain.RawUpdate{
+		ID:          1,
+		Description: "low priority message",
+		Author:      "user1",
+		TgChatIDs:   []int64{chatID},
+	}
+
+	updHigh := domain.RawUpdate{
+		ID:          2,
+		Description: "high priority message",
+		Author:      "user2",
+		TgChatIDs:   []int64{chatID},
+	}
+
+	expectedProcessed := domain.ProcessedUpdate{
+		ID:          1,
+		Description: "1. low priority message\n2. high priority messag...",
+		TgChatIDs:   []int64{chatID},
 		Priority:    domain.HighPriority,
 	}
 
-	s.mockNotifier.EXPECT().SendUpdate(s.ctx, processedUpd).Return(nil)
+	done := make(chan struct{})
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			close(done)
+			return nil
+		},
+	).Times(1)
 
-	err := s.service.HandleRawUpdate(s.ctx, upd)
+	err := s.service.HandleRawUpdate(updLow)
 	s.Require().NoError(err)
+
+	err = s.service.HandleRawUpdate(updHigh)
+	s.Require().NoError(err)
+
+	waitTime := 200 * time.Millisecond
+	tickTime := 10 * time.Millisecond
+	s.Eventually(func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}, testGroupingWindow+waitTime, tickTime)
 }
 
-func (s *ServiceSuite) TestHandleRawUpdate_MessageFiltered() {
-	upd := domain.RawUpdate{
+func (s *ServiceSuite) TestGrouping_UpdatesOutsideWindow() {
+	chatID := int64(12345)
+
+	upd1 := domain.RawUpdate{
 		ID:          1,
-		Description: "1",
-		Author:      "1",
-		TgChatIDs:   []int64{1, 2},
+		Description: "First update",
+		Author:      "user1",
+		TgChatIDs:   []int64{chatID},
 	}
 
-	err := s.service.HandleRawUpdate(s.ctx, upd)
+	upd2 := domain.RawUpdate{
+		ID:          2,
+		Description: "Second update (outside window)",
+		Author:      "user2",
+		TgChatIDs:   []int64{chatID},
+	}
+
+	expectedProcessed1 := domain.ProcessedUpdate{
+		ID:          1,
+		Description: "First update",
+		TgChatIDs:   []int64{chatID},
+		Priority:    domain.MediumPriority,
+	}
+
+	expectedProcessed2 := domain.ProcessedUpdate{
+		ID:          2,
+		Description: "Second update (outsi...",
+		TgChatIDs:   []int64{chatID},
+		Priority:    domain.MediumPriority,
+	}
+
+	var callCount int32
+	done := make(chan struct{}, 2)
+
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed1).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			atomic.AddInt32(&callCount, 1)
+			done <- struct{}{}
+			return nil
+		},
+	).Times(1)
+
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed2).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			atomic.AddInt32(&callCount, 1)
+			done <- struct{}{}
+			return nil
+		},
+	).Times(1)
+
+	err := s.service.HandleRawUpdate(upd1)
 	s.Require().NoError(err)
+
+	waitTime := 200 * time.Millisecond
+	tickTime := 10 * time.Millisecond
+	s.Eventually(func() bool {
+		return atomic.LoadInt32(&callCount) == 1
+	}, testGroupingWindow+waitTime, tickTime)
+
+	err = s.service.HandleRawUpdate(upd2)
+	s.Require().NoError(err)
+
+	s.Eventually(func() bool {
+		return atomic.LoadInt32(&callCount) == 2
+	}, testGroupingWindow+waitTime, tickTime)
 }
 
 func (s *ServiceSuite) TestHandleRawUpdate_SendingError() {
@@ -169,15 +451,76 @@ func (s *ServiceSuite) TestHandleRawUpdate_SendingError() {
 		TgChatIDs:   []int64{1, 2},
 	}
 
-	processedUpd := domain.ProcessedUpdate{
+	var callCount int32
+
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			atomic.AddInt32(&callCount, 1)
+
+			return errors.New("some error")
+		},
+	).Times(2)
+
+	err := s.service.HandleRawUpdate(upd)
+	s.Require().NoError(err)
+
+	waitTime := 200 * time.Millisecond
+	tickTime := 10 * time.Millisecond
+	s.Eventually(func() bool {
+		return atomic.LoadInt32(&callCount) == 2
+	}, testGroupingWindow+waitTime, tickTime)
+}
+
+func (s *ServiceSuite) TestHandleRawUpdate_MessageFiltered() {
+	upd := domain.RawUpdate{
 		ID:          1,
-		Description: "123123123123123",
+		Description: "1",
+		Author:      "1",
 		TgChatIDs:   []int64{1, 2},
-		Priority:    domain.HighPriority,
 	}
 
-	s.mockNotifier.EXPECT().SendUpdate(s.ctx, processedUpd).Return(errors.New("some error"))
+	err := s.service.HandleRawUpdate(upd)
+	s.Require().NoError(err)
+}
 
-	err := s.service.HandleRawUpdate(s.ctx, upd)
-	s.Require().Error(err)
+func (s *ServiceSuite) TestStop_FlushesRemainingGroups() {
+	chatID := int64(12345)
+
+	upd := domain.RawUpdate{
+		ID:          1,
+		Description: "Message that will be flushed",
+		Author:      "user",
+		TgChatIDs:   []int64{chatID},
+	}
+
+	expectedProcessed := domain.ProcessedUpdate{
+		ID:          1,
+		Description: "Message that will be...",
+		TgChatIDs:   []int64{chatID},
+		Priority:    domain.MediumPriority,
+	}
+
+	done := make(chan struct{})
+	s.mockNotifier.EXPECT().SendUpdate(gomock.Any(), expectedProcessed).DoAndReturn(
+		func(_ context.Context, _ domain.ProcessedUpdate) error {
+			close(done)
+			return nil
+		},
+	).Times(1)
+
+	err := s.service.HandleRawUpdate(upd)
+	s.Require().NoError(err)
+
+	s.service.Stop()
+
+	waitTime := 500 * time.Millisecond
+	tickTime := 10 * time.Millisecond
+	s.Eventually(func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}, waitTime, tickTime)
 }

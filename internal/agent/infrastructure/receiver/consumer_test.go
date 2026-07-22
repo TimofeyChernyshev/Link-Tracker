@@ -106,8 +106,8 @@ func (s *ConsumerSuite) TestConsumer_HandleUpdate() {
 
 	called := make(chan bool, 1)
 
-	s.service.EXPECT().HandleRawUpdate(gomock.Any(), upd).Return(nil).DoAndReturn(
-		func(_ context.Context, _ domain.RawUpdate) error {
+	s.service.EXPECT().HandleRawUpdate(upd).Return(nil).DoAndReturn(
+		func(_ domain.RawUpdate) error {
 			called <- true
 			return nil
 		},

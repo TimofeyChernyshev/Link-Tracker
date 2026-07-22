@@ -5,7 +5,6 @@
 package receiver
 
 import (
-	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -36,15 +35,15 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // HandleRawUpdate mocks base method.
-func (m *MockService) HandleRawUpdate(ctx context.Context, rawUpdate domain.RawUpdate) error {
+func (m *MockService) HandleRawUpdate(rawUpdate domain.RawUpdate) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HandleRawUpdate", ctx, rawUpdate)
+	ret := m.ctrl.Call(m, "HandleRawUpdate", rawUpdate)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // HandleRawUpdate indicates an expected call of HandleRawUpdate.
-func (mr *MockServiceMockRecorder) HandleRawUpdate(ctx, rawUpdate interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) HandleRawUpdate(rawUpdate interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleRawUpdate", reflect.TypeOf((*MockService)(nil).HandleRawUpdate), ctx, rawUpdate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleRawUpdate", reflect.TypeOf((*MockService)(nil).HandleRawUpdate), rawUpdate)
 }
