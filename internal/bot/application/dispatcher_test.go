@@ -15,7 +15,7 @@ func TestRegister(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	cmd1 := NewMockCommand(ctrl)
 	cmd2 := NewMockCommand(ctrl)
@@ -34,7 +34,7 @@ func TestDispatch_KnownCommand(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	mockCmd := NewMockCommand(ctrl)
 
@@ -70,7 +70,7 @@ func TestDispatch_UnknownCommand(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	expectedResponse := &domain.Response{
 		Text:   "unknown command",
@@ -99,7 +99,7 @@ func TestDispatch_NonCommand(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	msg := &domain.Message{
 		Text:      "message",
@@ -119,7 +119,7 @@ func TestDispatch_Conversation(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	mockCmd := NewMockCommand(ctrl)
 	mockCmd.EXPECT().Name().Return("/track").AnyTimes()
@@ -180,7 +180,7 @@ func TestGetCommands(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	cmd1 := NewMockCommand(ctrl)
 	cmd1.EXPECT().Name().Return("/test1")
@@ -209,7 +209,7 @@ func TestHandleMessage_Success(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	msg := &domain.Message{
 		Text:      "/start",
@@ -239,7 +239,7 @@ func TestHandleMessage_DispatchError(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	msg := &domain.Message{
 		Text:      "not a command",
@@ -262,7 +262,7 @@ func TestHandleUpdate(t *testing.T) {
 
 	unknownCmd := NewMockCommand(ctrl)
 	bot := NewMockBot(ctrl)
-	dispatcher := NewCommandDispatcher(unknownCmd, bot)
+	dispatcher := NewCommandDispatcher(unknownCmd, bot, nil)
 
 	chatIDs := []int64{1, 2, 3}
 	desc := "test update"

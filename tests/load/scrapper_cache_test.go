@@ -86,8 +86,8 @@ func TestLoad(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	serviceNoCache := application.NewLinkService(nil, nil, repo, &NoopCache{}, 100, 1, linkServiceLimit)
-	serviceCache := application.NewLinkService(nil, nil, repo, valkeyClient, 100, 1, linkServiceLimit)
+	serviceNoCache := application.NewLinkService(nil, nil, repo, &NoopCache{}, nil, 100, 1, linkServiceLimit)
+	serviceCache := application.NewLinkService(nil, nil, repo, valkeyClient, nil, 100, 1, linkServiceLimit)
 
 	for u := range users {
 		chatID := int64(u)

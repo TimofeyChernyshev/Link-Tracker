@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
@@ -18,19 +19,26 @@ const (
 	HeaderChatID = "Tg-Chat-Id"
 )
 
+type MetricsCollector interface {
+	RecordCommandDuration(ctx context.Context, scope, scopeType string, durationMs float64)
+}
+
 type ScrapperClient struct {
 	baseURL    string
 	httpClient *resilience.ResilientHTTPClient
+	metrics    MetricsCollector
 }
 
-func NewScrapperClient(baseURL string, httpClient *resilience.ResilientHTTPClient) *ScrapperClient {
+func NewScrapperClient(baseURL string, httpClient *resilience.ResilientHTTPClient, metrics MetricsCollector) *ScrapperClient {
 	return &ScrapperClient{
 		baseURL:    baseURL,
 		httpClient: httpClient,
+		metrics:    metrics,
 	}
 }
 
 func (c *ScrapperClient) AddLink(ctx context.Context, chatID int64, url string, tags []string) error {
+	start := time.Now()
 	reqBody := AddLinkRequest{
 		Link: url,
 		Tags: tags,
@@ -39,6 +47,11 @@ func (c *ScrapperClient) AddLink(ctx context.Context, chatID int64, url string, 
 	respBody := &LinkResponse{}
 
 	err := c.doJSON(ctx, http.MethodPost, chatID, "/links", reqBody, respBody)
+	if c.metrics != nil {
+		defer func() {
+			c.metrics.RecordCommandDuration(ctx, "scrapper_sync_api", "add_link", float64(time.Since(start).Milliseconds()))
+		}()
+	}
 	if err != nil {
 		return err
 	}
@@ -47,6 +60,7 @@ func (c *ScrapperClient) AddLink(ctx context.Context, chatID int64, url string, 
 }
 
 func (c *ScrapperClient) RemoveLink(ctx context.Context, chatID int64, url string) error {
+	start := time.Now()
 	reqBody := RemoveLinkRequest{
 		Link: url,
 	}
@@ -54,6 +68,11 @@ func (c *ScrapperClient) RemoveLink(ctx context.Context, chatID int64, url strin
 	respBody := &LinkResponse{}
 
 	err := c.doJSON(ctx, http.MethodDelete, chatID, "/links", reqBody, respBody)
+	if c.metrics != nil {
+		defer func() {
+			c.metrics.RecordCommandDuration(ctx, "scrapper_sync_api", "remove_link", float64(time.Since(start).Milliseconds()))
+		}()
+	}
 	if err != nil {
 		return err
 	}
@@ -62,11 +81,17 @@ func (c *ScrapperClient) RemoveLink(ctx context.Context, chatID int64, url strin
 }
 
 func (c *ScrapperClient) GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error) {
+	start := time.Now()
 	respBody := &ListLinksResponse{}
 
 	url := fmt.Sprintf("/links?limit=%d&offset=%d", limit, offset)
 
 	err := c.doJSON(ctx, http.MethodGet, chatID, url, nil, respBody)
+	if c.metrics != nil {
+		defer func() {
+			c.metrics.RecordCommandDuration(ctx, "scrapper_sync_api", "get_links", float64(time.Since(start).Milliseconds()))
+		}()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -80,13 +105,25 @@ func (c *ScrapperClient) GetLinks(ctx context.Context, chatID int64, limit, offs
 }
 
 func (c *ScrapperClient) RegisterChat(ctx context.Context, chatID int64) error {
+	start := time.Now()
 	err := c.doJSON(ctx, http.MethodPost, 0, "/tg-chat/"+strconv.FormatInt(chatID, 10), nil, nil)
+	if c.metrics != nil {
+		defer func() {
+			c.metrics.RecordCommandDuration(ctx, "scrapper_sync_api", "register_chat", float64(time.Since(start).Milliseconds()))
+		}()
+	}
 
 	return err
 }
 
 func (c *ScrapperClient) DeleteChat(ctx context.Context, chatID int64) error {
+	start := time.Now()
 	err := c.doJSON(ctx, http.MethodDelete, 0, "/tg-chat/"+strconv.FormatInt(chatID, 10), nil, nil)
+	if c.metrics != nil {
+		defer func() {
+			c.metrics.RecordCommandDuration(ctx, "scrapper_sync_api", "delete_chat", float64(time.Since(start).Milliseconds()))
+		}()
+	}
 
 	return err
 }

@@ -26,3 +26,11 @@ type Bot interface {
 	Receive(ctx context.Context) (*domain.Message, error)
 	SendMessage(response *domain.Response) error
 }
+
+type MetricsCollector interface {
+	RecordCommand(ctx context.Context, command string)
+
+	RecordCommandDuration(ctx context.Context, scope, scopeType string, durationMs float64)
+
+	RecordNotificationSent(ctx context.Context)
+}

@@ -18,6 +18,14 @@ type Service interface {
 	HandleUpdate(chatIDs []int64, desc string) error
 }
 
+type MetricsCollector interface {
+	RecordCommand(ctx context.Context, command string)
+
+	RecordCommandDuration(ctx context.Context, scope, scopeType string, durationMs float64)
+
+	RecordNotificationSent(ctx context.Context)
+}
+
 type DeadLetterMessage struct {
 	OriginalMessage string    `json:"original_message"`
 	Key             string    `json:"key"`
@@ -40,11 +48,13 @@ type Consumer struct {
 	retryDelay time.Duration
 
 	cancel context.CancelFunc
+
+	metrics MetricsCollector
 }
 
 func NewConsumer(service Service, brokers []string, topic string, groupID string,
 	sessionTimeout time.Duration, minBytes, maxBytes int,
-	maxRetries, batchSize int, retryDelay, batchTimeout time.Duration, dlqTopic string) *Consumer {
+	maxRetries, batchSize int, retryDelay, batchTimeout time.Duration, dlqTopic string, metric MetricsCollector) *Consumer {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        brokers,
 		Topic:          topic,
@@ -70,6 +80,7 @@ func NewConsumer(service Service, brokers []string, topic string, groupID string
 	return &Consumer{
 		service: service, reader: reader, stopCh: make(chan struct{}),
 		dlqWriter: DLQWriter, maxRetries: maxRetries, retryDelay: retryDelay,
+		metrics: metric,
 	}
 }
 
@@ -91,31 +102,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
-			var update domain.LinkUpdate
-			if err = json.Unmarshal(msg.Value, &update); err != nil {
-				slog.Error("failed to unmarshal message", "error", err, "key", string(msg.Key))
-				c.sendToDLQ(msg, err, "unmarshal", 0)
-				continue
-			}
-
-			attempt := 0
-
-			for attempt = range c.maxRetries + 1 {
-				if attempt > 0 {
-					slog.Warn("retrying to handle message", "attempt", attempt)
-					time.Sleep(c.retryDelay)
-				}
-
-				err = c.service.HandleUpdate(update.TgChatIDs, update.Description)
-				if err == nil {
-					break
-				}
-			}
-
-			if attempt == c.maxRetries+1 {
-				slog.Error("handle update error", "error", err, "attempt", attempt)
-				c.sendToDLQ(msg, errors.New("all retries exhausted"), "processing", c.maxRetries)
-			}
+			c.processMessage(ctx, msg)
 		}
 	}()
 
@@ -148,6 +135,42 @@ func (c *Consumer) Shutdown(_ context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
+	if c.metrics != nil {
+		c.metrics.RecordCommand(ctx, "kafka_message_received")
+	}
+	start := time.Now()
+	defer func() {
+		if c.metrics != nil {
+			c.metrics.RecordCommandDuration(ctx, "kafka_consumer", "handle_update", float64(time.Since(start).Milliseconds()))
+		}
+	}()
+
+	var update domain.LinkUpdate
+	if err := json.Unmarshal(msg.Value, &update); err != nil {
+		slog.Error("failed to unmarshal message", "error", err, "key", string(msg.Key))
+		c.sendToDLQ(msg, err, "unmarshal", 0)
+		return
+	}
+
+	var lastErr error
+	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+		if attempt > 0 {
+			slog.Warn("retrying to handle message", "attempt", attempt)
+			time.Sleep(c.retryDelay)
+		}
+
+		var err error
+		if err = c.service.HandleUpdate(update.TgChatIDs, update.Description); err == nil {
+			return
+		}
+
+		lastErr = err
+	}
+	slog.Error("handle update error", "error", lastErr, "attempt", c.maxRetries+1)
+	c.sendToDLQ(msg, errors.New("all retries exhausted"), "processing", c.maxRetries)
 }
 
 func (c *Consumer) sendToDLQ(msg kafka.Message, reason error, errorType string, retries int) {

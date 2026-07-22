@@ -21,6 +21,8 @@ const (
 type Config struct {
 	ScrapperPort string `env:"SCRAPPER_PORT,required"`
 
+	MetricPort string `env:"SCRAPPER_METRIC_PORT"`
+
 	// DB
 	AccessType AccessType `env:"ACCESS_TYPE,required"`
 	DBUser     string     `env:"DB_USER,required"`
@@ -82,6 +84,8 @@ type Config struct {
 
 	HTTPNotifierConfig  *HTTPBotNotifierConfig
 	KafkaNotifierConfig *KafkaBotNotifierConfig
+
+	ScrapperMetricTick time.Duration `env:"SCRAPPER_MEMORY_METRIC_TICK" envDefault:"30s"`
 }
 
 type AccessType string

@@ -17,6 +17,7 @@ import (
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/cache"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/config"
 	linkchecker "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/link_checker"
+	scrappermetrics "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/metrics"
 	scrappernotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier"
 	httpnotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/http"
 	kafkanotifier "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/infrastructure/notifier/kafka"
@@ -34,6 +35,7 @@ type ScrapperApp struct {
 	scheduler   *scheduler.Scheduler
 	server      *scrapperhttp.Server
 	cache       *cache.ValkeyClient
+	metrics     *scrappermetrics.Metrics
 }
 
 func main() {
@@ -104,7 +106,9 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		return nil, fmt.Errorf("failed to create cache client: %w", err)
 	}
 
-	linkService := application.NewLinkService(linkChecker, notifier, repo, cache, cfg.BatchSize, cfg.WorkerCount, cfg.DefaultLimit)
+	metric := scrappermetrics.NewMetrics(cfg.ScrapperMetricTick)
+
+	linkService := application.NewLinkService(linkChecker, notifier, repo, cache, metric, cfg.BatchSize, cfg.WorkerCount, cfg.DefaultLimit)
 
 	sched, err := scheduler.New(cfg.CheckInterval, linkService)
 	if err != nil {
@@ -113,7 +117,7 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 
 	rateLimiter := resilience.NewRateLimiterMiddleware(cfg.RateLimiterConfig.RPS, cfg.RateLimiterConfig.Burst)
 
-	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, cfg.DefaultLimit, cfg.MaxLimit, rateLimiter.Middleware)
+	server := scrapperhttp.NewServer(cfg.ScrapperPort, linkService, metric, cfg.DefaultLimit, cfg.MaxLimit, rateLimiter.Middleware, metric.HTTPMiddleware)
 
 	return &ScrapperApp{
 		cfg:         cfg,
@@ -123,11 +127,24 @@ func buildApp(cfg *config.Config) (*ScrapperApp, error) {
 		scheduler:   sched,
 		server:      server,
 		cache:       cache,
+		metrics:     metric,
 	}, nil
 }
 
 func (a *ScrapperApp) run() error {
 	defer a.cleanup()
+
+	metricsShutdown, err := a.metrics.RunMetricsServer(a.cfg.MetricPort)
+	if err != nil {
+		return fmt.Errorf("failed to start metrics server: %w", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), a.cfg.ShutdownTimeout)
+		defer cancel()
+		if err = metricsShutdown(ctx); err != nil {
+			slog.Error("metrics server shutdown error", "error", err)
+		}
+	}()
 
 	a.scheduler.Start()
 	slog.Info("scheduler started", "interval", a.cfg.CheckInterval)
@@ -138,7 +155,7 @@ func (a *ScrapperApp) run() error {
 
 	go func() {
 		slog.Info("starting scrapper server", "port", a.cfg.ScrapperPort)
-		if err := a.server.Start(); err != nil {
+		if err = a.server.Start(); err != nil {
 			errChan <- err
 		}
 	}()
@@ -148,7 +165,7 @@ func (a *ScrapperApp) run() error {
 	select {
 	case sig := <-sigChan:
 		slog.Info("received signal", "signal", sig)
-	case err := <-errChan:
+	case err = <-errChan:
 		slog.Error("server error", "error", err)
 	}
 

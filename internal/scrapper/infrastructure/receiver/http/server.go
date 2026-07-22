@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	domain "gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
 )
@@ -23,15 +24,24 @@ type Service interface {
 	GetLinks(ctx context.Context, chatID int64, limit, offset int) ([]domain.Link, error)
 }
 
+type MetricsCollector interface {
+	RecordAPIRequest(ctx context.Context, source string)
+	RecordRequestDuration(ctx context.Context, scope, scopeType string, durationMs float64)
+	RecordHTTPRequest(ctx context.Context, method, endpoint, status string)
+	RecordHTTPRequestDuration(ctx context.Context, method, endpoint string, durationSeconds float64)
+	RecordHTTPRequestsInFlight(ctx context.Context, delta int)
+}
+
 type Server struct {
 	srv           *http.Server
 	service       Service
 	defaultLimit  int
 	defaultOffset int
 	maxLimit      int
+	metrics       MetricsCollector
 }
 
-func NewServer(port string, service Service, defaultLimit, maxLimit int, middlewares ...func(http.Handler) http.Handler) *Server {
+func NewServer(port string, service Service, metrics MetricsCollector, defaultLimit, maxLimit int, middlewares ...func(http.Handler) http.Handler) *Server {
 	mux := http.NewServeMux()
 
 	server := &Server{
@@ -39,6 +49,7 @@ func NewServer(port string, service Service, defaultLimit, maxLimit int, middlew
 		defaultLimit:  defaultLimit,
 		defaultOffset: defaultOffset,
 		maxLimit:      maxLimit,
+		metrics:       metrics,
 	}
 
 	mux.HandleFunc("/tg-chat/{id}", server.updateChat)
@@ -73,6 +84,16 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // updateChat - хендлер для ручки /tg-chat/{id}
 func (s *Server) updateChat(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	source := s.extractSource(r)
+
+	if s.metrics != nil {
+		s.metrics.RecordAPIRequest(r.Context(), source)
+		defer func() {
+			s.metrics.RecordRequestDuration(r.Context(), "http", "api", float64(time.Since(start).Milliseconds()))
+		}()
+	}
+
 	idString := r.PathValue("id")
 	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil {
@@ -115,6 +136,16 @@ func (s *Server) deleteChat(ctx context.Context, w http.ResponseWriter, id int64
 
 // links - хендлер для ручки /links
 func (s *Server) links(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	source := s.extractSource(r)
+
+	if s.metrics != nil {
+		s.metrics.RecordAPIRequest(r.Context(), source)
+		defer func() {
+			s.metrics.RecordRequestDuration(r.Context(), "http", "api", float64(time.Since(start).Milliseconds()))
+		}()
+	}
+
 	idString := r.Header.Get("Tg-Chat-Id")
 	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil {
@@ -241,4 +272,15 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 		Description: msg,
 		Code:        http.StatusText(code),
 	})
+}
+
+func (s *Server) extractSource(r *http.Request) string {
+	if source := r.Header.Get("X-Client-Source"); source != "" {
+		return source
+	}
+	ua := r.Header.Get("User-Agent")
+	if ua == "" {
+		return "unknown"
+	}
+	return ua
 }

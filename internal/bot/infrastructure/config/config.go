@@ -13,6 +13,8 @@ type Config struct {
 	TelegramToken    string `env:"TELEGRAM_TOKEN,required"`
 	TelegramEndpoint string `env:"TELEGRAM_API_URL"`
 
+	MetricPort string `env:"BOT_METRIC_PORT"`
+
 	ScrapperBaseURL              string                          `env:"SCRAPPER_BASE_URL,required"`
 	ScrapperRetryConfig          resilience.RetryConfig          `envPrefix:"SCRAPPER_"`
 	ScrapperCircuitBreakerConfig resilience.CircuitBreakerConfig `envPrefix:"SCRAPPER_CB_"`
@@ -42,6 +44,8 @@ type Config struct {
 	CommonKafkaConfig   config.CommonConfig
 	DLQConfig           config.DLQConfig           `envPrefix:"BOT_KAFKA_"`
 	KafkaConsumerConfig config.KafkaConsumerConfig `envPrefix:"BOT_KAFKA_"`
+
+	BotMetricTick time.Duration `env:"BOT_MEMORY_METRIC_TICK" envDefault:"30s"`
 }
 
 func Load() (*Config, error) {

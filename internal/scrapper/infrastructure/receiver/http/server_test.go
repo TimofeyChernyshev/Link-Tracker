@@ -26,7 +26,7 @@ func (s *ServerSuite) SetupTest() {
 
 	defaultLimit := 50
 	maxLimit := 100
-	s.server = NewServer("0", s.service, defaultLimit, maxLimit)
+	s.server = NewServer("0", s.service, nil, defaultLimit, maxLimit)
 }
 
 func (s *ServerSuite) TearDownTest() {
