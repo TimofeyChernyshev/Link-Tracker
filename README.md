@@ -19,3 +19,14 @@
 # Результаты нагрузочных тестов и их анализа
 
 [docs/benchmark_results.md](docs/benchmark_results.md)
+
+# Обмен сообщениями между сервисами
+
+`Scrapper` отправляет сообщения в Kafka (топик: `link.raw-updates`)
+
+`Agent` читает из `link.raw-updates` и отправляет в `link.processed-updates` или, в случае ошибки, в `link.raw-updates-dlq`
+
+`Bot` читает из `link.processed-updates`, в случае ошибки отправляет в `link.processed-updates-dlq`
+
+При отсутствии возможности отправить в Kafka `Scrapper` отправляет сообщение напрямую в `Bot` по HTTP
+

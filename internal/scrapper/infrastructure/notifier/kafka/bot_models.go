@@ -7,6 +7,7 @@ type LinkUpdate struct {
 	URL         string  `json:"url"`
 	Description string  `json:"description"`
 	TgChatIDs   []int64 `json:"tgChatIds"`
+	Author      string  `json:"author"`
 }
 
 func linkUpdateFromDomain(upd domain.LinkUpdate) *LinkUpdate {
@@ -15,5 +16,6 @@ func linkUpdateFromDomain(upd domain.LinkUpdate) *LinkUpdate {
 		URL:         upd.URL,
 		Description: upd.Description,
 		TgChatIDs:   upd.ChatIDs,
+		Author:      upd.Author,
 	}
 }

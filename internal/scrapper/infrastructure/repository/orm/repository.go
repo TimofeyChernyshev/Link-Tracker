@@ -354,7 +354,7 @@ func (r *OrmRepository) GetLinksWithInterval(ctx context.Context, limit, offset 
 	err := r.db.
 		From("links").
 		Select("id", "url", "updated_at").
-		Where(goqu.L("last_checked_at < now() - interval ?", fmt.Sprintf("%.0f seconds", interval.Seconds()))).
+		Where(goqu.L("last_checked_at IS NULL OR last_checked_at < now() - interval ?", fmt.Sprintf("%.0f seconds", interval.Seconds()))).
 		Order(goqu.I("id").Asc()).
 		Limit(uint(limit)).
 		Offset(uint(offset)).

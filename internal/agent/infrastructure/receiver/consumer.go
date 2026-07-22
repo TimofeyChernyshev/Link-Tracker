@@ -1,4 +1,4 @@
-package botkafka
+package receiver
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
-	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/agent/domain"
 )
 
 type Service interface {
-	HandleUpdate(chatIDs []int64, desc string) error
+	HandleRawUpdate(ctx context.Context, rawUpdate domain.RawUpdate) error
 }
 
 type DeadLetterMessage struct {
@@ -91,8 +91,8 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
-			var update domain.LinkUpdate
-			if err = json.Unmarshal(msg.Value, &update); err != nil {
+			var rawUpdate domain.RawUpdate
+			if err = json.Unmarshal(msg.Value, &rawUpdate); err != nil {
 				slog.Error("failed to unmarshal message", "error", err, "key", string(msg.Key))
 				c.sendToDLQ(msg, err, "unmarshal", 0)
 				continue
@@ -106,14 +106,14 @@ func (c *Consumer) Start(ctx context.Context) error {
 					time.Sleep(c.retryDelay)
 				}
 
-				err = c.service.HandleUpdate(update.TgChatIDs, update.Description)
+				err = c.service.HandleRawUpdate(ctx, rawUpdate)
 				if err == nil {
 					break
 				}
 			}
 
 			if attempt == c.maxRetries+1 {
-				slog.Error("handle update error", "error", err, "attempt", attempt)
+				slog.Error("handle raw update error", "error", err, "attempt", attempt)
 				c.sendToDLQ(msg, errors.New("all retries exhausted"), "processing", c.maxRetries)
 			}
 		}
@@ -122,12 +122,24 @@ func (c *Consumer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *Consumer) Shutdown(_ context.Context) error {
+func (c *Consumer) Shutdown(ctx context.Context) error {
 	if c.cancel != nil {
 		c.cancel()
 	}
 
-	c.wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		c.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		slog.Debug("consumer goroutine stopped")
+	case <-ctx.Done():
+		slog.Warn("consumer shutdown timeout", "error", ctx.Err())
+		return fmt.Errorf("shutdown timeout: %w", ctx.Err())
+	}
 
 	var errors []error
 

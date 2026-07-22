@@ -139,23 +139,31 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
 
-      KAFKA_TOPIC_UPDATES: ${KAFKA_UPDATES_TOPIC:-link-updates}
-      KAFKA_TOPIC_UPDATES_DLQ: ${KAFKA_TOPIC_UPDATES_DLQ:-link-updates-dlq}
+      KAFKA_PROCESSED_UPDATES_TOPIC: ${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
+      KAFKA_PROCESSED_UPDATES_DLQ_TOPIC: ${KAFKA_PROCESSED_UPDATES_DLQ_TOPIC:-link.processed-updates-dlq}
+      KAFKA_RAW_UPDATES_TOPIC: ${KAFKA_RAW_UPDATES_TOPIC:-link.raw-updates}
+      KAFKA_RAW_UPDATES_DLQ_TOPIC: ${KAFKA_RAW_UPDATES_DLQ_TOPIC:-link.raw-updates-dlq}
 
       # =3, чтобы параллельно обрабатывать сообщения и распределять нагрузку по 3 брокерам
-      KAFKA_TOPIC_UPDATES_PARTITIONS: "3"
+      KAFKA_PROCESSED_UPDATES_TOPIC_PARTITIONS: "3"
+      KAFKA_RAW_UPDATES_TOPIC_PARTITIONS: "3"
       # =1, т.к. в DLQ меньше сообщений и это упрощает ручной разбор
-      KAFKA_TOPIC_UPDATES_DLQ_PARTITIONS: "1"
+      KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_PARTITIONS: "1"
+      KAFKA_RAW_UPDATES_DLQ_TOPIC_PARTITIONS: "1"
 
       # =3, каждая партиция хранится на всех брокерах, чтобы не терять данные при падении до 2 брокеров
-      KAFKA_TOPIC_UPDATES_RF: "3"
+      KAFKA_PROCESSED_UPDATES_TOPIC_RF: "3"
+      KAFKA_RAW_UPDATES_TOPIC_RF: "3"
       # =2, при падении 1 брокера данные сохраняются
-      KAFKA_TOPIC_UPDATES_DLQ_RF: "2"
+      KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_RF: "2"
+      KAFKA_RAW_UPDATES_DLQ_TOPIC_RF: "2"
 
       # время хранения сообщений =7 дней
-      KAFKA_TOPIC_UPDATES_RETENTION_MS: "604800000"
+      KAFKA_PROCESSED_UPDATES_TOPIC_RETENTION_MS: "604800000"
+      KAFKA_RAW_UPDATES_TOPIC_RETENTION_MS: "604800000"
       # время для хранения DLQ нужно чуть больше (30 дней)
-      KAFKA_TOPIC_UPDATES_DLQ_RETENTION_MS: "2592000000"
+      KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_RETENTION_MS: "2592000000"
+      KAFKA_RAW_UPDATES_DLQ_TOPIC_RETENTION_MS: "2592000000"
     command:
       - sh
       - -c
@@ -163,16 +171,31 @@ services:
         cub kafka-ready -b $$KAFKA_BOOTSTRAP_SERVERS 1 30
 
         kafka-topics --create --if-not-exists \
-          --topic $$KAFKA_TOPIC_UPDATES \
-          --partitions $$KAFKA_TOPIC_UPDATES_PARTITIONS \
-          --replication-factor $$KAFKA_TOPIC_UPDATES_RF \
-          --config retention.ms=$$KAFKA_TOPIC_UPDATES_RETENTION_MS \
+          --topic $$KAFKA_PROCESSED_UPDATES_TOPIC \
+          --partitions $$KAFKA_PROCESSED_UPDATES_TOPIC_PARTITIONS \
+          --replication-factor $$KAFKA_PROCESSED_UPDATES_TOPIC_RF \
+          --config retention.ms=$$KAFKA_PROCESSED_UPDATES_TOPIC_RETENTION_MS \
           --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
 
         kafka-topics --create --if-not-exists \
-          --topic $$KAFKA_TOPIC_UPDATES_DLQ \
-          --partitions $$KAFKA_TOPIC_UPDATES_DLQ_PARTITIONS \
-          --replication-factor $$KAFKA_TOPIC_UPDATES_DLQ_RF \
+          --topic $$KAFKA_PROCESSED_UPDATES_DLQ_TOPIC \
+          --partitions $$KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_PARTITIONS \
+          --replication-factor $$KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_RF \
+          --config retention.ms=$$KAFKA_PROCESSED_UPDATES_DLQ_TOPIC_RETENTION_MS \
+          --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+
+        kafka-topics --create --if-not-exists \
+          --topic $$KAFKA_RAW_UPDATES_TOPIC \
+          --partitions $$KAFKA_RAW_UPDATES_TOPIC_PARTITIONS \
+          --replication-factor $$KAFKA_RAW_UPDATES_TOPIC_RF \
+          --config retention.ms=$$KAFKA_RAW_UPDATES_TOPIC_RETENTION_MS \
+          --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
+
+        kafka-topics --create --if-not-exists \
+          --topic $$KAFKA_RAW_UPDATES_DLQ_TOPIC \
+          --partitions $$KAFKA_RAW_UPDATES_DLQ_TOPIC_PARTITIONS \
+          --replication-factor $$KAFKA_RAW_UPDATES_DLQ_TOPIC_RF \
+          --config retention.ms=$$KAFKA_RAW_UPDATES_DLQ_TOPIC_RETENTION_MS \
           --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
 
         echo 'Topics created:' && kafka-topics --list --bootstrap-server $$KAFKA_BOOTSTRAP_SERVERS
@@ -339,8 +362,7 @@ services:
     ports:
       - "${SCRAPPER_PORT:-8081}:${SCRAPPER_PORT:-8081}"
     environment:
-      - NOTIFICATION_TYPE=${NOTIFICATION_TYPE:-kafka}
-      - KAFKA_UPDATES_TOPIC=${KAFKA_UPDATES_TOPIC:-link-updates}
+      - SCRAPPER_NOTIFIER_TOPIC=${KAFKA_RAW_UPDATES_TOPIC:-link.raw-updates}
       - KAFKA_BROKERS=${KAFKA_BROKERS}
     env_file:
       - .env.scrapper
@@ -356,11 +378,27 @@ services:
     ports:
       - "${BOT_PORT:-8080}:${BOT_PORT:-8080}"
     environment:
-      - NOTIFICATION_TYPE=${NOTIFICATION_TYPE:-kafka}
-      - KAFKA_UPDATES_TOPIC=${KAFKA_UPDATES_TOPIC}
       - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - BOT_KAFKA_DLQ_TOPIC=${KAFKA_PROCESSED_UPDATES_DLQ_TOPIC:-link.processed-updates-dlq}
+      - BOT_KAFKA_CONSUMER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
     env_file:
       - .env.bot
+    networks:
+      - linktracker-net
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: linktracker-agent
+    restart: unless-stopped
+    environment:
+      - KAFKA_BROKERS=${KAFKA_BROKERS}
+      - AGENT_KAFKA_DLQ_TOPIC=${KAFKA_RAW_UPDATES_DLQ_TOPIC:-link.raw-updates-dlq}
+      - AGENT_KAFKA_CONSUMER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.raw-updates}
+      - AGENT_KAFKA_NOTIFIER_TOPIC=${KAFKA_PROCESSED_UPDATES_TOPIC:-link.processed-updates}
+    env_file:
+      - .env.agent
     networks:
       - linktracker-net
 

@@ -31,8 +31,8 @@ func StartScrapper(ctx context.Context, networkName string) (testcontainers.Cont
 			"BOT_BASE_URL":            "http://bot:8080",
 			"SCRAPPER_TO_BOT_TIMEOUT": "5s",
 
-			"KAFKA_BROKERS":       "non-existent-kafka-1:9092,non-existent-kafka-2:9092",
-			"KAFKA_UPDATES_TOPIC": "link-updates",
+			"KAFKA_BROKERS":           "non-existent-kafka-1:9092,non-existent-kafka-2:9092",
+			"SCRAPPER_NOTIFIER_TOPIC": "link-updates",
 
 			"VALKEY_ADDRESSES":    "valkey-node-1:6379,valkey-node-2:6379,valkey-node-3:6379",
 			"VALKEY_CLUSTER_MODE": "true",
@@ -74,10 +74,10 @@ func StartBot(ctx context.Context, networkName string, telegramURL string) (test
 			"BOT_PORT":          "8080",
 			"SCRAPPER_BASE_URL": "http://scrapper:8081",
 
-			"KAFKA_BROKERS":       "non-existent-kafka-1:9092,non-existent-kafka-2:9092",
-			"KAFKA_UPDATES_TOPIC": "link-updates",
-			"KAFKA_GROUP_ID":      "bot-test-group",
-			"KAFKA_DLQ_TOPIC":     "dlq-topic",
+			"KAFKA_BROKERS":           "non-existent-kafka-1:9092,non-existent-kafka-2:9092",
+			"BOT_KAFKA_UPDATES_TOPIC": "link-updates",
+			"BOT_KAFKA_GROUP_ID":      "bot-test-group",
+			"BOT_KAFKA_DLQ_TOPIC":     "dlq-topic",
 		},
 
 		Networks: []string{networkName},
