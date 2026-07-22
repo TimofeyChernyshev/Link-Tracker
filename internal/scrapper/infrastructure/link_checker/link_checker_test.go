@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/scrapper/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
 type LinkCheckerSuite struct {
@@ -23,10 +24,29 @@ func (s *LinkCheckerSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.batchSize = 100
 	previewLen := 200
+
 	githubTimeout := time.Second * 5
 	stackTimeout := time.Second * 5
 	basicTimeout := time.Second * 5
-	s.client = NewLinkChecker("test-bot/1.0", s.batchSize, previewLen, "github", "stack", basicTimeout, githubTimeout, stackTimeout)
+	retryCfg := resilience.RetryConfig{
+		MaxAttempts:   1,
+		InitialDelay:  10 * time.Millisecond,
+		MaxDelay:      100 * time.Millisecond,
+		BackoffFactor: 1.0,
+		RetryableHTTP: []int{500, 502, 503, 504},
+	}
+	cbConfig := resilience.CircuitBreakerConfig{
+		Name:        "test-cb",
+		MaxRequests: 5,
+		Timeout:     1 * time.Second,
+	}
+	rateLimit := 100
+
+	basicClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, basicTimeout)
+	githubClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, githubTimeout)
+	stackClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, stackTimeout)
+
+	s.client = NewLinkChecker("test-bot/1.0", s.batchSize, previewLen, "github", "stack", basicClient, githubClient, stackClient)
 }
 
 func (s *LinkCheckerSuite) TearDownTest() {
@@ -38,6 +58,7 @@ func (s *LinkCheckerSuite) TearDownTest() {
 func TestLinkCheckerSuite(t *testing.T) {
 	suite.Run(t, new(LinkCheckerSuite))
 }
+
 func (s *LinkCheckerSuite) TestCheck_Success_WithChanges() {
 	fixedTime := time.Now().UTC()
 	lastModified := fixedTime.Format(http.TimeFormat)
@@ -150,7 +171,7 @@ func (s *LinkCheckerSuite) TestCheck_ServerError() {
 	events, err := s.client.Check(s.ctx, link)
 
 	s.Require().Error(err)
-	s.Contains(err.Error(), "status code: 500")
+	s.Contains(err.Error(), "failed to execute request")
 	s.Nil(events)
 }
 

@@ -14,10 +14,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/internal/bot/domain"
+	"gitlab.education.tbank.ru/backend-academy-go-2025/homeworks/link-tracker/pkg/resilience"
 )
 
-const (
-	testScrapperTimeout = 5 * time.Second
+var (
+	retryCfg = resilience.RetryConfig{
+		MaxAttempts:   1,
+		InitialDelay:  10 * time.Millisecond,
+		MaxDelay:      100 * time.Millisecond,
+		BackoffFactor: 1.0,
+		RetryableHTTP: []int{500, 502, 503, 504},
+	}
+	cbConfig = resilience.CircuitBreakerConfig{
+		Name:        "test-cb",
+		MaxRequests: 5,
+		Timeout:     1 * time.Second,
+	}
+	rateLimit = 100
+	timeout   = 5 * time.Second
 )
 
 func TestAddLink_Success(t *testing.T) {
@@ -39,8 +53,9 @@ func TestAddLink_Success(t *testing.T) {
 		})
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	err := client.AddLink(t.Context(), 123123, "https://github.com/test", []string{"tag1", "tag2"})
 	require.NoError(t, err)
@@ -51,8 +66,9 @@ func TestAddLink_Error(t *testing.T) {
 		errorResponse(w, http.StatusBadRequest, "INVALID_LINK", "Invalid link format")
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	err := client.AddLink(t.Context(), 12345, "invalid", []string{"tag1"})
 
@@ -78,8 +94,9 @@ func TestRemoveLink_Success(t *testing.T) {
 		})
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	err := client.RemoveLink(t.Context(), 12345, "https://github.com/test")
 	require.NoError(t, err)
@@ -104,8 +121,9 @@ func TestGetLinks_Success(t *testing.T) {
 		})
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	links, err := client.GetLinks(t.Context(), 12345, 50, 0)
 
@@ -124,8 +142,9 @@ func TestGetLinks_Empty(t *testing.T) {
 		})
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	links, err := client.GetLinks(t.Context(), 12345, 10, 20)
 
@@ -142,8 +161,9 @@ func TestRegisterChat_Success(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	err := client.RegisterChat(t.Context(), 12345)
 	require.NoError(t, err)
@@ -154,8 +174,9 @@ func TestRegisterChat_AlreadyExists(t *testing.T) {
 		errorResponse(w, http.StatusConflict, "CHAT_ALREADY_EXISTS", "Chat already exists")
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	err := client.RegisterChat(t.Context(), 12345)
 
@@ -171,8 +192,9 @@ func TestDeleteChat_Success(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	err := client.DeleteChat(t.Context(), 12345)
 	require.NoError(t, err)
@@ -183,8 +205,9 @@ func TestDeleteChat_NotFound(t *testing.T) {
 		errorResponse(w, http.StatusNotFound, "CHAT_NOT_FOUND", "Chat not found")
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	err := client.DeleteChat(t.Context(), 12345)
 
@@ -198,10 +221,10 @@ func TestTimeout(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	scrapperTimeout := 50 * time.Millisecond
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, scrapperTimeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
-
-	client.http.Timeout = 50 * time.Millisecond
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	err := client.RegisterChat(t.Context(), 12345)
 	require.Error(t, err)
@@ -213,8 +236,9 @@ func TestContextCancel(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -229,8 +253,9 @@ func TestInvalidJSON(t *testing.T) {
 		w.Write([]byte("invalid json"))
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	_, err := client.GetLinks(t.Context(), 12345, 10, 20)
 
@@ -247,8 +272,9 @@ func TestConcurrent(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	resilientClient := resilience.NewResilientHTTPClient(retryCfg, cbConfig, rateLimit, timeout)
 	server := httptest.NewServer(handler)
-	client := NewScrapperClient(server.URL, testScrapperTimeout)
+	client := NewScrapperClient(server.URL, resilientClient)
 
 	wgCount := 10
 

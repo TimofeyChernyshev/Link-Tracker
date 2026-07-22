@@ -31,7 +31,7 @@ type Server struct {
 	maxLimit      int
 }
 
-func NewServer(port string, service Service, defaultLimit, maxLimit int) *Server {
+func NewServer(port string, service Service, defaultLimit, maxLimit int, middlewares ...func(http.Handler) http.Handler) *Server {
 	mux := http.NewServeMux()
 
 	server := &Server{
@@ -44,7 +44,12 @@ func NewServer(port string, service Service, defaultLimit, maxLimit int) *Server
 	mux.HandleFunc("/tg-chat/{id}", server.updateChat)
 	mux.HandleFunc("/links", server.links)
 
-	server.srv = &http.Server{Handler: mux, Addr: ":" + port}
+	var handler http.Handler = mux
+	for _, middleware := range middlewares {
+		handler = middleware(handler)
+	}
+
+	server.srv = &http.Server{Handler: handler, Addr: ":" + port}
 	return server
 }
 

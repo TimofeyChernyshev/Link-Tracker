@@ -22,7 +22,7 @@ func TestLoad_Success(t *testing.T) {
 
 	content := []byte("SCRAPPER_PORT=8081\nBOT_BASE_URL=http://localhost:8080\n" +
 		"ACCESS_TYPE=1\nDB_USER=1\nDB_PASSWORD=1\nDB_HOST=1\nDB_PORT=1\nDB_NAME=1" +
-		"\nGITHUB_BASE_URL=http\nSTACK_BASE_URL=http\nNOTIFICATION_TYPE=http\nVALKEY_ADDRESSES=123")
+		"\nGITHUB_BASE_URL=http\nSTACK_BASE_URL=http\nNOTIFICATION_TYPE=http\nVALKEY_ADDRESSES=123\nKAFKA_BROKERS=x,23\nKAFKA_UPDATES_TOPIC=test")
 	err = os.WriteFile(".env", content, 0644)
 	require.NoError(t, err)
 	_ = godotenv.Load()
@@ -34,7 +34,7 @@ func TestLoad_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, "8081", cfg.ScrapperPort)
-	assert.Equal(t, "http://localhost:8080", cfg.NotifierConfig.(*HTTPNotifierConfig).BotBaseURL)
+	assert.Equal(t, "http://localhost:8080", cfg.HTTPNotifierConfig.BaseURL)
 }
 
 func TestLoad_EnvFileNotFound(t *testing.T) {
